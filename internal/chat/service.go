@@ -107,6 +107,20 @@ func (s *Service) DeleteConversation(ctx context.Context, userID, conversationID
 	return nil
 }
 
+func (s *Service) GetPeerUserID(ctx context.Context, conversationID, currentUserID int64) (int64, error) {
+	var member ConversationMember
+	err := s.db.WithContext(ctx).
+		Where("conversationId = ? AND userId <> ?", conversationID, currentUserID).
+		First(&member).Error
+	if err == gorm.ErrRecordNotFound {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("get peer user id by conversation: %w", err)
+	}
+	return member.UserID, nil
+}
+
 func (s *Service) GetOfflineMessages(ctx context.Context, userID, lastMessageID int64) ([]Message, error) {
 	filter := bson.M{"receiver_id": userID}
 	if lastMessageID > 0 {

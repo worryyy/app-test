@@ -209,3 +209,14 @@ func tokenizeForSearch(keyword string) string {
 	}
 	return strings.Join(tokens, " ")
 }
+
+func (s *Service) RefreshSuggest(ctx context.Context) (int64, error) {
+	if s.redis == nil {
+		return time.Now().Unix(), nil
+	}
+	v, err := s.redis.Incr(ctx, rediskey.SuggestCountKey).Result()
+	if err != nil {
+		return 0, fmt.Errorf("refresh suggest version: %w", err)
+	}
+	return v, nil
+}

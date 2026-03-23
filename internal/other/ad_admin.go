@@ -1,0 +1,77 @@
+package other
+
+import (
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+)
+
+func (h *AdminHandler) AdAdd(c *gin.Context) {
+	var req Ad
+	if err := c.ShouldBindJSON(&req); err != nil {
+		result.Fail(c, result.CodeParamError, "参数错误")
+		return
+	}
+	if err := h.svc.CreateAd(c.Request.Context(), &req); err != nil {
+		result.HandleError(c, err)
+		return
+	}
+	result.Success(c, nil)
+}
+
+func (h *AdminHandler) AdDelete(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		result.Fail(c, result.CodeParamError, "参数错误")
+		return
+	}
+	if err := h.svc.DeleteAd(c.Request.Context(), id); err != nil {
+		result.HandleError(c, err)
+		return
+	}
+	result.Success(c, nil)
+}
+
+func (h *AdminHandler) AdUpdate(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		result.Fail(c, result.CodeParamError, "参数错误")
+		return
+	}
+	var req Ad
+	if err := c.ShouldBindJSON(&req); err != nil {
+		result.Fail(c, result.CodeParamError, "参数错误")
+		return
+	}
+	if err := h.svc.UpdateAd(c.Request.Context(), id, &req); err != nil {
+		result.HandleError(c, err)
+		return
+	}
+	result.Success(c, nil)
+}
+
+func (h *AdminHandler) AdGet(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		result.Fail(c, result.CodeParamError, "参数错误")
+		return
+	}
+	data, err := h.svc.GetAd(c.Request.Context(), id)
+	if err != nil {
+		result.HandleError(c, err)
+		return
+	}
+	result.Success(c, data)
+}
+
+func (h *AdminHandler) AdList(c *gin.Context) {
+	page, size := pageSize(c)
+	data, err := h.svc.ListAds(c.Request.Context(), page, size)
+	if err != nil {
+		result.HandleError(c, err)
+		return
+	}
+	result.Success(c, data)
+}

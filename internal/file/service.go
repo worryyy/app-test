@@ -190,6 +190,25 @@ func (s *Service) fileColl() *mongo.Collection {
 	return s.mongoDB.Collection("campus_file")
 }
 
+func (s *Service) GetByMD5(ctx context.Context, md5Value string) (*File, error) {
+	var f File
+	if err := s.fileColl().FindOne(ctx, bson.M{"md5": md5Value}).Decode(&f); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get file by md5: %w", err)
+	}
+	return &f, nil
+}
+
+func (s *Service) GetDownloadURL(ctx context.Context, md5Value string) (string, error) {
+	_, err := s.GetByMD5(ctx, md5Value)
+	if err != nil {
+		return "", err
+	}
+	return s.fileURL(md5Value), nil
+}
+
 func (s *Service) fileURL(md5Value string) string {
 	if s.cfg == nil {
 		return md5Value
