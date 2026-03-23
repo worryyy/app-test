@@ -100,6 +100,15 @@ func (s *Service) DeleteComment(ctx context.Context, topicID, commentID string, 
 	if res.MatchedCount == 0 {
 		return ErrCommentNotFound
 	}
+	if s.producer != nil {
+		sendErr := s.producer.SendDeleteComment(ctx, mq.CommentDeleteMsg{
+			TopicID:   topicID,
+			CommentID: commentID,
+		})
+		if sendErr != nil {
+			s.logger.Warn("send delete comment mq failed", zap.Error(sendErr), zap.String("commentID", commentID))
+		}
+	}
 	return nil
 }
 

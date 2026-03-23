@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/mq"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
@@ -189,7 +191,48 @@ func (s *Service) ReviewCertification(ctx context.Context, certID string, approv
 }
 
 func (s *Service) RequestCourseByKey(ctx context.Context, key string) error {
-	_ = ctx
-	_ = key
+	if strings.TrimSpace(key) == "" {
+		return result.ErrParam
+	}
+	if s.producer == nil {
+		return nil
+	}
+
+	prefix := rediskey.UserCoursePrefix
+	if !strings.HasPrefix(key, prefix) {
+		return result.ErrParam
+	}
+	raw := strings.TrimPrefix(key, prefix)
+	parts := strings.Split(raw, ":")
+	if len(parts) != 3 {
+		return result.ErrParam
+	}
+
+	userID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return result.ErrParam
+	}
+	week, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return result.ErrParam
+	}
+	u, err := s.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if u == nil {
+		return ErrUserNotFound
+	}
+
+	msg := mq.CourseMsg{
+		UserID: userID,
+		StuNum: u.StuNum,
+		StuPwd: u.StuPwd,
+		Term:   parts[1],
+		Week:   week,
+	}
+	if err := s.producer.SendGetCourse(ctx, msg); err != nil {
+		return fmt.Errorf("send get course mq: %w", err)
+	}
 	return nil
 }

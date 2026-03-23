@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  ecampus:
+    build:
+      context: ..
+      dockerfile: deployments/ecampus/Dockerfile
+    environment:
+      APP_PROFILE: dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - redis
+      - mongo
+      - rabbitmq
+
+  ecampus-crm:
+    build:
+      context: ..
+      dockerfile: deployments/ecampus-crm/Dockerfile
+    environment:
+      APP_PROFILE: dev
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mysql
+      - redis
+      - mongo
+
+  mysql:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: "password"
+      MYSQL_DATABASE: "campus"
+    ports:
+      - "9801:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass password
+    ports:
+      - "9800:6379"
+
+  mongo:
+    image: mongo:6
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "admin"
+      MONGO_INITDB_ROOT_PASSWORD: "password"
+    ports:
+      - "9803:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: "campus"
+      RABBITMQ_DEFAULT_PASS: "password"
+    ports:
+      - "9072:5672"
+      - "9073:15672"
+
+volumes:
+  mysql_data:
+  mongo_data:

@@ -1,0 +1,32 @@
+server:
+  port: 8081
+
+mysql:
+  dsn: "root:password@tcp(127.0.0.1:9801)/campus?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai"
+  max_lifetime: 60000
+
+mongo:
+  uri: "mongodb://admin:password@127.0.0.1:9803/campus?authSource=admin"
+  database: "campus"
+
+redis:
+  addr: "127.0.0.1:9800"
+  password: "password"
+  db: 0
+
+jwt:
+  secret: "@12asd."
+  token_minutes: 60
+  refresh_token_minutes: 2880
+  issue: "campus"
+
+encryption:
+  key: "W0F7PePvolUJHmZtkv1MusWpwhpVJIJI"
+
+admin:
+  power_sign: 999
+  secondary_password: "replace-me"
+
+logging:
+  level: "info"
+  file_path: "logs/ecampus-crm.log"

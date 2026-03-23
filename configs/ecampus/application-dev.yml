@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+mysql:
+  dsn: "root:password@tcp(mysql:3306)/campus?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai"
+
+mongo:
+  uri: "mongodb://admin:password@mongo:27017/campus?authSource=admin"
+  database: "campus"
+
+redis:
+  addr: "redis:6379"
+  password: "password"
+  db: 0
+
+rabbitmq:
+  url: "amqp://campus:password@rabbitmq:5672/"
+
+logging:
+  level: "info"
+  file_path: "logs/ecampus-dev.log"

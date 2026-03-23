@@ -43,3 +43,32 @@ type NotifyMsg struct {
 	Type         string      `json:"type"`
 	Content      interface{} `json:"content"`
 }
+
+type TopicUserUpdateMsg struct {
+	UserID      string `json:"userId"`
+	NickName    string `json:"nickName"`
+	Avatar      string `json:"avatar"`
+	AccountType int    `json:"accountType"`
+}
+
+type CommentUserUpdateMsg struct {
+	UserID      string `json:"userId"`
+	NickName    string `json:"nickName"`
+	Avatar      string `json:"avatar"`
+	AccountType int    `json:"accountType"`
+}
+
+type TopicDeleteMsg struct {
+	TopicID string `json:"topicId"`
+}
+
+type CommentDeleteMsg struct {
+	TopicID   string `json:"topicId"`
+	CommentID string `json:"commentId"`
+}
+
+type DieMsg struct {
+	Queue   string      `json:"queue"`
+	Payload interface{} `json:"payload"`
+	Reason  string      `json:"reason,omitempty"`
+}

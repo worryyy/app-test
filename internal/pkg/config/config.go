@@ -67,8 +67,9 @@ type COSConfig struct {
 }
 
 type WXConfig struct {
-	AppID  string `mapstructure:"appid"`
-	Secret string `mapstructure:"secret"`
+	AppID               string `mapstructure:"appid"`
+	Secret              string `mapstructure:"secret"`
+	SubscribeTemplateID string `mapstructure:"subscribe_template_id"`
 }
 
 type CustomConfig struct {

@@ -1,0 +1,61 @@
+server:
+  port: 8080
+
+mysql:
+  dsn: "root:password@tcp(127.0.0.1:9801)/campus?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai"
+  max_lifetime: 60000
+
+mongo:
+  uri: "mongodb://admin:password@127.0.0.1:9803/campus?authSource=admin"
+  database: "campus"
+
+redis:
+  addr: "127.0.0.1:9800"
+  password: "password"
+  db: 0
+
+rabbitmq:
+  url: "amqp://campus:password@127.0.0.1:9072/"
+
+jwt:
+  secret: "@12asd."
+  token_minutes: 60
+  refresh_token_minutes: 2880
+  issue: "campus"
+
+cos:
+  access_key_id: "replace-me"
+  access_key_secret: "replace-me"
+  bucket_name: "campus-1318456870"
+  region: "ap-guangzhou"
+  base_url: "https://campus-1318456870.cos.ap-guangzhou.myqcloud.com/"
+  base_cdn: "https://cdn.example.com/"
+  compress: "webp"
+  compress_bucket_name: "campus-compress-1318456870"
+  compress_base_cdn: "https://cdn-compress.example.com/"
+
+wx:
+  appid: "replace-me"
+  secret: "replace-me"
+  subscribe_template_id: "replace-me"
+
+custom:
+  default_avatar: "5e39bbaac50af63e6d221b4f9e7fbee8,aaca0f5eb4d2d98a6ce6dffa99f8254b"
+  default_anonymous_avatar: "39862f6788f0d8852a2c095e0d4f7057"
+  page_size: 15
+  max_file_size_mb: 15
+
+jw:
+  base_url: "https://www.fangfangfang.top/sztu_jw"
+  api_key: "replace-me"
+
+encryption:
+  key: "W0F7PePvolUJHmZtkv1MusWpwhpVJIJI"
+
+admin:
+  power_sign: 999
+  secondary_password: "replace-me"
+
+logging:
+  level: "info"
+  file_path: "logs/ecampus.log"

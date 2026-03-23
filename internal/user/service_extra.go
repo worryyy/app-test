@@ -145,8 +145,12 @@ func (s *Service) SubmitOfficialCertification(ctx context.Context, userID int64,
 }
 
 func (s *Service) GenerateUnlimitedWXACode(ctx context.Context, scene, page string) ([]byte, error) {
-	_ = ctx
-	_ = scene
-	_ = page
-	return []byte{}, nil
+	if s.wxClient == nil {
+		return nil, errors.New("wx client not initialized")
+	}
+	data, err := s.wxClient.UnlimitedWXACode(ctx, scene, page)
+	if err != nil {
+		return nil, fmt.Errorf("generate unlimited wxa code: %w", err)
+	}
+	return data, nil
 }

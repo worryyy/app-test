@@ -113,6 +113,9 @@ func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAd
 		if sendErr != nil {
 			s.logger.Warn("send delete search mq failed", zap.Error(sendErr), zap.String("topicID", topicID))
 		}
+		if err := s.producer.SendDeleteTopic(ctx, mq.TopicDeleteMsg{TopicID: topicID}); err != nil {
+			s.logger.Warn("send delete topic mq failed", zap.Error(err), zap.String("topicID", topicID))
+		}
 	}
 	return nil
 }

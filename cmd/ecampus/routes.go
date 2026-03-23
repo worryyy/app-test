@@ -1,0 +1,167 @@
+package main
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
+
+	"github.com/Milchstrassse/Ecampus-go/internal/chat"
+	"github.com/Milchstrassse/Ecampus-go/internal/comment"
+	"github.com/Milchstrassse/Ecampus-go/internal/event"
+	"github.com/Milchstrassse/Ecampus-go/internal/file"
+	"github.com/Milchstrassse/Ecampus-go/internal/level"
+	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/other"
+	"github.com/Milchstrassse/Ecampus-go/internal/school"
+	"github.com/Milchstrassse/Ecampus-go/internal/theme"
+	"github.com/Milchstrassse/Ecampus-go/internal/topic"
+	"github.com/Milchstrassse/Ecampus-go/internal/user"
+)
+
+type UserHandlers struct {
+	User    *user.Handler
+	Topic   *topic.Handler
+	Comment *comment.Handler
+	Theme   *theme.Handler
+	File    *file.Handler
+	Chat    *chat.Handler
+	Level   *level.Handler
+	School  *school.Handler
+	Other   *other.Handler
+	Event   *event.Handler
+}
+
+func registerUserRoutes(
+	engine *gin.Engine,
+	logger *zap.Logger,
+	jwtHelper *jwtutil.Helper,
+	rds *redis.Client,
+	handlers UserHandlers,
+) {
+	engine.Use(middleware.CORS())
+
+	pub := engine.Group("")
+	{
+		pub.POST("/api/user/login", handlers.User.Login)
+		pub.POST("/api/user/refresh", handlers.User.RefreshToken)
+		pub.PUT("/api/user/pre_authentication", handlers.User.PreAuth)
+		pub.POST("/api/user/official/login", handlers.User.OfficialLogin)
+		pub.POST("/api/user/official/certification", handlers.User.OfficialCert)
+		pub.GET("/api/user/nickname/random", handlers.User.RandomNickname)
+
+		pub.POST("/api/theme/campus/init", handlers.Theme.InitCampusThemes)
+		pub.GET("/api/theme/campus", handlers.Theme.GetCampusThemes)
+
+		pub.GET("/api/support/:key", handlers.Other.SupportByKey)
+		pub.GET("/api/support/list", handlers.Other.SupportList)
+		pub.GET("/api/term/list", handlers.School.TermList)
+		pub.GET("/api/term", handlers.School.CurrentTerm)
+		pub.GET("/api/notice/list", handlers.Other.NoticeList)
+		pub.GET("/api/ad/list_level", handlers.Other.AdListByLevel)
+
+		pub.GET("/file/:md5", handlers.File.Download)
+		pub.GET("/file", handlers.File.ListPublic)
+		pub.POST("/api/wx/unlimited/wxa_code", handlers.User.UnlimitedWXACode)
+	}
+
+	api := engine.Group("/api")
+	api.Use(
+		middleware.JWTAuth(jwtHelper, rds),
+		middleware.BlackListCheck(rds),
+		middleware.RequestLog(logger),
+	)
+	{
+		api.GET("/user", handlers.User.GetCurrent)
+		api.PUT("/user", handlers.User.Edit)
+		api.POST("/user/authentication", handlers.User.Authenticate)
+		api.POST("/user/re_authentication", handlers.User.ReAuthenticate)
+		api.POST("/user/del_authentication", handlers.User.DelAuthentication)
+		api.POST("/user/check_login", handlers.User.CheckLogin)
+		api.POST("/user/get_course_by_weeks", handlers.User.GetCourseByWeeks)
+		api.POST("/user/get_exam", handlers.User.GetExam)
+		api.POST("/user/get_exam_score", handlers.User.GetExamScore)
+		api.GET("/user/user_profile", handlers.User.GetUserProfile)
+		api.POST("/user/identity/anonymous", handlers.User.CreateAnonymous)
+		api.PUT("/user/identity/anonymous/nickname", handlers.User.UpdateAnonymousNickname)
+		api.GET("/user/identity/list", handlers.User.ListIdentity)
+		api.POST("/user/identity/switch", handlers.User.SwitchIdentity)
+		api.POST("/user/follow", handlers.User.Follow)
+		api.DELETE("/user/follow", handlers.User.Unfollow)
+		api.GET("/user/followers", handlers.User.Followers)
+		api.GET("/user/followings", handlers.User.Followings)
+		api.GET("/user/stats", handlers.User.Stats)
+		api.GET("/user/is_following", handlers.User.IsFollowing)
+
+		api.POST("/topic", handlers.Topic.Create)
+		api.DELETE("/topic/:id", handlers.Topic.Delete)
+		api.GET("/topic/:topic_id", handlers.Topic.GetByID)
+		api.PUT("/topic/:topic_id", handlers.Topic.Update)
+		api.GET("/topic/search", handlers.Topic.Search)
+		api.GET("/topic", handlers.Topic.Mine)
+		api.GET("/topic/theme", handlers.Topic.ThemeMine)
+		api.GET("/topic/target_user_topics", handlers.Topic.TargetUserTopics)
+		api.GET("/topic/follow_topics", handlers.Topic.FollowTopics)
+
+		api.POST("/like/topic/:topic_id", handlers.Topic.Like)
+		api.DELETE("/like/topic/:topic_id", handlers.Topic.Unlike)
+		api.GET("/like/topic", handlers.Topic.LikedTopics)
+
+		api.POST("/collection/topic/:topic_id", handlers.Topic.Collect)
+		api.DELETE("/collection/topic/:topic_id", handlers.Topic.Uncollect)
+		api.GET("/collection/collection_topics", handlers.Topic.CollectionTopics)
+
+		api.POST("/comment/:topic_id", handlers.Comment.Create)
+		api.DELETE("/comment/:topic_id/:comment_id", handlers.Comment.Delete)
+		api.GET("/comment/:topic_id", handlers.Comment.ListByTopic)
+		api.GET("/comment", handlers.Comment.Mine)
+		api.GET("/comment/target_user_comments", handlers.Comment.TargetUserComments)
+		api.POST("/comment_like/:comment_id", handlers.Comment.Like)
+		api.DELETE("/comment_like/:comment_id", handlers.Comment.Unlike)
+
+		api.GET("/conversation", handlers.Chat.Conversations)
+		api.PUT("/conversation/conversation_enter", handlers.Chat.ConversationEnter)
+		api.GET("/conversation/:id/unread_count", handlers.Chat.ConversationUnreadCount)
+		api.GET("/conversation/conversation_query", handlers.Chat.ConversationQuery)
+		api.GET("/conversation/profile_by_conversation_id", handlers.Chat.ProfileByConversationID)
+		api.DELETE("/conversation/:id", handlers.Chat.DeleteConversation)
+		api.GET("/message/:last_message_id", handlers.Chat.OfflineMessages)
+		api.GET("/message/history_messages", handlers.Chat.HistoryMessages)
+		api.GET("/message/unread_messages", handlers.Chat.UnreadMessages)
+		api.GET("/notify", handlers.Chat.NotifyList)
+		api.GET("/notify/:type/haveUnread", handlers.Chat.NotifyHaveUnread)
+		api.GET("/notify/:type", handlers.Chat.NotifyLatest)
+
+		api.GET("/getUserSignDetail", handlers.Level.GetUserSignDetail)
+		api.POST("/sign_in", handlers.Level.SignIn)
+		api.GET("/UserExp", handlers.Level.UserExp)
+
+		api.POST("/course_color", handlers.School.CourseColor)
+
+		api.GET("/vote/list", handlers.Other.VoteList)
+		api.GET("/vote/draft/:info_id", handlers.Other.VoteDraft)
+		api.PUT("/vote/draft/:info_id", handlers.Other.VoteDraftAccept)
+		api.POST("/vote", handlers.Other.VoteCreate)
+		api.POST("/vote/:info_id", handlers.Other.VoteAddOption)
+		api.POST("/vote/vote/:info_id", handlers.Other.VoteDo)
+		api.POST("/report_comment", handlers.Other.ReportComment)
+
+		api.POST("/event", handlers.Event.Add)
+	}
+
+	fileAuth := engine.Group("/file")
+	fileAuth.Use(middleware.JWTAuth(jwtHelper, rds))
+	{
+		fileAuth.POST("/upload", handlers.File.Upload)
+		fileAuth.DELETE("/del/:md5", handlers.File.Delete)
+	}
+
+	engine.GET("/chat", handlers.Chat.WS)
+	engine.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "UP"})
+	})
+	engine.GET("/metrics", gin.WrapH(promhttp.Handler()))
+}

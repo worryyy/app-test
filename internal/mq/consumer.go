@@ -1,0 +1,182 @@
+package mq
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"sync"
+	"time"
+
+	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
+
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/wxutil"
+)
+
+type Consumers struct {
+	ch       *amqp.Channel
+	rds      *redis.Client
+	mongoDB  *mongo.Database
+	db       *gorm.DB
+	cfg      *config.Config
+	logger   *zap.Logger
+	producer *Producer
+	wxClient *wxutil.Client
+
+	notifyPusher func(ctx context.Context, targetUserID string, payload interface{}) error
+	wg           sync.WaitGroup
+	stopCh       chan struct{}
+}
+
+func NewConsumers(
+	conn *amqp.Connection,
+	rds *redis.Client,
+	mongoDB *mongo.Database,
+	db *gorm.DB,
+	cfg *config.Config,
+	logger *zap.Logger,
+	producer *Producer,
+) (*Consumers, error) {
+	if logger == nil {
+		logger = zap.NewNop()
+	}
+	if conn == nil {
+		return nil, fmt.Errorf("rabbitmq connection is nil")
+	}
+
+	ch, err := conn.Channel()
+	if err != nil {
+		return nil, fmt.Errorf("open rabbitmq consumer channel: %w", err)
+	}
+	if err := declareTopology(ch); err != nil {
+		_ = ch.Close()
+		return nil, err
+	}
+
+	consumers := &Consumers{
+		ch:       ch,
+		rds:      rds,
+		mongoDB:  mongoDB,
+		db:       db,
+		cfg:      cfg,
+		logger:   logger,
+		producer: producer,
+		stopCh:   make(chan struct{}),
+	}
+	if cfg != nil {
+		consumers.wxClient = wxutil.NewClient(cfg.WX, logger)
+	}
+	return consumers, nil
+}
+
+func (c *Consumers) SetNotifyPusher(fn func(ctx context.Context, targetUserID string, payload interface{}) error) {
+	c.notifyPusher = fn
+}
+
+func (c *Consumers) Start() error {
+	if c.ch == nil {
+		return fmt.Errorf("rabbitmq consumer channel is nil")
+	}
+
+	handlers := map[string]func(ctx context.Context, data json.RawMessage) error{
+		QueueTopicCheck:        c.handleTopicCheck,
+		QueueCommentAdd:        c.handleCommentAdd,
+		QueueTopicSearchAdd:    c.handleTopicSearchAdd,
+		QueueTopicSearchUpdate: c.handleTopicSearchUpdate,
+		QueueTopicSearchDel:    c.handleTopicSearchDel,
+		QueueTopicUpdate:       c.handleTopicUpdate,
+		QueueTopicDelete:       c.handleTopicDelete,
+		QueueCommentUpdate:     c.handleCommentUpdate,
+		QueueCommentDelete:     c.handleCommentDelete,
+		QueueGetCourse:         c.handleGetCourse,
+		QueueNotifyUser:        c.handleNotifyUser,
+		QueueDie:               c.handleDie,
+	}
+
+	for queue, handler := range handlers {
+		msgs, err := c.ch.Consume(queue, "", false, false, false, false, nil)
+		if err != nil {
+			return fmt.Errorf("consume queue %s: %w", queue, err)
+		}
+
+		q := queue
+		h := handler
+		c.wg.Add(1)
+		go func() {
+			defer c.wg.Done()
+			for {
+				select {
+				case <-c.stopCh:
+					return
+				case msg, ok := <-msgs:
+					if !ok {
+						return
+					}
+					HandleWithDedup(c.rds, dedupPrefix(q), msg, h, c.logger)
+				}
+			}
+		}()
+	}
+	return nil
+}
+
+func (c *Consumers) Close() error {
+	close(c.stopCh)
+	done := make(chan struct{})
+	go func() {
+		c.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		c.logger.Warn("mq consumers close timeout")
+	}
+
+	if c.ch != nil {
+		return c.ch.Close()
+	}
+	return nil
+}
+
+func (c *Consumers) sendNotify(ctx context.Context, msg NotifyMsg) {
+	if c.producer == nil {
+		return
+	}
+	if err := c.producer.SendNotifyUser(ctx, msg); err != nil {
+		c.logger.Warn("send notify mq failed", zap.Error(err), zap.String("targetUserID", msg.TargetUserID))
+	}
+}
+
+func dedupPrefix(queue string) string {
+	switch queue {
+	case QueueTopicCheck:
+		return rediskey.TopicCreateCache
+	case QueueCommentAdd:
+		return rediskey.AddMsgCache
+	case QueueTopicSearchAdd:
+		return rediskey.AddTopicSearch
+	case QueueTopicSearchUpdate:
+		return rediskey.UpdateTopicSearch
+	case QueueTopicSearchDel:
+		return rediskey.DeleteTopicCache
+	case QueueTopicUpdate, QueueCommentUpdate:
+		return rediskey.UpdateMsgCache
+	case QueueTopicDelete, QueueCommentDelete:
+		return rediskey.DeleteMsgCache
+	case QueueGetCourse:
+		return rediskey.GetAllCourse
+	case QueueNotifyUser:
+		return rediskey.NotifyCache
+	case QueueDie:
+		return rediskey.DeleteMsgCache
+	default:
+		return "campus:mq:dedup:"
+	}
+}

@@ -17,6 +17,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/mq"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
@@ -40,6 +41,7 @@ type Service struct {
 	logger    *zap.Logger
 	jwtHelper *jwtutil.Helper
 	wxClient  *wxutil.Client
+	producer  *mq.Producer
 }
 
 func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *config.Config, logger *zap.Logger) *Service {
@@ -69,6 +71,10 @@ func (s *Service) SetJWTHelper(helper *jwtutil.Helper) {
 
 func (s *Service) SetWXClient(client *wxutil.Client) {
 	s.wxClient = client
+}
+
+func (s *Service) SetProducer(producer *mq.Producer) {
+	s.producer = producer
 }
 
 func (s *Service) GetByID(ctx context.Context, id int64) (*User, error) {
@@ -122,6 +128,31 @@ func (s *Service) Edit(ctx context.Context, userID int64, req *User) error {
 
 	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
 		return fmt.Errorf("edit user %d: %w", userID, err)
+	}
+
+	if s.producer != nil {
+		accountType := 0
+		if req.AccountType != "" {
+			accountType = mapAccountType(req.AccountType)
+		}
+		msg := mq.TopicUserUpdateMsg{
+			UserID:      strconv.FormatInt(userID, 10),
+			NickName:    req.Nickname,
+			Avatar:      req.Avatar,
+			AccountType: accountType,
+		}
+		if err := s.producer.SendUpdateTopicUser(ctx, msg); err != nil {
+			s.logger.Warn("send topic user update mq failed", zap.Error(err), zap.Int64("userID", userID))
+		}
+		commentMsg := mq.CommentUserUpdateMsg{
+			UserID:      msg.UserID,
+			NickName:    msg.NickName,
+			Avatar:      msg.Avatar,
+			AccountType: msg.AccountType,
+		}
+		if err := s.producer.SendUpdateCommentUser(ctx, commentMsg); err != nil {
+			s.logger.Warn("send comment user update mq failed", zap.Error(err), zap.Int64("userID", userID))
+		}
 	}
 	return nil
 }
@@ -258,4 +289,15 @@ func toStringID(id int64) string {
 func sha1Hex(s string) string {
 	sum := sha1.Sum([]byte(s))
 	return hex.EncodeToString(sum[:])
+}
+
+func mapAccountType(accountType string) int {
+	switch accountType {
+	case "official":
+		return 2
+	case "anonymous":
+		return 3
+	default:
+		return 1
+	}
 }
