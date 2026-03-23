@@ -9,6 +9,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
@@ -136,7 +137,11 @@ func (s *Service) listFollowUsers(ctx context.Context, filter bson.M, field stri
 	if err != nil {
 		return nil, fmt.Errorf("find follow users: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close follow cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var docs []Follow
 	if err := cur.All(ctx, &docs); err != nil {

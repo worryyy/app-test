@@ -130,7 +130,11 @@ func (s *Service) GetOfflineMessages(ctx context.Context, userID, lastMessageID 
 	if err != nil {
 		return nil, fmt.Errorf("find offline messages: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close offline message cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var msgs []Message
 	if err := cur.All(ctx, &msgs); err != nil {
@@ -160,7 +164,11 @@ func (s *Service) GetHistoryMessages(ctx context.Context, conversationID int64, 
 	if err != nil {
 		return nil, fmt.Errorf("find history messages: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close history message cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var msgs []Message
 	if err := cur.All(ctx, &msgs); err != nil {
@@ -174,7 +182,11 @@ func (s *Service) GetUnreadMessages(ctx context.Context, userID int64) ([]Messag
 	if err != nil {
 		return nil, fmt.Errorf("find unread messages: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close unread message cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var msgs []Message
 	if err := cur.All(ctx, &msgs); err != nil {
@@ -207,7 +219,11 @@ func (s *Service) ListNotifications(ctx context.Context, userID int64, typ strin
 	if err != nil {
 		return nil, fmt.Errorf("find notifications: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close notification cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var list []Notification
 	if err := cur.All(ctx, &list); err != nil {

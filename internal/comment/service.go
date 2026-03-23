@@ -16,7 +16,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/mq"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
@@ -31,10 +30,15 @@ type Service struct {
 	redis    *redis.Client
 	cfg      *config.Config
 	logger   *zap.Logger
-	producer *mq.Producer
+	producer CommentProducer
 }
 
-func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *config.Config, logger *zap.Logger, producer *mq.Producer) *Service {
+type CommentProducer interface {
+	SendAddComment(ctx context.Context, cmt Comment) error
+	SendDeleteComment(ctx context.Context, topicID, commentID string) error
+}
+
+func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *config.Config, logger *zap.Logger, producer CommentProducer) *Service {
 	if logger == nil {
 		logger = zap.NewNop()
 	}
@@ -74,7 +78,7 @@ func (s *Service) AddComment(ctx context.Context, topicID string, user CommentUs
 
 	cmt.ID = oid
 	if s.producer != nil {
-		sendErr := s.producer.SendAddComment(ctx, mq.AddCommentMsg{Comment: cmt})
+		sendErr := s.producer.SendAddComment(ctx, cmt)
 		if sendErr != nil {
 			s.logger.Warn("send add comment mq failed", zap.Error(sendErr), zap.String("commentID", oid.Hex()))
 		}
@@ -101,10 +105,7 @@ func (s *Service) DeleteComment(ctx context.Context, topicID, commentID string, 
 		return ErrCommentNotFound
 	}
 	if s.producer != nil {
-		sendErr := s.producer.SendDeleteComment(ctx, mq.CommentDeleteMsg{
-			TopicID:   topicID,
-			CommentID: commentID,
-		})
+		sendErr := s.producer.SendDeleteComment(ctx, topicID, commentID)
 		if sendErr != nil {
 			s.logger.Warn("send delete comment mq failed", zap.Error(sendErr), zap.String("commentID", commentID))
 		}
@@ -180,7 +181,11 @@ func (s *Service) listByFilter(ctx context.Context, filter bson.M, page, size in
 	if err != nil {
 		return nil, fmt.Errorf("find comments: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close comment cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var comments []Comment
 	if err := cur.All(ctx, &comments); err != nil {

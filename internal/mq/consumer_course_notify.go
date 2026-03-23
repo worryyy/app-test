@@ -13,7 +13,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/encrypt"
 )
@@ -149,7 +148,11 @@ func (c *Consumers) jwLogin(ctx context.Context, stuNum, stuPwd string) ([]*http
 	if err != nil {
 		return nil, fmt.Errorf("jw login request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			c.logger.Warn("close jw login response body failed", zap.Error(closeErr))
+		}
+	}()
 	if resp.StatusCode >= http.StatusBadRequest {
 		return nil, fmt.Errorf("jw login status code: %d", resp.StatusCode)
 	}
@@ -200,7 +203,11 @@ func (c *Consumers) jwGetCourse(ctx context.Context, cookies []*http.Cookie, ter
 	if err != nil {
 		return nil, fmt.Errorf("jw course request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			c.logger.Warn("close jw course response body failed", zap.Error(closeErr))
+		}
+	}()
 	if resp.StatusCode >= http.StatusBadRequest {
 		return nil, fmt.Errorf("jw course status code: %d", resp.StatusCode)
 	}
@@ -210,19 +217,4 @@ func (c *Consumers) jwGetCourse(ctx context.Context, cookies []*http.Cookie, ter
 		"week":  week,
 		"items": []interface{}{},
 	}, nil
-}
-
-func withTx(ctx context.Context, db *gorm.DB, fn func(tx *gorm.DB) error) error {
-	if db == nil {
-		return fmt.Errorf("database not initialized")
-	}
-	tx := db.WithContext(ctx).Begin()
-	if tx.Error != nil {
-		return tx.Error
-	}
-	if err := fn(tx); err != nil {
-		tx.Rollback()
-		return err
-	}
-	return tx.Commit().Error
 }

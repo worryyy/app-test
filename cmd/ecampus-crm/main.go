@@ -40,7 +40,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	defer logger.Sync()
+	defer func() {
+		if syncErr := logger.Sync(); syncErr != nil {
+			logger.Warn("sync logger failed", zap.Error(syncErr))
+		}
+	}()
 
 	if err := snowflake.Init(1); err != nil {
 		return fmt.Errorf("init snowflake: %w", err)

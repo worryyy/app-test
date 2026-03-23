@@ -51,7 +51,11 @@ func (s *Service) TermList(ctx context.Context) ([]Term, error) {
 	if err != nil {
 		return nil, fmt.Errorf("find terms: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close term cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var list []Term
 	if err := cur.All(ctx, &list); err != nil {

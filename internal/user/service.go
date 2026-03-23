@@ -144,12 +144,7 @@ func (s *Service) Edit(ctx context.Context, userID int64, req *User) error {
 		if err := s.producer.SendUpdateTopicUser(ctx, msg); err != nil {
 			s.logger.Warn("send topic user update mq failed", zap.Error(err), zap.Int64("userID", userID))
 		}
-		commentMsg := mq.CommentUserUpdateMsg{
-			UserID:      msg.UserID,
-			NickName:    msg.NickName,
-			Avatar:      msg.Avatar,
-			AccountType: msg.AccountType,
-		}
+		commentMsg := mq.CommentUserUpdateMsg(msg)
 		if err := s.producer.SendUpdateCommentUser(ctx, commentMsg); err != nil {
 			s.logger.Warn("send comment user update mq failed", zap.Error(err), zap.Int64("userID", userID))
 		}
@@ -280,10 +275,6 @@ func (s *Service) pickDefaultAvatar() string {
 	}
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return clean[r.Intn(len(clean))]
-}
-
-func toStringID(id int64) string {
-	return strconv.FormatInt(id, 10)
 }
 
 func sha1Hex(s string) string {

@@ -56,11 +56,16 @@ func listMongoPage[T any](ctx context.Context, coll *mongo.Collection, filter bs
 	if err != nil {
 		return nil, fmt.Errorf("find mongo docs: %w", err)
 	}
-	defer cur.Close(ctx)
 
 	var list []T
 	if err := cur.All(ctx, &list); err != nil {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			return nil, fmt.Errorf("close mongo cursor after decode failure: %w", closeErr)
+		}
 		return nil, fmt.Errorf("decode mongo docs: %w", err)
+	}
+	if closeErr := cur.Close(ctx); closeErr != nil {
+		return nil, fmt.Errorf("close mongo cursor: %w", closeErr)
 	}
 	return result.NewCusPage(list, total, page, size), nil
 }

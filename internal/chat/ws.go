@@ -69,9 +69,16 @@ func (h *Handler) WS(c *gin.Context) {
 	}
 
 	conn.SetReadLimit(1 << 20)
-	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+		if closeErr := conn.Close(); closeErr != nil && h.svc != nil && h.svc.logger != nil {
+			h.svc.logger.Warn("close ws conn after set deadline failed")
+		}
+		return
+	}
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+			return err
+		}
 		return nil
 	})
 

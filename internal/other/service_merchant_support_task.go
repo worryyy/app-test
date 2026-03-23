@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
@@ -41,7 +42,11 @@ func (s *Service) ListMerchantThemes(ctx context.Context) ([]MerchantTheme, erro
 	if err != nil {
 		return nil, fmt.Errorf("list merchant themes: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close merchant theme cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var list []MerchantTheme
 	if err := cur.All(ctx, &list); err != nil {
@@ -99,7 +104,11 @@ func (s *Service) ListSupport(ctx context.Context) ([]FrontendSupport, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list support: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close support cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var list []FrontendSupport
 	if err := cur.All(ctx, &list); err != nil {

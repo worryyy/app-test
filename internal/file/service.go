@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
-	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -49,7 +48,11 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 }
 
 func (s *Service) Upload(ctx context.Context, file multipart.File, header *multipart.FileHeader, userID string) (string, string, error) {
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			s.logger.Warn("close upload file failed", zap.Error(closeErr))
+		}
+	}()
 
 	data, err := io.ReadAll(file)
 	if err != nil {
@@ -177,7 +180,11 @@ func (s *Service) list(ctx context.Context, filter bson.M, page, size int) (*res
 	if err != nil {
 		return nil, fmt.Errorf("find files: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close file cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var files []File
 	if err := cur.All(ctx, &files); err != nil {
@@ -227,8 +234,4 @@ func ensureSuffixSlash(v string) string {
 		return v
 	}
 	return v + "/"
-}
-
-func now() time.Time {
-	return time.Now()
 }

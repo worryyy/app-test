@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -206,7 +205,11 @@ func (s *Service) ListFollowTopics(ctx context.Context, currentUserID int64, pag
 	if err != nil {
 		return nil, fmt.Errorf("find followings: %w", err)
 	}
-	defer followCur.Close(ctx)
+	defer func() {
+		if closeErr := followCur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close follow cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	type followDoc struct {
 		FollowingID string `bson:"followingId"`
@@ -249,7 +252,11 @@ func (s *Service) listByFilter(ctx context.Context, filter bson.M, page, size in
 	if err != nil {
 		return nil, fmt.Errorf("find topics: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close topic cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var topics []Topic
 	if err := cur.All(ctx, &topics); err != nil {
@@ -275,8 +282,4 @@ func mapAccountType(accountType string) int {
 	default:
 		return 1
 	}
-}
-
-func nowISODate() string {
-	return time.Now().Format("2006-01-02")
 }

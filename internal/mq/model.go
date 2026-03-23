@@ -3,6 +3,7 @@ package mq
 import (
 	"time"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -23,7 +24,7 @@ type TopicCheckMsg struct {
 }
 
 type AddCommentMsg struct {
-	Comment interface{} `json:"comment"`
+	Comment comment.Comment `json:"comment"`
 }
 
 type AddTopicSearchMsg struct {

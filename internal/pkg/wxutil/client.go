@@ -259,7 +259,11 @@ func (c *Client) doJSONRequest(ctx context.Context, method, endpoint string, pay
 	if err != nil {
 		return nil, fmt.Errorf("do wx request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			c.logger.Warn("close wx response body failed", zap.Error(closeErr))
+		}
+	}()
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
@@ -23,8 +23,8 @@ func (h *Handler) Create(c *gin.Context) {
 		result.Fail(c, result.CodeParamError, "参数错误")
 		return
 	}
-	userID := middleware.GetUserID(c)
-	claims := middleware.GetClaims(c)
+	userID := getUserID(c)
+	claims := getClaims(c)
 	accountType := 1
 	if claims != nil {
 		switch claims.AccountType {
@@ -46,7 +46,7 @@ func (h *Handler) Create(c *gin.Context) {
 }
 
 func (h *Handler) Delete(c *gin.Context) {
-	if err := h.svc.DeleteComment(c.Request.Context(), c.Param("topic_id"), c.Param("comment_id"), middleware.GetUserID(c), false); err != nil {
+	if err := h.svc.DeleteComment(c.Request.Context(), c.Param("topic_id"), c.Param("comment_id"), getUserID(c), false); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -65,7 +65,7 @@ func (h *Handler) ListByTopic(c *gin.Context) {
 
 func (h *Handler) Mine(c *gin.Context) {
 	page, size := getPageSize(c)
-	data, err := h.svc.ListMine(c.Request.Context(), middleware.GetUserID(c), page, size)
+	data, err := h.svc.ListMine(c.Request.Context(), getUserID(c), page, size)
 	if err != nil {
 		result.HandleError(c, err)
 		return
@@ -89,7 +89,7 @@ func (h *Handler) TargetUserComments(c *gin.Context) {
 }
 
 func (h *Handler) Like(c *gin.Context) {
-	if err := h.svc.LikeComment(c.Request.Context(), c.Param("comment_id"), middleware.GetUserID(c)); err != nil {
+	if err := h.svc.LikeComment(c.Request.Context(), c.Param("comment_id"), getUserID(c)); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -97,7 +97,7 @@ func (h *Handler) Like(c *gin.Context) {
 }
 
 func (h *Handler) Unlike(c *gin.Context) {
-	if err := h.svc.UnlikeComment(c.Request.Context(), c.Param("comment_id"), middleware.GetUserID(c)); err != nil {
+	if err := h.svc.UnlikeComment(c.Request.Context(), c.Param("comment_id"), getUserID(c)); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -114,4 +114,24 @@ func getPageSize(c *gin.Context) (int, int) {
 		size = 15
 	}
 	return page, size
+}
+
+func getClaims(c *gin.Context) *jwtutil.Claims {
+	v, ok := c.Get("claims")
+	if !ok || v == nil {
+		return nil
+	}
+	claims, ok := v.(*jwtutil.Claims)
+	if !ok {
+		return nil
+	}
+	return claims
+}
+
+func getUserID(c *gin.Context) int64 {
+	claims := getClaims(c)
+	if claims == nil {
+		return 0
+	}
+	return claims.UserID
 }

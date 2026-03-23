@@ -96,7 +96,7 @@ func (c *Consumers) handleTopicCheck(ctx context.Context, data json.RawMessage) 
 	}
 
 	if c.producer != nil {
-		if err := c.producer.SendAddTopicSearch(ctx, AddTopicSearchMsg{TopicID: msg.TopicID}); err != nil {
+		if err := c.producer.SendAddTopicSearch(ctx, AddTopicSearchMsg(msg)); err != nil {
 			c.logger.Warn("send add topic search failed", zap.Error(err), zap.String("topicID", msg.TopicID))
 		}
 	}
@@ -174,8 +174,8 @@ func (c *Consumers) handleCommentAdd(ctx context.Context, data json.RawMessage) 
 				TargetUserID: topic.UserID,
 				Type:         "comment",
 				Content: map[string]string{
-					"topicId":  cmt.TopicID,
-					"comment":  filteredComment,
+					"topicId":   cmt.TopicID,
+					"comment":   filteredComment,
 					"commentId": cmt.ID.Hex(),
 				},
 			})
@@ -200,8 +200,8 @@ func (c *Consumers) handleCommentAdd(ctx context.Context, data json.RawMessage) 
 			TargetUserID: parentUserID,
 			Type:         "comment",
 			Content: map[string]string{
-				"topicId":  cmt.TopicID,
-				"comment":  filteredComment,
+				"topicId":   cmt.TopicID,
+				"comment":   filteredComment,
 				"commentId": cmt.ID.Hex(),
 			},
 		})

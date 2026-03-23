@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,7 +21,7 @@ type BaseProducer struct {
 	exchange string
 	routeKey string
 	rds      *redis.Client
-	logger *zap.Logger
+	logger   *zap.Logger
 }
 
 func NewBaseProducer(ch *amqp.Channel, exchange, routeKey string, rds *redis.Client, logger *zap.Logger) *BaseProducer {
@@ -192,8 +193,8 @@ func (p *Producer) SendTopicCheck(ctx context.Context, msg TopicCheckMsg) error 
 	return p.sendByKey(ctx, KeyTopicCheck, msg)
 }
 
-func (p *Producer) SendAddComment(ctx context.Context, msg AddCommentMsg) error {
-	return p.sendByKey(ctx, KeyAddComment, msg)
+func (p *Producer) SendAddComment(ctx context.Context, cmt comment.Comment) error {
+	return p.sendByKey(ctx, KeyAddComment, AddCommentMsg{Comment: cmt})
 }
 
 func (p *Producer) SendAddTopicSearch(ctx context.Context, msg AddTopicSearchMsg) error {
@@ -232,6 +233,6 @@ func (p *Producer) SendDeleteTopic(ctx context.Context, msg TopicDeleteMsg) erro
 	return p.sendByKey(ctx, KeyDeleteTopic, msg)
 }
 
-func (p *Producer) SendDeleteComment(ctx context.Context, msg CommentDeleteMsg) error {
-	return p.sendByKey(ctx, KeyDeleteComment, msg)
+func (p *Producer) SendDeleteComment(ctx context.Context, topicID, commentID string) error {
+	return p.sendByKey(ctx, KeyDeleteComment, CommentDeleteMsg{TopicID: topicID, CommentID: commentID})
 }

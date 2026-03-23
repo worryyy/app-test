@@ -13,6 +13,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 
+	"github.com/redis/go-redis/v9"
+
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
@@ -82,7 +84,11 @@ func (s *Service) SearchHot(ctx context.Context, userID, themeID string, page, s
 	if err != nil {
 		return nil, fmt.Errorf("aggregate hot topics: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close hot topic cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var topics []Topic
 	if err := cur.All(ctx, &topics); err != nil {
@@ -127,7 +133,11 @@ func (s *Service) SearchByKeyword(ctx context.Context, keyword, themeName string
 	if err != nil {
 		return nil, 0, fmt.Errorf("find search docs: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close search topic cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var rows []TopicSearch
 	if err := cur.All(ctx, &rows); err != nil {
@@ -171,7 +181,12 @@ func (s *Service) GetSuggestList(ctx context.Context, userID string, page, size 
 	}
 
 	start := int64((page - 1) * size)
-	topicIDs, err := s.redis.ZRevRange(ctx, curKey, start, start+int64(size)-1).Result()
+	topicIDs, err := s.redis.ZRangeArgs(ctx, redis.ZRangeArgs{
+		Key:   curKey,
+		Start: start,
+		Stop:  start + int64(size) - 1,
+		Rev:   true,
+	}).Result()
 	if err != nil {
 		return nil, fmt.Errorf("zrevrange suggest key: %w", err)
 	}

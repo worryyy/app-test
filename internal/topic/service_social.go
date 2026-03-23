@@ -131,7 +131,11 @@ func (s *Service) fillLikeAndCollection(ctx context.Context, userID string, topi
 	if err != nil {
 		return fmt.Errorf("load topic likes: %w", err)
 	}
-	defer likeCur.Close(ctx)
+	defer func() {
+		if closeErr := likeCur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close topic like cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var likeDocs []TopicLike
 	if err := likeCur.All(ctx, &likeDocs); err != nil {
@@ -149,7 +153,11 @@ func (s *Service) fillLikeAndCollection(ctx context.Context, userID string, topi
 	if err != nil {
 		return fmt.Errorf("load topic collections: %w", err)
 	}
-	defer colCur.Close(ctx)
+	defer func() {
+		if closeErr := colCur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close topic collection cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var colDocs []TopicCollection
 	if err := colCur.All(ctx, &colDocs); err != nil {
@@ -181,7 +189,11 @@ func (s *Service) listTopicsFromArrayDocs(ctx context.Context, collName string, 
 	if err != nil {
 		return nil, fmt.Errorf("find %s docs: %w", collName, err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close topic array cursor failed", zap.Error(closeErr), zap.String("collection", collName))
+		}
+	}()
 
 	var docs []arrayDoc
 	if err := cur.All(ctx, &docs); err != nil {
@@ -231,7 +243,11 @@ func (s *Service) findByIDs(ctx context.Context, topicIDs []string) ([]Topic, er
 	if err != nil {
 		return nil, fmt.Errorf("find topics by ids: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close topic by ids cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var topics []Topic
 	if err := cur.All(ctx, &topics); err != nil {

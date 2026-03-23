@@ -75,7 +75,11 @@ func (j *JWClient) Login(ctx context.Context, stuNum, stuPwd string) ([]*http.Co
 	if err != nil {
 		return nil, fmt.Errorf("jw login request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			j.logger.Warn("close jw login response body failed", zap.Error(closeErr))
+		}
+	}()
 
 	baseURL, err := url.Parse(j.cfg.JW.BaseURL)
 	if err != nil {

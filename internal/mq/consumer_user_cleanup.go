@@ -101,7 +101,11 @@ func (c *Consumers) handleTopicDelete(ctx context.Context, data json.RawMessage)
 	if err != nil {
 		return fmt.Errorf("find comments for topic delete: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			c.logger.Warn("close topic comment cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var docs []commentDoc
 	if err := cur.All(ctx, &docs); err == nil {

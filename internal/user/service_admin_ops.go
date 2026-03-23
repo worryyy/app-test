@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/mq"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
@@ -150,7 +151,11 @@ func (s *Service) ListOfficialCertifications(ctx context.Context, page, size int
 	if err != nil {
 		return nil, fmt.Errorf("find certifications: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close certification cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var list []OfficialCertification
 	if err := cur.All(ctx, &list); err != nil {

@@ -57,7 +57,11 @@ func (s *Service) ListCampusThemes(ctx context.Context) ([]Theme, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list campus themes: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close theme cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var themes []Theme
 	if err := cur.All(ctx, &themes); err != nil {
@@ -75,7 +79,11 @@ func (s *Service) ListThemes(ctx context.Context, name string) ([]Theme, error) 
 	if err != nil {
 		return nil, fmt.Errorf("list themes: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			s.logger.Warn("close theme cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var themes []Theme
 	if err := cur.All(ctx, &themes); err != nil {

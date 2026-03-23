@@ -43,7 +43,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	defer logger.Sync()
+	defer func() {
+		if syncErr := logger.Sync(); syncErr != nil {
+			logger.Warn("sync logger failed", zap.Error(syncErr))
+		}
+	}()
 
 	if err := snowflake.Init(1); err != nil {
 		return fmt.Errorf("init snowflake: %w", err)
@@ -66,14 +70,22 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	defer amqpConn.Close()
+	defer func() {
+		if closeErr := amqpConn.Close(); closeErr != nil {
+			logger.Warn("close rabbitmq connection failed", zap.Error(closeErr))
+		}
+	}()
 
 	jwtHelper := jwtutil.NewHelper(cfg.JWT, rds)
 	producer, err := mq.NewProducer(amqpConn, rds, mongoDB, logger)
 	if err != nil {
 		return err
 	}
-	defer producer.Close()
+	defer func() {
+		if closeErr := producer.Close(); closeErr != nil {
+			logger.Warn("close producer failed", zap.Error(closeErr))
+		}
+	}()
 
 	userSvc := user.NewService(db, mongoDB, rds, cfg, logger)
 	userSvc.SetProducer(producer)
@@ -127,7 +139,11 @@ func run() error {
 	if err := consumers.Start(); err != nil {
 		return err
 	}
-	defer consumers.Close()
+	defer func() {
+		if closeErr := consumers.Close(); closeErr != nil {
+			logger.Warn("close consumers failed", zap.Error(closeErr))
+		}
+	}()
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Server.Port),

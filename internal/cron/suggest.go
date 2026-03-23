@@ -114,7 +114,11 @@ func (j *SuggestJob) loadSuggestThemes(ctx context.Context) ([]suggestTheme, err
 	if err != nil {
 		return nil, fmt.Errorf("find suggest themes: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			j.logger.Warn("close suggest theme cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var themes []suggestTheme
 	if err := cur.All(ctx, &themes); err != nil {
@@ -144,7 +148,11 @@ func (j *SuggestJob) buildThemeRank(
 	if err != nil {
 		return fmt.Errorf("find suggest topics: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() {
+		if closeErr := cur.Close(ctx); closeErr != nil {
+			j.logger.Warn("close suggest topic cursor failed", zap.Error(closeErr))
+		}
+	}()
 
 	var topics []suggestTopic
 	if err := cur.All(ctx, &topics); err != nil {
