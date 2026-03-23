@@ -1,0 +1,93 @@
+```mermaid
+flowchart LR
+    subgraph ClientEdge[多终端接入层]
+        M[微信小程序]
+        W[Web Portal]
+        A[Admin Console]
+    end
+
+    subgraph Gateway[API Gateway & BFF 层]
+        GW(Spring Cloud Gateway\nJWT校验 · 限流 · 灰度)
+        BFF[Adaptive BFF\n按端裁剪接口]
+    end
+
+    subgraph Services[业务微服务域]
+        subgraph Identity[Identity & User Domain]
+            UMS(User/Auth Service\n账号 · 认证 · 权限)
+            LevelS(Level & Gamification\n积分 · 勋章 · 任务)
+        end
+
+        subgraph Content[Content & Interaction Domain]
+            TopicS(Topic Service\n发帖 · 审核 · 搜索\n数据: MongoDB)
+            InteractS(Interaction Service\n评论 · 点赞 · 收藏)
+            FeedS(Feed & Recommendation\n热榜 · 个性化推荐)
+        end
+
+        subgraph Collaboration[Collaboration Domain]
+            ChatS(Chat & Notification\nIM · WebSocket · Push)
+            EventS(Front Event Service\n埋点 · 活跃度分析)
+        end
+
+        subgraph Media[Media & Utility Domain]
+            FileS(File & Media Service\n上传 · COS · 压缩 · 审核)
+            SchoolS(School Integration Service\n教务/课表兼容)
+        end
+    end
+
+    subgraph Async[异步消息与事件]
+        MQ[(RabbitMQ)]
+        Stream[(Kafka / Stream Platform)]
+    end
+
+    subgraph Data[数据与共享能力]
+        Mysql[(MySQL 主从 / 分库)]
+        Mongo[(MongoDB\nTopic/Comment)]
+        Redis[(Redis Cluster\n缓存/Session/锁)]
+        ES[(Elasticsearch\n搜索与聚合)]
+        COS[(对象存储 & CDN)]
+        DW[(数据仓库\nClickHouse/BigQuery 可选)]
+    end
+
+    subgraph Platform[平台支撑与治理]
+        Config[(Nacos / Consul\n配置 & 注册中心)]
+        Observability[(Prometheus · Grafana · SkyWalking)]
+        Sec[统一安全中心\nWAF · OAuth2 · 密钥管控]
+        DevOps(CI/CD Pipeline\nGitHub Actions → ArgoCD/K8s)
+        Mesh[Service Mesh / Istio\n熔断 · 限流 · 金丝雀]
+    end
+
+    ClientEdge --> GW --> BFF
+    BFF --> UMS
+    BFF --> TopicS
+    BFF --> InteractS
+    BFF --> ChatS
+    BFF --> FileS
+    BFF --> SchoolS
+    UMS --> LevelS
+    TopicS --> InteractS
+    TopicS --> FeedS
+    TopicS --> MQ
+    InteractS --> MQ
+    ChatS --> MQ
+    MQ --> ChatS
+    MQ --> FeedS
+    MQ --> LevelS
+    Services --> Redis
+    TopicS --> Mongo
+    UMS --> Mysql
+    LevelS --> Mysql
+    InteractS --> Mysql
+    FeedS --> ES
+    FileS --> COS
+    SchoolS --> Mysql
+    EventS --> Stream
+    Stream --> FeedS
+    Stream --> LevelS
+    Stream --> DW
+    Services <---> Config
+    Services --> Observability
+    Services --> Sec
+    Services --> Mesh
+    DevOps --> Services
+    DevOps --> Platform
+```
