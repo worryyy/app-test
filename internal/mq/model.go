@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
-
-	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 )
 
 type MQLog struct {
@@ -25,7 +23,7 @@ type TopicCheckMsg struct {
 }
 
 type AddCommentMsg struct {
-	Comment comment.Comment `json:"comment"`
+	Comment interface{} `json:"comment"`
 }
 
 type AddTopicSearchMsg struct {

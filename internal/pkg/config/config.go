@@ -88,7 +88,8 @@ type EncryptionConfig struct {
 }
 
 type AdminConfig struct {
-	PowerSign int `mapstructure:"power_sign"`
+	PowerSign         int    `mapstructure:"power_sign"`
+	SecondaryPassword string `mapstructure:"secondary_password"`
 }
 
 type LoggingConfig struct {

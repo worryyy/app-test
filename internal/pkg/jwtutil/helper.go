@@ -15,7 +15,6 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/snowflake"
-	"github.com/Milchstrassse/Ecampus-go/internal/user"
 )
 
 var (
@@ -39,11 +38,19 @@ type Helper struct {
 	rds *redis.Client
 }
 
+type TokenUser struct {
+	ID          int64
+	OpenID      string
+	Power       int
+	AccountType string
+	RootUserID  int64
+}
+
 func NewHelper(cfg config.JWTConfig, rds *redis.Client) *Helper {
 	return &Helper{cfg: cfg, rds: rds}
 }
 
-func (h *Helper) GenerateTokenPair(u *user.User) (token, refreshToken string, err error) {
+func (h *Helper) GenerateTokenPair(u *TokenUser) (token, refreshToken string, err error) {
 	if u == nil {
 		return "", "", ErrUserNotExisted
 	}
