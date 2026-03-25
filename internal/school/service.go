@@ -3,6 +3,7 @@ package school
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -19,6 +20,11 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/mq"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+)
+
+var (
+	ErrCurrentTermNotConfigured = errors.New("current term not configured")
+	ErrCurrentTermInvalid       = errors.New("current term invalid")
 )
 
 type Service struct {
@@ -47,7 +53,7 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 }
 
 func (s *Service) TermList(ctx context.Context) ([]Term, error) {
-	cur, err := s.mongoDB.Collection("campus_term").Find(ctx, bson.M{}, options.Find().SetSort(bson.M{"startDate": -1}))
+	cur, err := s.mongoDB.Collection("campus_term").Find(ctx, bson.M{})
 	if err != nil {
 		return nil, fmt.Errorf("find terms: %w", err)
 	}
@@ -64,34 +70,29 @@ func (s *Service) TermList(ctx context.Context) ([]Term, error) {
 	return list, nil
 }
 
-func (s *Service) CurrentTerm(ctx context.Context) (map[string]interface{}, error) {
+func (s *Service) CurrentTerm(ctx context.Context) (*CurDateAndTermVO, error) {
 	var cur CurTerm
 	err := s.mongoDB.Collection("campus_cur_term").FindOne(ctx, bson.M{}).Decode(&cur)
 	if err == mongo.ErrNoDocuments {
-		return map[string]interface{}{}, nil
+		return nil, ErrCurrentTermNotConfigured
 	}
 	if err != nil {
 		return nil, fmt.Errorf("find current term: %w", err)
 	}
 
-	termOID, err := primitive.ObjectIDFromHex(cur.TermID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid current term id: %w", err)
-	}
-
 	var term Term
-	if err := s.mongoDB.Collection("campus_term").FindOne(ctx, bson.M{"_id": termOID}).Decode(&term); err != nil {
+	if err := s.mongoDB.Collection("campus_term").FindOne(ctx, bson.M{"term": cur.Term}).Decode(&term); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, ErrCurrentTermInvalid
+		}
 		return nil, fmt.Errorf("find term detail: %w", err)
 	}
 
-	week := int(time.Since(term.StartDate).Hours()/24/7) + 1
-	if week < 1 {
-		week = 1
-	}
-	return map[string]interface{}{
-		"term":        term.TermName,
-		"currentWeek": week,
-		"date":        time.Now().Format("2006-01-02"),
+	return &CurDateAndTermVO{
+		CurDate:    time.Now().Format("2006-01-02"),
+		CurTerm:    cur.Term,
+		StartDate:  term.StartDate,
+		TotalWeeks: term.TotalWeeks,
 	}, nil
 }
 
@@ -120,10 +121,23 @@ func (s *Service) DeleteTerm(ctx context.Context, termID string) error {
 }
 
 func (s *Service) SetCurrentTerm(ctx context.Context, termID string) error {
-	_, err := s.mongoDB.Collection("campus_cur_term").UpdateOne(
+	oid, err := primitive.ObjectIDFromHex(termID)
+	if err != nil {
+		return fmt.Errorf("invalid term id: %w", err)
+	}
+
+	var term Term
+	if err := s.mongoDB.Collection("campus_term").FindOne(ctx, bson.M{"_id": oid}).Decode(&term); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return result.ErrNotExisted
+		}
+		return fmt.Errorf("find term before set current: %w", err)
+	}
+
+	_, err = s.mongoDB.Collection("campus_cur_term").UpdateOne(
 		ctx,
 		bson.M{},
-		bson.M{"$set": bson.M{"termId": termID}},
+		bson.M{"$set": bson.M{"term": term.Term}},
 		options.Update().SetUpsert(true),
 	)
 	if err != nil {

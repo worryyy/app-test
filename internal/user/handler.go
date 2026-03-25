@@ -20,36 +20,49 @@ func NewHandler(svc *Service) *Handler {
 
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
-	token, refreshToken, user, err := h.svc.WechatLogin(c.Request.Context(), req.Code)
+	token, refreshToken, user, isNew, err := h.svc.WechatLogin(c.Request.Context(), req.Code)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, gin.H{"token": token, "refreshToken": refreshToken, "user": user})
+	result.Success(c, &LoginResp{
+		Token:           token,
+		RefreshToken:    refreshToken,
+		User:            user,
+		IsNew:           isNew,
+		CurrentIdentity: buildIdentityVO(user),
+		RootUserID:      rootUserID(user),
+	})
 }
 
 func (h *Handler) RefreshToken(c *gin.Context) {
 	var req RefreshTokenReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
-	token, refreshToken, err := h.svc.RefreshToken(c.Request.Context(), req.RefreshToken)
+	refreshTokenValue := req.Value()
+	if refreshTokenValue == "" {
+		result.FailWithStatus(c, http.StatusBadRequest, result.CodeParamError, result.ErrParam.Error())
+		return
+	}
+	token, refreshToken, user, err := h.svc.RefreshToken(c.Request.Context(), refreshTokenValue)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, gin.H{"token": token, "refreshToken": refreshToken})
+	result.Success(c, &RefreshTokenResp{
+		Token:           token,
+		RefreshToken:    refreshToken,
+		CurrentIdentity: buildIdentityVO(user),
+	})
 }
 
 func (h *Handler) PreAuth(c *gin.Context) {
 	var req AuthenticationReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.PreAuthentication(c.Request.Context(), req.StuNum, req.StuPwd); err != nil {
@@ -61,25 +74,30 @@ func (h *Handler) PreAuth(c *gin.Context) {
 
 func (h *Handler) OfficialLogin(c *gin.Context) {
 	var req OfficialLoginReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
-	if req.SecondaryPassword == "" {
-		req.SecondaryPassword = "required"
+	username, password := req.Credentials()
+	if username == "" || password == "" {
+		result.FailWithStatus(c, http.StatusBadRequest, result.CodeParamError, result.ErrParam.Error())
+		return
 	}
-	token, refreshToken, user, err := h.svc.OfficialLogin(c.Request.Context(), req.Username, req.Password)
+	token, refreshToken, user, err := h.svc.OfficialLogin(c.Request.Context(), username, password)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, gin.H{"token": token, "refreshToken": refreshToken, "user": user})
+	result.Success(c, &LoginResp{
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         user,
+		IsNew:        false,
+	})
 }
 
 func (h *Handler) OfficialCert(c *gin.Context) {
 	var req OfficialCertReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	userID := currentUserID(c)
@@ -92,7 +110,7 @@ func (h *Handler) OfficialCert(c *gin.Context) {
 
 func (h *Handler) RandomNickname(c *gin.Context) {
 	name := h.svc.RandomNickname()
-	result.Success(c, name)
+	result.Data(c, name)
 }
 
 func (h *Handler) GetCurrent(c *gin.Context) {
@@ -102,13 +120,12 @@ func (h *Handler) GetCurrent(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, u)
+	result.Data(c, u)
 }
 
 func (h *Handler) Edit(c *gin.Context) {
 	var req User
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.Edit(c.Request.Context(), currentUserID(c), &req); err != nil {
@@ -120,8 +137,7 @@ func (h *Handler) Edit(c *gin.Context) {
 
 func (h *Handler) Authenticate(c *gin.Context) {
 	var req AuthenticationReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.Authenticate(c.Request.Context(), currentUserID(c), req.StuNum, req.StuPwd); err != nil {
@@ -133,8 +149,7 @@ func (h *Handler) Authenticate(c *gin.Context) {
 
 func (h *Handler) ReAuthenticate(c *gin.Context) {
 	var req AuthenticationReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.ReAuthentication(c.Request.Context(), currentUserID(c), req.StuNum, req.StuPwd); err != nil {
@@ -163,8 +178,7 @@ func (h *Handler) CheckLogin(c *gin.Context) {
 
 func (h *Handler) GetCourseByWeeks(c *gin.Context) {
 	var req UserCourseReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	data, err := h.svc.GetCourseByWeeks(c.Request.Context(), currentUserID(c), req.Term, req.Weeks)
@@ -212,8 +226,7 @@ func (h *Handler) UnlimitedWXACode(c *gin.Context) {
 		Scene string `json:"scene" binding:"required"`
 		Page  string `json:"page" binding:"required"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	data, err := h.svc.GenerateUnlimitedWXACode(c.Request.Context(), req.Scene, req.Page)

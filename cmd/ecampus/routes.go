@@ -14,8 +14,8 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
 	"github.com/Milchstrassse/Ecampus-go/internal/level"
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/other"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
 	"github.com/Milchstrassse/Ecampus-go/internal/topic"
@@ -51,21 +51,10 @@ func registerUserRoutes(
 		pub.PUT("/api/user/pre_authentication", handlers.User.PreAuth)
 		pub.POST("/api/user/official/login", handlers.User.OfficialLogin)
 		pub.POST("/api/user/official/certification", handlers.User.OfficialCert)
-		pub.GET("/api/user/nickname/random", handlers.User.RandomNickname)
-
-		pub.POST("/api/theme/campus/init", handlers.Theme.InitCampusThemes)
-		pub.GET("/api/theme/campus", handlers.Theme.GetCampusThemes)
-
-		pub.GET("/api/support/:key", handlers.Other.SupportByKey)
-		pub.GET("/api/support/list", handlers.Other.SupportList)
-		pub.GET("/api/term/list", handlers.School.TermList)
-		pub.GET("/api/term", handlers.School.CurrentTerm)
-		pub.GET("/api/notice/list", handlers.Other.NoticeList)
 		pub.GET("/api/ad/list_level", handlers.Other.AdListByLevel)
 
 		pub.GET("/file/:md5", handlers.File.Download)
 		pub.GET("/file", handlers.File.ListPublic)
-		pub.POST("/api/wx/unlimited/wxa_code", handlers.User.UnlimitedWXACode)
 	}
 
 	api := engine.Group("/api")
@@ -77,6 +66,7 @@ func registerUserRoutes(
 	{
 		api.GET("/user", handlers.User.GetCurrent)
 		api.PUT("/user", handlers.User.Edit)
+		api.GET("/user/nickname/random", handlers.User.RandomNickname)
 		api.POST("/user/authentication", handlers.User.Authenticate)
 		api.POST("/user/re_authentication", handlers.User.ReAuthenticate)
 		api.POST("/user/del_authentication", handlers.User.DelAuthentication)
@@ -140,6 +130,8 @@ func registerUserRoutes(
 		api.GET("/UserExp", handlers.Level.UserExp)
 
 		api.POST("/course_color", handlers.School.CourseColor)
+		api.GET("/term/list", handlers.School.TermList)
+		api.GET("/term", handlers.School.CurrentTerm)
 
 		api.GET("/vote/list", handlers.Other.VoteList)
 		api.GET("/vote/draft/:info_id", handlers.Other.VoteDraft)
@@ -148,6 +140,12 @@ func registerUserRoutes(
 		api.POST("/vote/:info_id", handlers.Other.VoteAddOption)
 		api.POST("/vote/vote/:info_id", handlers.Other.VoteDo)
 		api.POST("/report_comment", handlers.Other.ReportComment)
+		api.GET("/support/:key", handlers.Other.SupportByKey)
+		api.GET("/support/list", handlers.Other.SupportList)
+		api.GET("/notice/list", handlers.Other.NoticeList)
+		api.POST("/theme/campus/init", handlers.Theme.InitCampusThemes)
+		api.GET("/theme/campus", handlers.Theme.GetCampusThemes)
+		api.POST("/wx/unlimited/wxa_code", handlers.User.UnlimitedWXACode)
 
 		api.POST("/event", handlers.Event.Add)
 	}

@@ -14,8 +14,7 @@ func NewAdminHandler(svc *Service) *AdminHandler {
 
 func (h *AdminHandler) SetPublic(c *gin.Context) {
 	var req FilePublicReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.SetPublic(c.Request.Context(), req.MD5List, true); err != nil {

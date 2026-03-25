@@ -19,8 +19,7 @@ func NewHandler(svc *Service) *Handler {
 
 func (h *Handler) Create(c *gin.Context) {
 	var req CreateTopicReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	id, err := h.svc.Create(c.Request.Context(), middleware.GetClaims(c), &req)
@@ -51,8 +50,7 @@ func (h *Handler) GetByID(c *gin.Context) {
 
 func (h *Handler) Update(c *gin.Context) {
 	var req CreateTopicReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.Update(c.Request.Context(), c.Param("topic_id"), middleware.GetUserID(c), &req); err != nil {

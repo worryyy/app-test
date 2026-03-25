@@ -34,8 +34,7 @@ func (h *AdminHandler) SensitiveDeleteByWord(c *gin.Context) {
 
 func (h *AdminHandler) SensitiveBatchDelete(c *gin.Context) {
 	var req WordsReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.BatchDeleteSensitiveWords(c.Request.Context(), req.Words); err != nil {
@@ -47,8 +46,7 @@ func (h *AdminHandler) SensitiveBatchDelete(c *gin.Context) {
 
 func (h *AdminHandler) SensitiveAdd(c *gin.Context) {
 	var req SensitiveWord
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.AddSensitiveWord(c.Request.Context(), &req); err != nil {
@@ -60,8 +58,7 @@ func (h *AdminHandler) SensitiveAdd(c *gin.Context) {
 
 func (h *AdminHandler) SensitiveBatchAdd(c *gin.Context) {
 	var req WordsReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.BatchAddSensitiveWords(c.Request.Context(), req.Words); err != nil {
@@ -92,8 +89,7 @@ func (h *AdminHandler) SensitiveSearchLike(c *gin.Context) {
 
 func (h *AdminHandler) SensitiveUpdate(c *gin.Context) {
 	var req SensitiveWord
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.UpdateSensitiveWord(c.Request.Context(), &req); err != nil {

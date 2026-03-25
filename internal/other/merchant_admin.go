@@ -8,8 +8,7 @@ import (
 
 func (h *AdminHandler) MerchantAdd(c *gin.Context) {
 	var req MerchantThemeReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	id, err := h.svc.AddMerchantTheme(c.Request.Context(), req.ThemeID)

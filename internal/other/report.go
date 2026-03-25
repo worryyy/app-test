@@ -15,8 +15,7 @@ func (h *Handler) ReportComment(c *gin.Context) {
 		TopicID   string `json:"topicId" binding:"required"`
 		Reason    string `json:"reason" binding:"required"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	_, err := h.svc.CreateReportComment(c.Request.Context(), &ReportComment{

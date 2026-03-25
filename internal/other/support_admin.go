@@ -8,8 +8,7 @@ import (
 
 func (h *AdminHandler) SupportAdd(c *gin.Context) {
 	var req FrontendSupport
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	id, err := h.svc.AddSupport(c.Request.Context(), &req)
@@ -22,8 +21,7 @@ func (h *AdminHandler) SupportAdd(c *gin.Context) {
 
 func (h *AdminHandler) SupportUpdate(c *gin.Context) {
 	var req FrontendSupport
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.UpdateSupport(c.Request.Context(), &req); err != nil {

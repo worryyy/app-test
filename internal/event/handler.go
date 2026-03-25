@@ -14,8 +14,7 @@ func NewHandler(svc *Service) *Handler {
 
 func (h *Handler) Add(c *gin.Context) {
 	var req Event
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.AddEvent(c.Request.Context(), &req); err != nil {

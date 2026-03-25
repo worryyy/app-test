@@ -5,7 +5,8 @@ type LoginReq struct {
 }
 
 type RefreshTokenReq struct {
-	RefreshToken string `json:"refreshToken" binding:"required"`
+	RefreshToken    string `json:"refresh_token"`
+	RefreshTokenAlt string `json:"refreshToken"`
 }
 
 type AuthenticationReq struct {
@@ -14,8 +15,10 @@ type AuthenticationReq struct {
 }
 
 type OfficialLoginReq struct {
-	Username          string `json:"username" binding:"required"`
-	Password          string `json:"password" binding:"required"`
+	Username          string `json:"username"`
+	Password          string `json:"password"`
+	LoginAccount      string `json:"loginAccount"`
+	LoginPassword     string `json:"loginPassword"`
 	SecondaryPassword string `json:"secondaryPassword"`
 }
 
@@ -29,7 +32,8 @@ type IdentityAnonymousReq struct {
 }
 
 type IdentitySwitchReq struct {
-	TargetUserID int64 `json:"targetUserId" binding:"required"`
+	AccountType  string `json:"accountType"`
+	TargetUserID int64  `json:"targetUserId"`
 }
 
 type FollowReq struct {
@@ -62,4 +66,18 @@ type CertReviewReq struct {
 
 type CourseFetchReq struct {
 	Key string `json:"key" binding:"required"`
+}
+
+func (r RefreshTokenReq) Value() string {
+	if r.RefreshToken != "" {
+		return r.RefreshToken
+	}
+	return r.RefreshTokenAlt
+}
+
+func (r OfficialLoginReq) Credentials() (string, string) {
+	if r.LoginAccount != "" || r.LoginPassword != "" {
+		return r.LoginAccount, r.LoginPassword
+	}
+	return r.Username, r.Password
 }

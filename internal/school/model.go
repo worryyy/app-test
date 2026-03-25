@@ -21,15 +21,22 @@ func (UserCourse) TableName() string {
 }
 
 type Term struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	TermName  string             `bson:"termName" json:"termName"`
-	StartDate time.Time          `bson:"startDate" json:"startDate"`
-	EndDate   time.Time          `bson:"endDate" json:"endDate"`
+	ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Term       string             `bson:"term" json:"term"`
+	StartDate  string             `bson:"startDate" json:"startDate"`
+	TotalWeeks int                `bson:"totalWeeks" json:"totalWeeks"`
 }
 
 type CurTerm struct {
-	ID     primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	TermID string             `bson:"termId" json:"termId"`
+	ID   primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Term string             `bson:"term" json:"term"`
+}
+
+type CurDateAndTermVO struct {
+	CurDate    string `json:"curDate"`
+	CurTerm    string `json:"curTerm"`
+	StartDate  string `json:"startDate"`
+	TotalWeeks int    `json:"totalWeeks"`
 }
 
 type Course struct {

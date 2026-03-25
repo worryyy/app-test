@@ -57,10 +57,10 @@ type Follow struct {
 }
 
 type UserBlacklist struct {
-	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	BlockedUserIDs []string           `bson:"blocked_user_ids" json:"blockedUserIds"`
-	CreatedTime    time.Time          `bson:"created_time" json:"createdTime"`
-	UpdatedTime    time.Time          `bson:"updated_time" json:"updatedTime"`
+	ID             string    `bson:"_id,omitempty" json:"id"`
+	BlockedUserIDs []string  `bson:"blocked_user_ids" json:"blockedUserIds"`
+	CreatedTime    time.Time `bson:"created_time" json:"createdTime"`
+	UpdatedTime    time.Time `bson:"updated_time" json:"updatedTime"`
 }
 
 type OfficialCertification struct {

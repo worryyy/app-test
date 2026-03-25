@@ -22,6 +22,10 @@ func (h *AdminHandler) Delete(c *gin.Context) {
 		result.Fail(c, result.CodeParamError, "参数错误")
 		return
 	}
+	if id < 1 {
+		result.HandleError(c, result.ErrIDZero)
+		return
+	}
 	if err := h.svc.DeleteEvent(c.Request.Context(), id); err != nil {
 		result.HandleError(c, err)
 		return
@@ -35,9 +39,12 @@ func (h *AdminHandler) Update(c *gin.Context) {
 		result.Fail(c, result.CodeParamError, "参数错误")
 		return
 	}
+	if id < 1 {
+		result.HandleError(c, result.ErrIDZero)
+		return
+	}
 	var req Event
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.UpdateEvent(c.Request.Context(), id, &req); err != nil {
@@ -51,6 +58,10 @@ func (h *AdminHandler) Get(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		result.Fail(c, result.CodeParamError, "参数错误")
+		return
+	}
+	if id < 1 {
+		result.HandleError(c, result.ErrIDZero)
 		return
 	}
 	data, err := h.svc.GetEvent(c.Request.Context(), id)

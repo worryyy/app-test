@@ -27,8 +27,8 @@ import (
 
 var (
 	ErrUserNotFound   = errors.New("user not found")
-	ErrRTKNotExisted  = errors.New("refresh token 不存在,或已过期")
-	ErrRTKUsed        = errors.New("refresh token 已使用")
+	ErrRTKNotExisted  = result.ErrRTKNotExisted
+	ErrRTKUsed        = result.ErrRTKUsed
 	ErrFollowSelf     = errors.New("不能关注自己")
 	ErrIdentityDenied = errors.New("身份切换无权限")
 )
@@ -152,21 +152,23 @@ func (s *Service) Edit(ctx context.Context, userID int64, req *User) error {
 	return nil
 }
 
-func (s *Service) WechatLogin(ctx context.Context, code string) (string, string, *User, error) {
+func (s *Service) WechatLogin(ctx context.Context, code string) (string, string, *User, bool, error) {
 	if s.wxClient == nil || s.jwtHelper == nil {
-		return "", "", nil, errors.New("user service dependencies not initialized")
+		return "", "", nil, false, errors.New("user service dependencies not initialized")
 	}
 	resp, err := s.wxClient.Jscode2Session(ctx, code)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("wx jscode2session: %w", err)
+		return "", "", nil, false, fmt.Errorf("wx jscode2session: %w", err)
 	}
 
 	u, err := s.GetByOpenID(ctx, resp.OpenID)
 	if err != nil {
-		return "", "", nil, err
+		return "", "", nil, false, err
 	}
 
+	isNew := false
 	if u == nil {
+		isNew = true
 		u = &User{
 			OpenID:      resp.OpenID,
 			Nickname:    s.randomNickname(),
@@ -178,11 +180,11 @@ func (s *Service) WechatLogin(ctx context.Context, code string) (string, string,
 		}
 
 		if err := s.db.WithContext(ctx).Create(u).Error; err != nil {
-			return "", "", nil, fmt.Errorf("create user: %w", err)
+			return "", "", nil, false, fmt.Errorf("create user: %w", err)
 		}
 		u.RootUserID = u.ID
 		if err := s.db.WithContext(ctx).Model(u).Update("rootUserId", u.ID).Error; err != nil {
-			return "", "", nil, fmt.Errorf("update root user id: %w", err)
+			return "", "", nil, false, fmt.Errorf("update root user id: %w", err)
 		}
 	}
 
@@ -194,7 +196,7 @@ func (s *Service) WechatLogin(ctx context.Context, code string) (string, string,
 		RootUserID:  u.RootUserID,
 	})
 	if err != nil {
-		return "", "", nil, fmt.Errorf("generate token pair: %w", err)
+		return "", "", nil, false, fmt.Errorf("generate token pair: %w", err)
 	}
 
 	if s.redis != nil {
@@ -205,38 +207,45 @@ func (s *Service) WechatLogin(ctx context.Context, code string) (string, string,
 	}
 
 	u.StuPwd = ""
-	return token, refreshToken, u, nil
+	return token, refreshToken, u, isNew, nil
 }
 
-func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
+func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (string, string, *User, error) {
 	if s.jwtHelper == nil {
-		return "", "", errors.New("jwt helper not initialized")
+		return "", "", nil, errors.New("jwt helper not initialized")
+	}
+	if s.redis == nil {
+		return "", "", nil, fmt.Errorf("refresh token store not initialized")
 	}
 
 	refreshKey := rediskey.RefreshToken(sha1Hex(refreshToken))
 	status, err := s.redis.Get(ctx, refreshKey).Result()
 	if err != nil {
-		return "", "", fmt.Errorf("refresh token: %w", ErrRTKNotExisted)
+		return "", "", nil, fmt.Errorf("refresh token: %w", ErrRTKNotExisted)
 	}
 	if status == rediskey.TokenStatusUsed {
-		return "", "", ErrRTKUsed
+		return "", "", nil, ErrRTKUsed
 	}
 
-	if err := s.redis.Set(ctx, refreshKey, rediskey.TokenStatusUsed, 3*24*time.Hour).Err(); err != nil {
-		return "", "", fmt.Errorf("mark refresh token used: %w", err)
+	refreshTTL := 48 * time.Hour
+	if s.cfg != nil && s.cfg.JWT.RefreshTokenMinutes > 0 {
+		refreshTTL = time.Duration(s.cfg.JWT.RefreshTokenMinutes) * time.Minute
+	}
+	if err := s.redis.Set(ctx, refreshKey, rediskey.TokenStatusUsed, refreshTTL).Err(); err != nil {
+		return "", "", nil, fmt.Errorf("mark refresh token used: %w", result.ErrRTKError)
 	}
 
 	claims, err := s.jwtHelper.Parse(refreshToken)
 	if err != nil {
-		return "", "", fmt.Errorf("parse refresh token: %w", err)
+		return "", "", nil, fmt.Errorf("parse refresh token: %w", err)
 	}
 
 	u, err := s.GetByID(ctx, claims.UserID)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 	if u == nil {
-		return "", "", ErrUserNotFound
+		return "", "", nil, ErrUserNotFound
 	}
 
 	token, newRefreshToken, err := s.jwtHelper.GenerateTokenPair(&jwtutil.TokenUser{
@@ -247,9 +256,10 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (string
 		RootUserID:  u.RootUserID,
 	})
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
-	return token, newRefreshToken, nil
+	u.StuPwd = ""
+	return token, newRefreshToken, u, nil
 }
 
 func (s *Service) randomNickname() string {
@@ -291,4 +301,14 @@ func mapAccountType(accountType string) int {
 	default:
 		return 1
 	}
+}
+
+func rootUserID(u *User) int64 {
+	if u == nil {
+		return 0
+	}
+	if u.RootUserID > 0 {
+		return u.RootUserID
+	}
+	return u.ID
 }

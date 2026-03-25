@@ -40,8 +40,7 @@ func (h *Handler) VoteDraftAccept(c *gin.Context) {
 		return
 	}
 	var req VoteAcceptReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.AcceptVoteOptions(c.Request.Context(), infoID, req.OptionIDs); err != nil {
@@ -53,8 +52,7 @@ func (h *Handler) VoteDraftAccept(c *gin.Context) {
 
 func (h *Handler) VoteCreate(c *gin.Context) {
 	var req VoteInfo
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	req.UserID = middleware.GetUserID(c)
@@ -72,8 +70,7 @@ func (h *Handler) VoteAddOption(c *gin.Context) {
 		return
 	}
 	var req VoteOption
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	req.VoteInfoID = infoID
@@ -91,8 +88,7 @@ func (h *Handler) VoteDo(c *gin.Context) {
 		return
 	}
 	var req VoteReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.Vote(c.Request.Context(), infoID, middleware.GetUserID(c), req.OptionIDs); err != nil {

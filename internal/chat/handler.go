@@ -41,8 +41,7 @@ func (h *Handler) Conversations(c *gin.Context) {
 
 func (h *Handler) ConversationEnter(c *gin.Context) {
 	var req ConversationEnterReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.EnterConversation(c.Request.Context(), middleware.GetUserID(c), req.ConversationID); err != nil {

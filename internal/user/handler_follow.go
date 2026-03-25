@@ -10,8 +10,7 @@ import (
 
 func (h *Handler) Follow(c *gin.Context) {
 	var req FollowReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.Follow(c.Request.Context(), currentUserID(c), req.TargetUserID); err != nil {

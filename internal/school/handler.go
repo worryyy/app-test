@@ -1,6 +1,8 @@
 package school
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
@@ -21,22 +23,28 @@ func (h *Handler) TermList(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) CurrentTerm(c *gin.Context) {
 	data, err := h.svc.CurrentTerm(c.Request.Context())
 	if err != nil {
-		result.HandleError(c, err)
+		switch {
+		case errors.Is(err, ErrCurrentTermNotConfigured):
+			result.Fail(c, result.CodeNotExisted, "请联系管理员设置当前学期")
+		case errors.Is(err, ErrCurrentTermInvalid):
+			result.Fail(c, result.CodeNotExisted, "请联系管理员检查学期")
+		default:
+			result.HandleError(c, err)
+		}
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) CourseColor(c *gin.Context) {
 	var req CourseColorReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.SetCourseColor(c.Request.Context(), middleware.GetUserID(c), req.Colors); err != nil {

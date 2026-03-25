@@ -54,9 +54,17 @@ func (s *Service) Upload(ctx context.Context, file multipart.File, header *multi
 		}
 	}()
 
+	maxBytes := s.maxUploadBytes()
+	if maxBytes > 0 && header != nil && header.Size > maxBytes {
+		return "", "", result.ErrFileLimited
+	}
+
 	data, err := io.ReadAll(file)
 	if err != nil {
 		return "", "", fmt.Errorf("read upload file: %w", err)
+	}
+	if maxBytes > 0 && int64(len(data)) > maxBytes {
+		return "", "", result.ErrFileLimited
 	}
 	md5Hash := md5.Sum(data)
 	md5Str := hex.EncodeToString(md5Hash[:])
@@ -234,4 +242,11 @@ func ensureSuffixSlash(v string) string {
 		return v
 	}
 	return v + "/"
+}
+
+func (s *Service) maxUploadBytes() int64 {
+	if s.cfg == nil || s.cfg.Custom.MaxFileSizeMB <= 0 {
+		return 0
+	}
+	return int64(s.cfg.Custom.MaxFileSizeMB) * 1024 * 1024
 }

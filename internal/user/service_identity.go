@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"gorm.io/gorm"
 )
 
 func (s *Service) CreateAnonymousIdentity(ctx context.Context, currentUserID int64, nickname string) (*User, error) {
@@ -80,21 +82,21 @@ func (s *Service) ListIdentities(ctx context.Context, currentUserID int64) ([]Us
 	return users, nil
 }
 
-func (s *Service) SwitchIdentity(ctx context.Context, currentUserID, targetUserID int64) (string, string, error) {
+func (s *Service) SwitchIdentity(ctx context.Context, currentUserID, targetUserID int64) (string, string, *User, int64, error) {
 	if s.jwtHelper == nil {
-		return "", "", fmt.Errorf("jwt helper not initialized")
+		return "", "", nil, 0, fmt.Errorf("jwt helper not initialized")
 	}
 
 	current, err := s.GetByID(ctx, currentUserID)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, 0, err
 	}
 	target, err := s.GetByID(ctx, targetUserID)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, 0, err
 	}
 	if current == nil || target == nil {
-		return "", "", ErrUserNotFound
+		return "", "", nil, 0, ErrUserNotFound
 	}
 
 	curRoot := current.RootUserID
@@ -106,19 +108,62 @@ func (s *Service) SwitchIdentity(ctx context.Context, currentUserID, targetUserI
 		targetRoot = target.ID
 	}
 	if curRoot != targetRoot {
-		return "", "", ErrIdentityDenied
+		return "", "", nil, 0, ErrIdentityDenied
 	}
 
 	current.LastSwitchID = &target.ID
 	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", current.ID).Update("lastSwitchId", target.ID).Error; err != nil {
-		return "", "", fmt.Errorf("update last switch id: %w", err)
+		return "", "", nil, 0, fmt.Errorf("update last switch id: %w", err)
 	}
 
-	return s.jwtHelper.GenerateTokenPair(&jwtutil.TokenUser{
+	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(&jwtutil.TokenUser{
 		ID:          target.ID,
 		OpenID:      target.OpenID,
 		Power:       target.Power,
 		AccountType: target.AccountType,
 		RootUserID:  target.RootUserID,
 	})
+	if err != nil {
+		return "", "", nil, 0, err
+	}
+	target.StuPwd = ""
+	return token, refreshToken, target, curRoot, nil
+}
+
+func (s *Service) SwitchIdentityByAccountType(ctx context.Context, currentUserID int64, accountType string) (string, string, *User, int64, error) {
+	current, err := s.GetByID(ctx, currentUserID)
+	if err != nil {
+		return "", "", nil, 0, err
+	}
+	if current == nil {
+		return "", "", nil, 0, ErrUserNotFound
+	}
+
+	rootID := rootUserID(current)
+	target := current
+	if accountType == "" {
+		return "", "", nil, 0, result.ErrParam
+	}
+	if accountType == "base" {
+		if current.ID != rootID {
+			target, err = s.GetByID(ctx, rootID)
+			if err != nil {
+				return "", "", nil, 0, err
+			}
+		}
+	} else {
+		err = s.db.WithContext(ctx).
+			Where("rootUserId = ? AND accountType = ?", rootID, accountType).
+			First(&target).Error
+		if err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return "", "", nil, 0, result.ErrNotExisted
+			}
+			return "", "", nil, 0, fmt.Errorf("find identity by account type: %w", err)
+		}
+	}
+	if target == nil {
+		return "", "", nil, 0, result.ErrNotExisted
+	}
+	return s.SwitchIdentity(ctx, currentUserID, target.ID)
 }

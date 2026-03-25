@@ -19,8 +19,7 @@ func NewHandler(svc *Service) *Handler {
 
 func (h *Handler) Create(c *gin.Context) {
 	var req CreateCommentReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	userID := getUserID(c)

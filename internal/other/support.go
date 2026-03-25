@@ -12,7 +12,7 @@ func (h *Handler) SupportByKey(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) SupportList(c *gin.Context) {
@@ -21,5 +21,5 @@ func (h *Handler) SupportList(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }

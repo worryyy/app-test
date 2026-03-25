@@ -14,8 +14,7 @@ func NewAdminHandler(svc *Service) *AdminHandler {
 
 func (h *AdminHandler) AddTerm(c *gin.Context) {
 	var req Term
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	id, err := h.svc.AddTerm(c.Request.Context(), &req)
@@ -36,8 +35,7 @@ func (h *AdminHandler) DeleteTerm(c *gin.Context) {
 
 func (h *AdminHandler) SetCurrentTerm(c *gin.Context) {
 	var req CurTermReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.SetCurrentTerm(c.Request.Context(), req.TermID); err != nil {

@@ -19,10 +19,8 @@ func AESEncrypt(plainText, key string) (string, error) {
 	}
 
 	data := pkcs7Pad([]byte(plainText), block.BlockSize())
-	iv := keyBytes[:block.BlockSize()]
 	encrypted := make([]byte, len(data))
-	mode := cipher.NewCBCEncrypter(block, iv)
-	mode.CryptBlocks(encrypted, data)
+	encryptECB(block, encrypted, data)
 	return base64.StdEncoding.EncodeToString(encrypted), nil
 }
 
@@ -45,10 +43,8 @@ func AESDecrypt(cipherText, key string) (string, error) {
 		return "", errors.New("invalid aes ciphertext length")
 	}
 
-	iv := keyBytes[:block.BlockSize()]
 	decrypted := make([]byte, len(raw))
-	mode := cipher.NewCBCDecrypter(block, iv)
-	mode.CryptBlocks(decrypted, raw)
+	decryptECB(block, decrypted, raw)
 	decrypted, err = pkcs7Unpad(decrypted)
 	if err != nil {
 		return "", err
@@ -57,21 +53,27 @@ func AESDecrypt(cipherText, key string) (string, error) {
 }
 
 func normalizeAESKey(key []byte) ([]byte, error) {
-	switch {
-	case len(key) <= 16:
-		out := make([]byte, 16)
-		copy(out, key)
-		return out, nil
-	case len(key) <= 24:
-		out := make([]byte, 24)
-		copy(out, key)
-		return out, nil
-	case len(key) <= 32:
-		out := make([]byte, 32)
+	switch len(key) {
+	case 16, 24, 32:
+		out := make([]byte, len(key))
 		copy(out, key)
 		return out, nil
 	default:
-		return nil, errors.New("aes key too long")
+		return nil, errors.New("invalid aes key length")
+	}
+}
+
+func encryptECB(block cipher.Block, dst, src []byte) {
+	blockSize := block.BlockSize()
+	for start := 0; start < len(src); start += blockSize {
+		block.Encrypt(dst[start:start+blockSize], src[start:start+blockSize])
+	}
+}
+
+func decryptECB(block cipher.Block, dst, src []byte) {
+	blockSize := block.BlockSize()
+	for start := 0; start < len(src); start += blockSize {
+		block.Decrypt(dst[start:start+blockSize], src[start:start+blockSize])
 	}
 }
 

@@ -13,16 +13,12 @@ func NewHandler(svc *Service) *Handler {
 }
 
 func (h *Handler) InitCampusThemes(c *gin.Context) {
-	var req []Theme
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
-		return
-	}
-	if err := h.svc.InitCampusThemes(c.Request.Context(), req); err != nil {
+	data, err := h.svc.InitCampusThemes(c.Request.Context())
+	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.Data(c, data)
 }
 
 func (h *Handler) GetCampusThemes(c *gin.Context) {
@@ -31,5 +27,5 @@ func (h *Handler) GetCampusThemes(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }

@@ -17,7 +17,7 @@ func AdminCheck(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		isAdminToken := claims.Power >= 2
+		isAdminToken := claims.Power > 0 && ((claims.Power>>1)&1) == 1
 
 		var count int64
 		if db == nil {

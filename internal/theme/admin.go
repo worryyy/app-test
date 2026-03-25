@@ -14,8 +14,7 @@ func NewAdminHandler(svc *Service) *AdminHandler {
 
 func (h *AdminHandler) Update(c *gin.Context) {
 	var req Theme
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.UpdateTheme(c.Request.Context(), c.Param("id"), &req); err != nil {
@@ -36,8 +35,7 @@ func (h *AdminHandler) List(c *gin.Context) {
 
 func (h *AdminHandler) UpdateSearch(c *gin.Context) {
 	var req ThemeSearchReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.UpdateNeedSearch(c.Request.Context(), req.ThemeID, req.NeedSearch); err != nil {
@@ -49,8 +47,7 @@ func (h *AdminHandler) UpdateSearch(c *gin.Context) {
 
 func (h *AdminHandler) UpdateSuggest(c *gin.Context) {
 	var req ThemeSuggestReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	if !result.BindJSON(c, &req) {
 		return
 	}
 	if err := h.svc.UpdateSuggestConfig(c.Request.Context(), req.ThemeID, Theme{
@@ -67,23 +64,27 @@ func (h *AdminHandler) UpdateSuggest(c *gin.Context) {
 }
 
 func (h *AdminHandler) AddCampusTheme(c *gin.Context) {
-	var req Theme
-	if err := c.ShouldBindJSON(&req); err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+	var req CampusTheme
+	if !result.BindJSON(c, &req) {
 		return
 	}
-	id, err := h.svc.AddTheme(c.Request.Context(), &req)
+	data, err := h.svc.AddCampusTheme(c.Request.Context(), &req)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, id)
+	result.Data(c, data)
 }
 
 func (h *AdminHandler) DeleteCampusTheme(c *gin.Context) {
-	if err := h.svc.DeleteTheme(c.Request.Context(), c.Param("themeId")); err != nil {
+	deleted, err := h.svc.DeleteCampusTheme(c.Request.Context(), c.Param("themeId"))
+	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	if !deleted {
+		result.Fail(c, result.CodeFail, "")
+		return
+	}
+	result.Success(c, "删除成功")
 }
