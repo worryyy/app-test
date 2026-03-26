@@ -174,8 +174,10 @@ func (c *Client) UnlimitedWXACode(ctx context.Context, scene, page string) ([]by
 	}
 	payload := map[string]interface{}{
 		"scene":      scene,
-		"page":       page,
-		"check_path": false,
+		"check_path": true,
+	}
+	if strings.TrimSpace(page) != "" {
+		payload["page"] = page
 	}
 	endpoint := "https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=" + token
 	body, err := c.doJSONRequest(ctx, http.MethodPost, endpoint, payload)

@@ -7,46 +7,45 @@ import (
 	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 
-	"github.com/redis/go-redis/v9"
-
+	cronjob "github.com/Milchstrassse/Ecampus-go/internal/cron"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
-func (s *Service) Search(ctx context.Context, userID, themeID, keyword string, page, size int, orderBy string) (*result.CusPage[Topic], error) {
-	if orderBy == "hot" {
-		return s.SearchHot(ctx, userID, themeID, page, size)
-	}
-
-	if keyword != "" {
-		ids, total, err := s.SearchByKeyword(ctx, keyword, "", page, size)
-		if err != nil {
-			return nil, err
-		}
-		topics, err := s.findByIDs(ctx, ids)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.fillLikeAndCollection(ctx, userID, topics); err != nil {
-			s.logger.Warn("fill topic like/collection failed", zap.Error(err))
-		}
-		return result.NewCusPage(topics, total, page, size), nil
+func (s *Service) Search(
+	ctx context.Context,
+	userID string,
+	themeIDs []string,
+	content string,
+	page, size, ordCreated int,
+) (*result.CusPage[Topic], error) {
+	if ordCreated == 0 {
+		return s.searchHot(ctx, userID, themeIDs, content, page, size)
 	}
 
 	filter := bson.M{"hasCheck": true}
-	if themeID != "" {
-		filter["themeId"] = themeID
+	if len(themeIDs) > 0 {
+		filter["themeId"] = bson.M{"$in": themeIDs}
 	}
-	return s.listByFilter(ctx, filter, page, size)
+	if strings.TrimSpace(content) != "" {
+		filter["content"] = primitive.Regex{Pattern: ".*" + content + ".*", Options: "i"}
+	}
+	return s.listByFilter(ctx, filter, page, size, userID, bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}})
 }
 
-func (s *Service) SearchHot(ctx context.Context, userID, themeID string, page, size int) (*result.CusPage[Topic], error) {
+func (s *Service) searchHot(
+	ctx context.Context,
+	userID string,
+	themeIDs []string,
+	content string,
+	page, size int,
+) (*result.CusPage[Topic], error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -55,11 +54,14 @@ func (s *Service) SearchHot(ctx context.Context, userID, themeID string, page, s
 	}
 
 	match := bson.M{"hasCheck": true}
-	if themeID != "" {
-		match["themeId"] = themeID
+	if len(themeIDs) > 0 {
+		match["themeId"] = bson.M{"$in": themeIDs}
 	}
-	sevenDaysAgo := primitive.NewObjectIDFromTimestamp(time.Now().AddDate(0, 0, -7))
+	if strings.TrimSpace(content) != "" {
+		match["content"] = primitive.Regex{Pattern: ".*" + content + ".*", Options: "i"}
+	}
 
+	sevenDaysAgo := primitive.NewObjectIDFromTimestamp(time.Now().AddDate(0, 0, -7))
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: match}},
 		{{Key: "$addFields", Value: bson.M{
@@ -68,9 +70,15 @@ func (s *Service) SearchHot(ctx context.Context, userID, themeID string, page, s
 				bson.M{"$multiply": []interface{}{"$likeNum", 6}},
 				bson.M{"$multiply": []interface{}{"$visitedNum", 1}},
 			}},
-			"isRecent": bson.M{"$gte": []interface{}{"$_id", sevenDaysAgo}},
 		}}},
-		{{Key: "$sort", Value: bson.M{"isRecent": -1, "hotScore": -1, "_id": -1}}},
+		{{Key: "$addFields", Value: bson.M{
+			"recentFlag": bson.M{"$cond": bson.M{
+				"if":   bson.M{"$gte": []interface{}{"$_id", sevenDaysAgo}},
+				"then": 1,
+				"else": 0,
+			}},
+		}}},
+		{{Key: "$sort", Value: bson.D{{Key: "recentFlag", Value: -1}, {Key: "hotScore", Value: -1}, {Key: "_id", Value: -1}}}},
 		{{Key: "$skip", Value: int64((page - 1) * size)}},
 		{{Key: "$limit", Value: int64(size)}},
 	}
@@ -94,61 +102,11 @@ func (s *Service) SearchHot(ctx context.Context, userID, themeID string, page, s
 	if err := cur.All(ctx, &topics); err != nil {
 		return nil, fmt.Errorf("decode hot topics: %w", err)
 	}
+	s.prepareTopics(topics)
 	if err := s.fillLikeAndCollection(ctx, userID, topics); err != nil {
 		s.logger.Warn("fill topic like/collection failed", zap.Error(err))
 	}
-	for i := range topics {
-		topics[i].Imgs = result.EnsureSlice(topics[i].Imgs)
-	}
 	return result.NewCusPage(topics, total, page, size), nil
-}
-
-func (s *Service) SearchByKeyword(ctx context.Context, keyword, themeName string, page, size int) ([]string, int64, error) {
-	if page <= 0 {
-		page = 1
-	}
-	if size <= 0 {
-		size = 15
-	}
-
-	searchStr := tokenizeForSearch(keyword)
-	filter := bson.M{"$text": bson.M{"$search": searchStr}}
-	if themeName != "" {
-		filter["themeName"] = themeName
-	}
-
-	coll := s.mongoDB.Collection("campus_topic_search")
-	total, err := coll.CountDocuments(ctx, filter)
-	if err != nil {
-		return nil, 0, fmt.Errorf("count search docs: %w", err)
-	}
-
-	opts := options.Find().
-		SetProjection(bson.M{"score": bson.M{"$meta": "textScore"}, "topicId": 1}).
-		SetSort(bson.M{"score": bson.M{"$meta": "textScore"}}).
-		SetSkip(int64((page - 1) * size)).
-		SetLimit(int64(size))
-
-	cur, err := coll.Find(ctx, filter, opts)
-	if err != nil {
-		return nil, 0, fmt.Errorf("find search docs: %w", err)
-	}
-	defer func() {
-		if closeErr := cur.Close(ctx); closeErr != nil {
-			s.logger.Warn("close search topic cursor failed", zap.Error(closeErr))
-		}
-	}()
-
-	var rows []TopicSearch
-	if err := cur.All(ctx, &rows); err != nil {
-		return nil, 0, fmt.Errorf("decode search docs: %w", err)
-	}
-
-	ids := make([]string, 0, len(rows))
-	for _, r := range rows {
-		ids = append(ids, r.TopicID)
-	}
-	return ids, total, nil
 }
 
 func (s *Service) GetSuggestList(ctx context.Context, userID string, page, size int) (*SuggestList, error) {
@@ -213,25 +171,11 @@ func (s *Service) GetSuggestList(ctx context.Context, userID string, page, size 
 	return vo, nil
 }
 
-func tokenizeForSearch(keyword string) string {
-	keyword = strings.TrimSpace(keyword)
-	if keyword == "" {
-		return keyword
-	}
-	tokens := strings.Fields(keyword)
-	if len(tokens) == 0 {
-		return keyword
-	}
-	return strings.Join(tokens, " ")
-}
-
 func (s *Service) RefreshSuggest(ctx context.Context) (int64, error) {
-	if s.redis == nil {
-		return time.Now().Unix(), nil
-	}
-	v, err := s.redis.Incr(ctx, rediskey.SuggestCountKey).Result()
+	job := cronjob.NewSuggestJob(s.mongoDB, s.redis, s.logger)
+	count, err := job.Generate(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("refresh suggest version: %w", err)
+		return 0, err
 	}
-	return v, nil
+	return count, nil
 }

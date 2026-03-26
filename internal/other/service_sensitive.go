@@ -87,3 +87,10 @@ func (s *Service) UpdateSensitiveWord(ctx context.Context, sw *SensitiveWord) er
 	}
 	return nil
 }
+
+func (s *Service) UpdateSensitiveWordByWord(ctx context.Context, word, updateWord string) error {
+	if err := s.db.WithContext(ctx).Model(&SensitiveWord{}).Where("word = ?", word).Update("word", updateWord).Error; err != nil {
+		return fmt.Errorf("update sensitive word by word: %w", err)
+	}
+	return nil
+}

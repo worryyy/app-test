@@ -34,7 +34,7 @@ func (c *Consumers) handleTopicUpdate(ctx context.Context, data json.RawMessage)
 		update["signature"] = msg.Signature
 	}
 	if msg.AccountType > 0 {
-		update["accountType"] = msg.AccountType
+		update["accountType"] = accountTypeName(msg.AccountType)
 	}
 	if len(update) == 0 {
 		return nil
@@ -173,6 +173,17 @@ func (c *Consumers) handleCommentDelete(ctx context.Context, data json.RawMessag
 		return fmt.Errorf("delete comment: %w", err)
 	}
 	return nil
+}
+
+func accountTypeName(accountType int) string {
+	switch accountType {
+	case 2:
+		return "official"
+	case 3:
+		return "anonymous"
+	default:
+		return "base"
+	}
 }
 
 func (c *Consumers) handleDie(ctx context.Context, data json.RawMessage) error {

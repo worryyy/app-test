@@ -1,8 +1,10 @@
 package theme
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
 
-import "github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+)
 
 type AdminHandler struct {
 	svc *Service
@@ -13,15 +15,16 @@ func NewAdminHandler(svc *Service) *AdminHandler {
 }
 
 func (h *AdminHandler) Update(c *gin.Context) {
-	var req Theme
+	var req ThemeUpdateReq
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.UpdateTheme(c.Request.Context(), c.Param("id"), &req); err != nil {
+	data, err := h.svc.UpdateTheme(c.Request.Context(), c.Param("id"), &req)
+	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.Data(c, data)
 }
 
 func (h *AdminHandler) List(c *gin.Context) {
@@ -30,7 +33,7 @@ func (h *AdminHandler) List(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *AdminHandler) UpdateSearch(c *gin.Context) {
@@ -38,7 +41,7 @@ func (h *AdminHandler) UpdateSearch(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.UpdateNeedSearch(c.Request.Context(), req.ThemeID, req.NeedSearch); err != nil {
+	if err := h.svc.UpdateNeedSearch(c.Request.Context(), req.ThemeIDs, true); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -50,17 +53,12 @@ func (h *AdminHandler) UpdateSuggest(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.UpdateSuggestConfig(c.Request.Context(), req.ThemeID, Theme{
-		NeedSuggest:       req.NeedSuggest,
-		SuggestBasicScore: req.SuggestBasicScore,
-		SuggestNumber:     req.SuggestNumber,
-		SuggestSetName:    req.SuggestSetName,
-		SuggestType:       req.SuggestType,
-	}); err != nil {
+	data, err := h.svc.UpdateSuggestByList(c.Request.Context(), &req)
+	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.Data(c, data)
 }
 
 func (h *AdminHandler) AddCampusTheme(c *gin.Context) {

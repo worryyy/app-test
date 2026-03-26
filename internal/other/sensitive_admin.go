@@ -33,11 +33,11 @@ func (h *AdminHandler) SensitiveDeleteByWord(c *gin.Context) {
 }
 
 func (h *AdminHandler) SensitiveBatchDelete(c *gin.Context) {
-	var req WordsReq
-	if !result.BindJSON(c, &req) {
+	var words []string
+	if !result.BindJSON(c, &words) {
 		return
 	}
-	if err := h.svc.BatchDeleteSensitiveWords(c.Request.Context(), req.Words); err != nil {
+	if err := h.svc.BatchDeleteSensitiveWords(c.Request.Context(), words); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -45,11 +45,12 @@ func (h *AdminHandler) SensitiveBatchDelete(c *gin.Context) {
 }
 
 func (h *AdminHandler) SensitiveAdd(c *gin.Context) {
-	var req SensitiveWord
-	if !result.BindJSON(c, &req) {
+	word := c.Query("word")
+	if word == "" {
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
-	if err := h.svc.AddSensitiveWord(c.Request.Context(), &req); err != nil {
+	if err := h.svc.AddSensitiveWord(c.Request.Context(), &SensitiveWord{Word: word}); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -57,11 +58,11 @@ func (h *AdminHandler) SensitiveAdd(c *gin.Context) {
 }
 
 func (h *AdminHandler) SensitiveBatchAdd(c *gin.Context) {
-	var req WordsReq
-	if !result.BindJSON(c, &req) {
+	var words []string
+	if !result.BindJSON(c, &words) {
 		return
 	}
-	if err := h.svc.BatchAddSensitiveWords(c.Request.Context(), req.Words); err != nil {
+	if err := h.svc.BatchAddSensitiveWords(c.Request.Context(), words); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -88,11 +89,13 @@ func (h *AdminHandler) SensitiveSearchLike(c *gin.Context) {
 }
 
 func (h *AdminHandler) SensitiveUpdate(c *gin.Context) {
-	var req SensitiveWord
-	if !result.BindJSON(c, &req) {
+	word := c.Query("word")
+	updateWord := c.Query("updateWord")
+	if word == "" || updateWord == "" {
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
-	if err := h.svc.UpdateSensitiveWord(c.Request.Context(), &req); err != nil {
+	if err := h.svc.UpdateSensitiveWordByWord(c.Request.Context(), word, updateWord); err != nil {
 		result.HandleError(c, err)
 		return
 	}

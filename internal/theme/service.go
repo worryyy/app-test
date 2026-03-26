@@ -3,6 +3,7 @@ package theme
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -14,6 +15,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
 var defaultCampusThemes = []CampusTheme{
@@ -84,8 +86,8 @@ func (s *Service) ListCampusThemes(ctx context.Context) ([]CampusTheme, error) {
 
 func (s *Service) ListThemes(ctx context.Context, name string) ([]Theme, error) {
 	filter := bson.M{}
-	if name != "" {
-		filter["name"] = bson.M{"$regex": name}
+	if strings.TrimSpace(name) != "" {
+		filter["name"] = name
 	}
 	cur, err := s.themeColl().Find(ctx, filter, options.Find().SetSort(bson.M{"name": 1}))
 	if err != nil {
@@ -118,7 +120,7 @@ func (s *Service) AddTheme(ctx context.Context, theme *Theme) (string, error) {
 
 func (s *Service) AddCampusTheme(ctx context.Context, theme *CampusTheme) (*CampusTheme, error) {
 	if theme == nil {
-		return nil, fmt.Errorf("campus theme is nil")
+		return nil, result.ErrParam
 	}
 
 	res, err := s.campusThemeColl().InsertOne(ctx, theme)
@@ -139,67 +141,20 @@ func (s *Service) DeleteCampusTheme(ctx context.Context, themeID string) (bool, 
 	return res.DeletedCount > 0, nil
 }
 
-func (s *Service) UpdateTheme(ctx context.Context, id string, theme *Theme) error {
+func (s *Service) GetThemeByID(ctx context.Context, id string) (*Theme, error) {
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return fmt.Errorf("invalid theme id: %w", err)
+		return nil, fmt.Errorf("invalid theme id: %w", err)
 	}
-	_, err = s.themeColl().UpdateByID(ctx, oid, bson.M{"$set": bson.M{
-		"name":              theme.Name,
-		"category_name":     theme.CategoryName,
-		"needSearch":        theme.NeedSearch,
-		"needSuggest":       theme.NeedSuggest,
-		"suggestBasicScore": theme.SuggestBasicScore,
-		"suggestNumber":     theme.SuggestNumber,
-		"suggestSetName":    theme.SuggestSetName,
-		"suggestType":       theme.SuggestType,
-	}})
-	if err != nil {
-		return fmt.Errorf("update theme: %w", err)
-	}
-	return nil
-}
 
-func (s *Service) DeleteTheme(ctx context.Context, themeID string) error {
-	oid, err := primitive.ObjectIDFromHex(themeID)
-	if err != nil {
-		return fmt.Errorf("invalid theme id: %w", err)
+	var theme Theme
+	if err := s.themeColl().FindOne(ctx, bson.M{"_id": oid}).Decode(&theme); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, result.NewBizError(result.CodeNotExisted, "资源不存在")
+		}
+		return nil, fmt.Errorf("get theme: %w", err)
 	}
-	_, err = s.themeColl().DeleteOne(ctx, bson.M{"_id": oid})
-	if err != nil {
-		return fmt.Errorf("delete theme: %w", err)
-	}
-	return nil
-}
-
-func (s *Service) UpdateNeedSearch(ctx context.Context, themeID string, needSearch bool) error {
-	oid, err := primitive.ObjectIDFromHex(themeID)
-	if err != nil {
-		return fmt.Errorf("invalid theme id: %w", err)
-	}
-	_, err = s.themeColl().UpdateByID(ctx, oid, bson.M{"$set": bson.M{"needSearch": needSearch}})
-	if err != nil {
-		return fmt.Errorf("update need search: %w", err)
-	}
-	return nil
-}
-
-func (s *Service) UpdateSuggestConfig(ctx context.Context, themeID string, suggest Theme) error {
-	oid, err := primitive.ObjectIDFromHex(themeID)
-	if err != nil {
-		return fmt.Errorf("invalid theme id: %w", err)
-	}
-	_, err = s.themeColl().UpdateByID(ctx, oid, bson.M{"$set": bson.M{
-		"needSuggest":       suggest.NeedSuggest,
-		"suggestBasicScore": suggest.SuggestBasicScore,
-		"suggestNumber":     suggest.SuggestNumber,
-		"suggestSetName":    suggest.SuggestSetName,
-		"suggestType":       suggest.SuggestType,
-	}})
-	if err != nil {
-		return fmt.Errorf("update suggest config: %w", err)
-	}
-	return nil
+	return &theme, nil
 }
 
 func (s *Service) themeColl() *mongo.Collection {

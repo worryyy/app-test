@@ -2,6 +2,7 @@ package topic
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -22,12 +23,12 @@ func (h *Handler) Create(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	id, err := h.svc.Create(c.Request.Context(), middleware.GetClaims(c), &req)
+	data, err := h.svc.Create(c.Request.Context(), middleware.GetClaims(c), &req)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, id)
+	result.Data(c, data)
 }
 
 func (h *Handler) Delete(c *gin.Context) {
@@ -39,17 +40,17 @@ func (h *Handler) Delete(c *gin.Context) {
 }
 
 func (h *Handler) GetByID(c *gin.Context) {
-	queryUserID := strconv.FormatInt(middleware.GetUserID(c), 10)
+	queryUserID := userIDString(middleware.GetUserID(c))
 	data, err := h.svc.GetByID(c.Request.Context(), c.Param("topic_id"), queryUserID)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) Update(c *gin.Context) {
-	var req CreateTopicReq
+	var req UpdateTopicReq
 	if !result.BindJSON(c, &req) {
 		return
 	}
@@ -62,15 +63,29 @@ func (h *Handler) Update(c *gin.Context) {
 
 func (h *Handler) Search(c *gin.Context) {
 	page, size := pageSize(c)
-	themeID := c.Query("themeId")
-	keyword := c.Query("keyword")
-	orderBy := c.Query("orderBy")
-	data, err := h.svc.Search(c.Request.Context(), strconv.FormatInt(middleware.GetUserID(c), 10), themeID, keyword, page, size, orderBy)
+	themeIDs := splitThemeIDs(firstNonEmpty(c.Query("themeIds"), c.Query("themeId")))
+	content := firstNonEmpty(c.Query("content"), c.Query("keyword"))
+	rawOrdCreated := strings.TrimSpace(c.Query("ord_created"))
+	if rawOrdCreated == "" {
+		rawOrdCreated = strings.TrimSpace(c.Query("orderBy"))
+	}
+	if rawOrdCreated == "" {
+		rawOrdCreated = "0"
+	}
+	ordCreated, _ := strconv.Atoi(rawOrdCreated)
+	if strings.EqualFold(c.Query("orderBy"), "created") {
+		ordCreated = 1
+	}
+	if strings.EqualFold(c.Query("orderBy"), "hot") {
+		ordCreated = 0
+	}
+
+	data, err := h.svc.Search(c.Request.Context(), userIDString(middleware.GetUserID(c)), themeIDs, content, page, size, ordCreated)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) Mine(c *gin.Context) {
@@ -80,32 +95,32 @@ func (h *Handler) Mine(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) ThemeMine(c *gin.Context) {
 	page, size := pageSize(c)
-	data, err := h.svc.ListByTheme(c.Request.Context(), middleware.GetUserID(c), c.Query("themeId"), page, size)
+	data, err := h.svc.ListByTheme(c.Request.Context(), middleware.GetUserID(c), firstNonEmpty(c.Query("theme_id"), c.Query("themeId")), page, size)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	writeTopicListResult(c, data, true)
 }
 
 func (h *Handler) TargetUserTopics(c *gin.Context) {
 	page, size := pageSize(c)
-	targetUserID, err := strconv.ParseInt(c.Query("targetUserId"), 10, 64)
+	targetUserID, err := strconv.ParseInt(firstNonEmpty(c.Query("target_user_id"), c.Query("targetUserId")), 10, 64)
 	if err != nil {
 		result.Fail(c, result.CodeParamError, "参数错误")
 		return
 	}
-	data, err := h.svc.ListTargetUserTopics(c.Request.Context(), targetUserID, page, size)
+	data, err := h.svc.ListTargetUserTopics(c.Request.Context(), middleware.GetUserID(c), targetUserID, page, size)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	writeTopicListResult(c, data, true)
 }
 
 func (h *Handler) FollowTopics(c *gin.Context) {
@@ -115,11 +130,11 @@ func (h *Handler) FollowTopics(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) Like(c *gin.Context) {
-	if err := h.svc.LikeTopic(c.Request.Context(), middleware.GetUserID(c), c.Param("topic_id")); err != nil {
+	if err := h.svc.LikeTopic(c.Request.Context(), middleware.GetClaims(c), c.Param("topic_id")); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -141,11 +156,11 @@ func (h *Handler) LikedTopics(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	writeTopicListResult(c, data, true)
 }
 
 func (h *Handler) Collect(c *gin.Context) {
-	if err := h.svc.CollectTopic(c.Request.Context(), middleware.GetUserID(c), c.Param("topic_id")); err != nil {
+	if err := h.svc.CollectTopic(c.Request.Context(), middleware.GetClaims(c), c.Param("topic_id")); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -167,7 +182,7 @@ func (h *Handler) CollectionTopics(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	writeTopicListResult(c, data, true)
 }
 
 func pageSize(c *gin.Context) (int, int) {
@@ -180,4 +195,36 @@ func pageSize(c *gin.Context) (int, int) {
 		size = 15
 	}
 	return page, size
+}
+
+func writeTopicListResult(c *gin.Context, data *result.CusPage[Topic], emptyAsList bool) {
+	if emptyAsList && (data == nil || len(data.Data) == 0) {
+		result.Data(c, []Topic{})
+		return
+	}
+	result.Data(c, data)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func splitThemeIDs(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }

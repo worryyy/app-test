@@ -19,6 +19,7 @@ type topicDoc struct {
 	UserID     string             `bson:"userId"`
 	Title      string             `bson:"title"`
 	Content    string             `bson:"content"`
+	Imgs       []string           `bson:"imgs"`
 	HasCheck   bool               `bson:"hasCheck"`
 	CommentNum int64              `bson:"commentNum"`
 }
@@ -84,12 +85,18 @@ func (c *Consumers) handleTopicCheck(ctx context.Context, data json.RawMessage) 
 
 	filteredTitle := pickFiltered(topic.Title, titleResult.FilteredContent)
 	filteredContent := pickFiltered(topic.Content, contentResult.FilteredContent)
+	filteredImgs, err := c.filterImagesWithQRCode(ctx, topic.Imgs)
+	if err != nil {
+		c.logger.Warn("filter topic qrcode images failed", zap.Error(err), zap.String("topicID", msg.TopicID))
+		filteredImgs = topic.Imgs
+	}
 
 	if _, err := c.mongoDB.Collection("campus_topic").UpdateByID(ctx, topicOID, bson.M{
 		"$set": bson.M{
 			"hasCheck": true,
 			"title":    filteredTitle,
 			"content":  filteredContent,
+			"imgs":     filteredImgs,
 		},
 	}); err != nil {
 		return fmt.Errorf("update checked topic: %w", err)

@@ -1,6 +1,8 @@
 package topic
 
 import (
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
@@ -23,10 +25,10 @@ func (h *AdminHandler) Delete(c *gin.Context) {
 }
 
 func (h *AdminHandler) RefreshSuggest(c *gin.Context) {
-	version, err := h.svc.RefreshSuggest(c.Request.Context())
+	count, err := h.svc.RefreshSuggest(c.Request.Context())
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, version)
+	result.SuccessMsg(c, "刷新"+strconv.FormatInt(count, 10)+"条排行榜数据", nil)
 }

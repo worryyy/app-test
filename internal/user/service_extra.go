@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -219,15 +220,15 @@ func (s *Service) SubmitOfficialCertification(ctx context.Context, req OfficialC
 	return doc, nil
 }
 
-func (s *Service) GenerateUnlimitedWXACode(ctx context.Context, scene, page string) ([]byte, error) {
+func (s *Service) GenerateUnlimitedWXACode(ctx context.Context, scene, page string) (string, error) {
 	if s.wxClient == nil {
-		return nil, errors.New("wx client not initialized")
+		return "", errors.New("wx client not initialized")
 	}
 	data, err := s.wxClient.UnlimitedWXACode(ctx, scene, page)
 	if err != nil {
-		return nil, fmt.Errorf("generate unlimited wxa code: %w", err)
+		return "", fmt.Errorf("generate unlimited wxa code: %w", err)
 	}
-	return data, nil
+	return base64.StdEncoding.EncodeToString(data), nil
 }
 
 func (s *Service) checkJWLogin(ctx context.Context, schoolID, password string) (*JWLoginData, error) {

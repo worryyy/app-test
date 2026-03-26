@@ -1,6 +1,10 @@
 package topic
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type Topic struct {
 	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
@@ -15,9 +19,10 @@ type Topic struct {
 	CommentNum    int64              `bson:"commentNum" json:"commentNum"`
 	CollectionNum int64              `bson:"collectionNum" json:"collectionNum"`
 	Ext           interface{}        `bson:"ext,omitempty" json:"ext"`
-	AccountType   int                `bson:"accountType" json:"accountType"`
+	AccountType   string             `bson:"accountType" json:"accountType"`
 	NickName      string             `bson:"nickName" json:"nickName"`
 	Avatar        string             `bson:"avatar" json:"avatar"`
+	CreatedTime   *time.Time         `bson:"-" json:"createdTime"`
 	HasLike       bool               `bson:"-" json:"hasLike"`
 	HasCollection bool               `bson:"-" json:"hasCollection"`
 }
@@ -34,7 +39,7 @@ type TopicLike struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	UserID      string             `bson:"userId" json:"userId"`
 	ThemeName   string             `bson:"themeName" json:"themeName"`
-	AccountType int                `bson:"accountType" json:"accountType"`
+	AccountType string             `bson:"accountType" json:"accountType"`
 	TopicIDs    []string           `bson:"topicIds" json:"topicIds"`
 }
 
@@ -42,18 +47,8 @@ type TopicCollection struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	UserID      string             `bson:"userId" json:"userId"`
 	ThemeName   string             `bson:"themeName" json:"themeName"`
-	AccountType int                `bson:"accountType" json:"accountType"`
+	AccountType string             `bson:"accountType" json:"accountType"`
 	TopicIDs    []string           `bson:"topicIds" json:"topicIds"`
-}
-
-type CreateTopicReq struct {
-	ThemeID  string      `json:"themeId" binding:"required"`
-	Title    string      `json:"title" binding:"required"`
-	Content  string      `json:"content" binding:"required"`
-	Imgs     []string    `json:"imgs"`
-	Ext      interface{} `json:"ext"`
-	NickName string      `json:"nickName"`
-	Avatar   string      `json:"avatar"`
 }
 
 type SuggestList struct {

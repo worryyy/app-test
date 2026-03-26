@@ -327,7 +327,7 @@ func (h *Handler) GetUserProfile(c *gin.Context) {
 func (h *Handler) UnlimitedWXACode(c *gin.Context) {
 	var req struct {
 		Scene string `json:"scene" binding:"required"`
-		Page  string `json:"page" binding:"required"`
+		Page  string `json:"page"`
 	}
 	if !result.BindJSON(c, &req) {
 		return
@@ -337,7 +337,7 @@ func (h *Handler) UnlimitedWXACode(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	c.Data(http.StatusOK, "image/png", data)
+	c.String(http.StatusOK, data)
 }
 
 func currentUserID(c *gin.Context) int64 {

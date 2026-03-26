@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -19,10 +18,6 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
-)
-
-var (
-	ErrTopicNotFound = errors.New("topic not found")
 )
 
 type Service struct {
@@ -48,14 +43,22 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 	}
 }
 
-func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *CreateTopicReq) (string, error) {
+func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *CreateTopicReq) (*Topic, error) {
 	if claims == nil || req == nil {
-		return "", result.ErrParam
+		return nil, result.ErrParam
+	}
+	if err := s.ensureThemeExists(ctx, req.ThemeID); err != nil {
+		return nil, err
 	}
 
-	topic := Topic{
+	author, err := s.resolveTopicAuthor(ctx, claims, req.AccountType)
+	if err != nil {
+		return nil, err
+	}
+
+	topic := &Topic{
 		ThemeID:       req.ThemeID,
-		UserID:        strconv.FormatInt(claims.UserID, 10),
+		UserID:        userIDString(author.ID),
 		Title:         req.Title,
 		Content:       req.Content,
 		Imgs:          result.EnsureSlice(req.Imgs),
@@ -65,28 +68,32 @@ func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *Creat
 		CommentNum:    0,
 		CollectionNum: 0,
 		Ext:           req.Ext,
-		AccountType:   mapAccountType(claims.AccountType),
-		NickName:      req.NickName,
-		Avatar:        req.Avatar,
+		AccountType:   author.AccountType,
+		NickName:      author.Nickname,
+		Avatar:        author.Avatar,
+		HasLike:       false,
+		HasCollection: false,
 	}
 
 	res, err := s.topicColl().InsertOne(ctx, topic)
 	if err != nil {
-		return "", fmt.Errorf("insert topic: %w", err)
+		return nil, fmt.Errorf("insert topic: %w", err)
 	}
 
 	oid, ok := res.InsertedID.(primitive.ObjectID)
 	if !ok {
-		return "", errors.New("inserted topic id type invalid")
+		return nil, errors.New("inserted topic id type invalid")
 	}
-	topicID := oid.Hex()
+	topic.ID = oid
+	s.prepareTopic(topic)
+
 	if s.producer != nil {
-		sendErr := s.producer.SendTopicCheck(ctx, mq.TopicCheckMsg{TopicID: topicID})
+		sendErr := s.producer.SendTopicCheck(ctx, mq.TopicCheckMsg{TopicID: oid.Hex()})
 		if sendErr != nil {
-			s.logger.Warn("send topic check mq failed", zap.Error(sendErr), zap.String("topicID", topicID))
+			s.logger.Warn("send topic check mq failed", zap.Error(sendErr), zap.String("topicID", oid.Hex()))
 		}
 	}
-	return topicID, nil
+	return topic, nil
 }
 
 func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAdmin bool) error {
@@ -97,20 +104,19 @@ func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAd
 
 	filter := bson.M{"_id": oid}
 	if !isAdmin {
-		filter["userId"] = strconv.FormatInt(userID, 10)
+		filter["userId"] = userIDString(userID)
 	}
 	res, err := s.topicColl().UpdateOne(ctx, filter, bson.M{"$set": bson.M{"hasCheck": false}})
 	if err != nil {
 		return fmt.Errorf("delete topic: %w", err)
 	}
 	if res.MatchedCount == 0 {
-		return ErrTopicNotFound
+		return result.NewBizError(result.CodeNotExisted, "帖子不存在")
 	}
 
 	if s.producer != nil {
-		sendErr := s.producer.SendDelTopicSearch(ctx, mq.AddTopicSearchMsg{TopicID: topicID})
-		if sendErr != nil {
-			s.logger.Warn("send delete search mq failed", zap.Error(sendErr), zap.String("topicID", topicID))
+		if err := s.producer.SendDelTopicSearch(ctx, mq.AddTopicSearchMsg{TopicID: topicID}); err != nil {
+			s.logger.Warn("send delete search mq failed", zap.Error(err), zap.String("topicID", topicID))
 		}
 		if err := s.producer.SendDeleteTopic(ctx, mq.TopicDeleteMsg{TopicID: topicID}); err != nil {
 			s.logger.Warn("send delete topic mq failed", zap.Error(err), zap.String("topicID", topicID))
@@ -120,59 +126,65 @@ func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAd
 }
 
 func (s *Service) GetByID(ctx context.Context, topicID string, queryUserID string) (*Topic, error) {
-	oid, err := primitive.ObjectIDFromHex(topicID)
+	topic, err := s.getTopicByID(ctx, topicID, true)
 	if err != nil {
-		return nil, fmt.Errorf("invalid topic id: %w", err)
+		return nil, err
+	}
+	if topic == nil {
+		return nil, result.NewBizError(result.CodeNotExisted, "帖子不存在")
 	}
 
-	var topic Topic
-	err = s.topicColl().FindOne(ctx, bson.M{"_id": oid, "hasCheck": true}).Decode(&topic)
-	if err == mongo.ErrNoDocuments {
-		return nil, nil
+	if _, err := s.topicColl().UpdateByID(ctx, topic.ID, bson.M{"$inc": bson.M{"visitedNum": 1}}); err != nil {
+		s.logger.Warn("increase topic visited num failed", zap.Error(err), zap.String("topicID", topicID))
 	}
-	if err != nil {
-		return nil, fmt.Errorf("query topic by id: %w", err)
+	topics := []Topic{*topic}
+	if err := s.fillLikeAndCollection(ctx, queryUserID, topics); err != nil {
+		s.logger.Warn("fill like/collection failed", zap.Error(err), zap.String("topicID", topicID))
 	}
-
-	_, incErr := s.topicColl().UpdateByID(ctx, oid, bson.M{"$inc": bson.M{"visitedNum": 1}})
-	if incErr != nil {
-		s.logger.Warn("increase topic visited num failed", zap.Error(incErr), zap.String("topicID", topicID))
-	}
-
-	if queryUserID != "" {
-		if fillErr := s.fillLikeAndCollection(ctx, queryUserID, []Topic{topic}); fillErr != nil {
-			s.logger.Warn("fill like/collection failed", zap.Error(fillErr), zap.String("topicID", topicID))
-		}
-	}
-	topic.Imgs = result.EnsureSlice(topic.Imgs)
-	return &topic, nil
+	*topic = topics[0]
+	return topic, nil
 }
 
-func (s *Service) Update(ctx context.Context, topicID string, userID int64, req *CreateTopicReq) error {
+func (s *Service) Update(ctx context.Context, topicID string, userID int64, req *UpdateTopicReq) error {
 	if req == nil {
 		return result.ErrParam
 	}
+
+	update := bson.M{}
+	if req.Title != "" {
+		update["title"] = req.Title
+	}
+	if req.Content != "" {
+		update["content"] = req.Content
+	}
+	if len(req.Imgs) > 0 {
+		update["imgs"] = result.EnsureSlice(req.Imgs)
+	}
+	if req.Ext != nil && *req.Ext != "" {
+		update["ext"] = *req.Ext
+	}
+	if len(update) == 0 && req.HasCheck == nil {
+		return nil
+	}
+	if req.HasCheck != nil {
+		update["hasCheck"] = *req.HasCheck
+	} else {
+		update["hasCheck"] = false
+	}
+
 	oid, err := primitive.ObjectIDFromHex(topicID)
 	if err != nil {
 		return fmt.Errorf("invalid topic id: %w", err)
 	}
-
-	update := bson.M{
-		"title":   req.Title,
-		"content": req.Content,
-		"imgs":    result.EnsureSlice(req.Imgs),
-		"ext":     req.Ext,
-	}
-
 	res, err := s.topicColl().UpdateOne(ctx, bson.M{
 		"_id":    oid,
-		"userId": strconv.FormatInt(userID, 10),
+		"userId": userIDString(userID),
 	}, bson.M{"$set": update})
 	if err != nil {
 		return fmt.Errorf("update topic: %w", err)
 	}
 	if res.MatchedCount == 0 {
-		return ErrTopicNotFound
+		return result.NewBizError(result.CodeNotExisted, "帖子不存在")
 	}
 
 	if s.producer != nil {
@@ -185,23 +197,37 @@ func (s *Service) Update(ctx context.Context, topicID string, userID int64, req 
 }
 
 func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*result.CusPage[Topic], error) {
-	return s.listByFilter(ctx, bson.M{"userId": strconv.FormatInt(userID, 10), "hasCheck": true}, page, size)
+	return s.listByFilter(ctx, bson.M{"userId": userIDString(userID), "hasCheck": true}, page, size, userIDString(userID), bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}})
 }
 
 func (s *Service) ListByTheme(ctx context.Context, userID int64, themeID string, page, size int) (*result.CusPage[Topic], error) {
+	if err := s.ensureThemeExists(ctx, themeID); err != nil {
+		return nil, err
+	}
 	return s.listByFilter(ctx, bson.M{
-		"userId":   strconv.FormatInt(userID, 10),
+		"userId":   userIDString(userID),
 		"themeId":  themeID,
 		"hasCheck": true,
-	}, page, size)
+	}, page, size, userIDString(userID), bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}})
 }
 
-func (s *Service) ListTargetUserTopics(ctx context.Context, targetUserID int64, page, size int) (*result.CusPage[Topic], error) {
-	return s.listByFilter(ctx, bson.M{"userId": strconv.FormatInt(targetUserID, 10), "hasCheck": true}, page, size)
+func (s *Service) ListTargetUserTopics(ctx context.Context, currentUserID, targetUserID int64, page, size int) (*result.CusPage[Topic], error) {
+	var author topicAuthor
+	err := s.db.WithContext(ctx).Where("id = ?", targetUserID).First(&author).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, result.NewBizError(result.CodeNotExisted, "目标用户不存在")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query target user: %w", err)
+	}
+	return s.listByFilter(ctx, bson.M{
+		"userId":   userIDString(targetUserID),
+		"hasCheck": true,
+	}, page, size, userIDString(currentUserID), bson.D{{Key: "_id", Value: -1}, {Key: "visitedNum", Value: -1}})
 }
 
 func (s *Service) ListFollowTopics(ctx context.Context, currentUserID int64, page, size int) (*result.CusPage[Topic], error) {
-	followCur, err := s.mongoDB.Collection("campus_follow").Find(ctx, bson.M{"followerId": strconv.FormatInt(currentUserID, 10)})
+	followCur, err := s.mongoDB.Collection("campus_follow").Find(ctx, bson.M{"followerId": userIDString(currentUserID)})
 	if err != nil {
 		return nil, fmt.Errorf("find followings: %w", err)
 	}
@@ -220,23 +246,36 @@ func (s *Service) ListFollowTopics(ctx context.Context, currentUserID int64, pag
 	}
 
 	ids := make([]string, 0, len(followings))
-	for _, f := range followings {
-		if f.FollowingID != "" {
-			ids = append(ids, f.FollowingID)
+	for _, follow := range followings {
+		if follow.FollowingID != "" {
+			ids = append(ids, follow.FollowingID)
 		}
 	}
 	if len(ids) == 0 {
 		return result.NewCusPage([]Topic{}, 0, page, size), nil
 	}
-	return s.listByFilter(ctx, bson.M{"userId": bson.M{"$in": ids}, "hasCheck": true}, page, size)
+
+	return s.listByFilter(ctx, bson.M{
+		"userId":   bson.M{"$in": ids},
+		"hasCheck": true,
+	}, page, size, userIDString(currentUserID), bson.D{{Key: "_id", Value: -1}, {Key: "visitedNum", Value: -1}})
 }
 
-func (s *Service) listByFilter(ctx context.Context, filter bson.M, page, size int) (*result.CusPage[Topic], error) {
+func (s *Service) listByFilter(
+	ctx context.Context,
+	filter bson.M,
+	page, size int,
+	queryUserID string,
+	sort bson.D,
+) (*result.CusPage[Topic], error) {
 	if page <= 0 {
 		page = 1
 	}
 	if size <= 0 {
 		size = 15
+	}
+	if len(sort) == 0 {
+		sort = bson.D{{Key: "_id", Value: -1}}
 	}
 
 	total, err := s.topicColl().CountDocuments(ctx, filter)
@@ -245,7 +284,7 @@ func (s *Service) listByFilter(ctx context.Context, filter bson.M, page, size in
 	}
 
 	opts := options.Find().
-		SetSort(bson.M{"_id": -1}).
+		SetSort(sort).
 		SetSkip(int64((page - 1) * size)).
 		SetLimit(int64(size))
 	cur, err := s.topicColl().Find(ctx, filter, opts)
@@ -262,24 +301,13 @@ func (s *Service) listByFilter(ctx context.Context, filter bson.M, page, size in
 	if err := cur.All(ctx, &topics); err != nil {
 		return nil, fmt.Errorf("decode topics: %w", err)
 	}
-
-	for i := range topics {
-		topics[i].Imgs = result.EnsureSlice(topics[i].Imgs)
+	s.prepareTopics(topics)
+	if err := s.fillLikeAndCollection(ctx, queryUserID, topics); err != nil {
+		s.logger.Warn("fill topic like/collection failed", zap.Error(err))
 	}
 	return result.NewCusPage(topics, total, page, size), nil
 }
 
 func (s *Service) topicColl() *mongo.Collection {
 	return s.mongoDB.Collection("campus_topic")
-}
-
-func mapAccountType(accountType string) int {
-	switch accountType {
-	case "official":
-		return 2
-	case "anonymous":
-		return 3
-	default:
-		return 1
-	}
 }

@@ -3,31 +3,38 @@ package topic
 import (
 	"context"
 	"fmt"
-	"strconv"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/mq"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
-func (s *Service) LikeTopic(ctx context.Context, userID int64, topicID string) error {
-	topic, err := s.GetByID(ctx, topicID, "")
+func (s *Service) LikeTopic(ctx context.Context, claims *jwtutil.Claims, topicID string) error {
+	if claims == nil {
+		return result.ErrParam
+	}
+
+	topic, err := s.getTopicByID(ctx, topicID, true)
 	if err != nil {
 		return err
 	}
 	if topic == nil {
-		return ErrTopicNotFound
+		return result.NewBizError(result.CodeNotExisted, "帖子不存在")
 	}
 
-	filter := bson.M{"userId": strconv.FormatInt(userID, 10), "themeName": topic.ThemeID}
+	currentUserID := userIDString(claims.UserID)
+	filter := bson.M{"userId": currentUserID, "themeName": topic.ThemeID}
 	update := bson.M{
 		"$setOnInsert": bson.M{
-			"userId":      strconv.FormatInt(userID, 10),
+			"userId":      currentUserID,
 			"themeName":   topic.ThemeID,
-			"accountType": 1,
+			"accountType": claims.AccountType,
 		},
 		"$addToSet": bson.M{"topicIds": topicID},
 	}
@@ -36,25 +43,24 @@ func (s *Service) LikeTopic(ctx context.Context, userID int64, topicID string) e
 		return fmt.Errorf("like topic: %w", err)
 	}
 	if res.ModifiedCount > 0 || res.UpsertedCount > 0 {
-		_, incErr := s.topicColl().UpdateByID(ctx, mustObjectID(topicID), bson.M{"$inc": bson.M{"likeNum": 1}})
-		if incErr != nil {
-			s.logger.Warn("increase topic like num failed", zap.Error(incErr), zap.String("topicID", topicID))
+		if _, err := s.topicColl().UpdateByID(ctx, topic.ID, bson.M{"$inc": bson.M{"likeNum": 1}}); err != nil {
+			s.logger.Warn("increase topic like num failed", zap.Error(err), zap.String("topicID", topicID))
 		}
+		s.sendTopicNotify(ctx, topic.UserID, currentUserID, topicID, "点赞了你的帖子", "TOPIC_LIKE")
 	}
 	return nil
 }
 
 func (s *Service) UnlikeTopic(ctx context.Context, userID int64, topicID string) error {
-	filter := bson.M{"userId": strconv.FormatInt(userID, 10)}
+	filter := bson.M{"userId": userIDString(userID)}
 	update := bson.M{"$pull": bson.M{"topicIds": topicID}}
 	res, err := s.mongoDB.Collection("campus_topic_like").UpdateMany(ctx, filter, update)
 	if err != nil {
 		return fmt.Errorf("unlike topic: %w", err)
 	}
 	if res.ModifiedCount > 0 {
-		_, incErr := s.topicColl().UpdateByID(ctx, mustObjectID(topicID), bson.M{"$inc": bson.M{"likeNum": -1}})
-		if incErr != nil {
-			s.logger.Warn("decrease topic like num failed", zap.Error(incErr), zap.String("topicID", topicID))
+		if _, err := s.topicColl().UpdateByID(ctx, mustObjectID(topicID), bson.M{"$inc": bson.M{"likeNum": -1}}); err != nil {
+			s.logger.Warn("decrease topic like num failed", zap.Error(err), zap.String("topicID", topicID))
 		}
 	}
 	return nil
@@ -64,21 +70,26 @@ func (s *Service) ListLikedTopics(ctx context.Context, userID int64, page, size 
 	return s.listTopicsFromArrayDocs(ctx, "campus_topic_like", userID, page, size)
 }
 
-func (s *Service) CollectTopic(ctx context.Context, userID int64, topicID string) error {
-	topic, err := s.GetByID(ctx, topicID, "")
+func (s *Service) CollectTopic(ctx context.Context, claims *jwtutil.Claims, topicID string) error {
+	if claims == nil {
+		return result.ErrParam
+	}
+
+	topic, err := s.getTopicByID(ctx, topicID, true)
 	if err != nil {
 		return err
 	}
 	if topic == nil {
-		return ErrTopicNotFound
+		return result.NewBizError(result.CodeNotExisted, "帖子不存在")
 	}
 
-	filter := bson.M{"userId": strconv.FormatInt(userID, 10), "themeName": topic.ThemeID}
+	currentUserID := userIDString(claims.UserID)
+	filter := bson.M{"userId": currentUserID, "themeName": topic.ThemeID}
 	update := bson.M{
 		"$setOnInsert": bson.M{
-			"userId":      strconv.FormatInt(userID, 10),
+			"userId":      currentUserID,
 			"themeName":   topic.ThemeID,
-			"accountType": 1,
+			"accountType": claims.AccountType,
 		},
 		"$addToSet": bson.M{"topicIds": topicID},
 	}
@@ -87,25 +98,24 @@ func (s *Service) CollectTopic(ctx context.Context, userID int64, topicID string
 		return fmt.Errorf("collect topic: %w", err)
 	}
 	if res.ModifiedCount > 0 || res.UpsertedCount > 0 {
-		_, incErr := s.topicColl().UpdateByID(ctx, mustObjectID(topicID), bson.M{"$inc": bson.M{"collectionNum": 1}})
-		if incErr != nil {
-			s.logger.Warn("increase topic collection num failed", zap.Error(incErr), zap.String("topicID", topicID))
+		if _, err := s.topicColl().UpdateByID(ctx, topic.ID, bson.M{"$inc": bson.M{"collectionNum": 1}}); err != nil {
+			s.logger.Warn("increase topic collection num failed", zap.Error(err), zap.String("topicID", topicID))
 		}
+		s.sendTopicNotify(ctx, topic.UserID, currentUserID, topicID, "收藏了你的帖子", "TOPIC_COLLECTION")
 	}
 	return nil
 }
 
 func (s *Service) UncollectTopic(ctx context.Context, userID int64, topicID string) error {
-	filter := bson.M{"userId": strconv.FormatInt(userID, 10)}
+	filter := bson.M{"userId": userIDString(userID)}
 	update := bson.M{"$pull": bson.M{"topicIds": topicID}}
 	res, err := s.mongoDB.Collection("campus_topic_collection").UpdateMany(ctx, filter, update)
 	if err != nil {
 		return fmt.Errorf("uncollect topic: %w", err)
 	}
 	if res.ModifiedCount > 0 {
-		_, incErr := s.topicColl().UpdateByID(ctx, mustObjectID(topicID), bson.M{"$inc": bson.M{"collectionNum": -1}})
-		if incErr != nil {
-			s.logger.Warn("decrease topic collection num failed", zap.Error(incErr), zap.String("topicID", topicID))
+		if _, err := s.topicColl().UpdateByID(ctx, mustObjectID(topicID), bson.M{"$inc": bson.M{"collectionNum": -1}}); err != nil {
+			s.logger.Warn("decrease topic collection num failed", zap.Error(err), zap.String("topicID", topicID))
 		}
 	}
 	return nil
@@ -113,64 +123,6 @@ func (s *Service) UncollectTopic(ctx context.Context, userID int64, topicID stri
 
 func (s *Service) ListCollectedTopics(ctx context.Context, userID int64, page, size int) (*result.CusPage[Topic], error) {
 	return s.listTopicsFromArrayDocs(ctx, "campus_topic_collection", userID, page, size)
-}
-
-func (s *Service) fillLikeAndCollection(ctx context.Context, userID string, topics []Topic) error {
-	if userID == "" || len(topics) == 0 {
-		return nil
-	}
-
-	ids := make(map[string]int, len(topics))
-	for i := range topics {
-		ids[topics[i].ID.Hex()] = i
-		topics[i].HasLike = false
-		topics[i].HasCollection = false
-	}
-
-	likeCur, err := s.mongoDB.Collection("campus_topic_like").Find(ctx, bson.M{"userId": userID})
-	if err != nil {
-		return fmt.Errorf("load topic likes: %w", err)
-	}
-	defer func() {
-		if closeErr := likeCur.Close(ctx); closeErr != nil {
-			s.logger.Warn("close topic like cursor failed", zap.Error(closeErr))
-		}
-	}()
-
-	var likeDocs []TopicLike
-	if err := likeCur.All(ctx, &likeDocs); err != nil {
-		return fmt.Errorf("decode topic likes: %w", err)
-	}
-	for _, d := range likeDocs {
-		for _, id := range d.TopicIDs {
-			if idx, ok := ids[id]; ok {
-				topics[idx].HasLike = true
-			}
-		}
-	}
-
-	colCur, err := s.mongoDB.Collection("campus_topic_collection").Find(ctx, bson.M{"userId": userID})
-	if err != nil {
-		return fmt.Errorf("load topic collections: %w", err)
-	}
-	defer func() {
-		if closeErr := colCur.Close(ctx); closeErr != nil {
-			s.logger.Warn("close topic collection cursor failed", zap.Error(closeErr))
-		}
-	}()
-
-	var colDocs []TopicCollection
-	if err := colCur.All(ctx, &colDocs); err != nil {
-		return fmt.Errorf("decode topic collections: %w", err)
-	}
-	for _, d := range colDocs {
-		for _, id := range d.TopicIDs {
-			if idx, ok := ids[id]; ok {
-				topics[idx].HasCollection = true
-			}
-		}
-	}
-	return nil
 }
 
 func (s *Service) listTopicsFromArrayDocs(ctx context.Context, collName string, userID int64, page, size int) (*result.CusPage[Topic], error) {
@@ -181,11 +133,7 @@ func (s *Service) listTopicsFromArrayDocs(ctx context.Context, collName string, 
 		size = 15
 	}
 
-	type arrayDoc struct {
-		TopicIDs []string `bson:"topicIds"`
-	}
-
-	cur, err := s.mongoDB.Collection(collName).Find(ctx, bson.M{"userId": strconv.FormatInt(userID, 10)})
+	cur, err := s.mongoDB.Collection(collName).Find(ctx, bson.M{"userId": userIDString(userID)})
 	if err != nil {
 		return nil, fmt.Errorf("find %s docs: %w", collName, err)
 	}
@@ -195,14 +143,14 @@ func (s *Service) listTopicsFromArrayDocs(ctx context.Context, collName string, 
 		}
 	}()
 
-	var docs []arrayDoc
+	var docs []topicStateDoc
 	if err := cur.All(ctx, &docs); err != nil {
 		return nil, fmt.Errorf("decode %s docs: %w", collName, err)
 	}
 
 	allIDs := make([]string, 0)
-	for _, d := range docs {
-		allIDs = append(allIDs, d.TopicIDs...)
+	for _, doc := range docs {
+		allIDs = append(allIDs, doc.TopicIDs...)
 	}
 	total := int64(len(allIDs))
 	if len(allIDs) == 0 {
@@ -217,9 +165,13 @@ func (s *Service) listTopicsFromArrayDocs(ctx context.Context, collName string, 
 	if end > len(allIDs) {
 		end = len(allIDs)
 	}
+
 	topics, err := s.findByIDs(ctx, allIDs[start:end])
 	if err != nil {
 		return nil, err
+	}
+	if err := s.fillLikeAndCollection(ctx, userIDString(userID), topics); err != nil {
+		s.logger.Warn("fill topic like/collection failed", zap.Error(err), zap.String("collection", collName))
 	}
 	return result.NewCusPage(topics, total, page, size), nil
 }
@@ -228,12 +180,14 @@ func (s *Service) findByIDs(ctx context.Context, topicIDs []string) ([]Topic, er
 	if len(topicIDs) == 0 {
 		return []Topic{}, nil
 	}
+
 	oids := make([]primitive.ObjectID, 0, len(topicIDs))
 	for _, id := range topicIDs {
 		oid, err := primitive.ObjectIDFromHex(id)
-		if err == nil {
-			oids = append(oids, oid)
+		if err != nil {
+			continue
 		}
+		oids = append(oids, oid)
 	}
 	if len(oids) == 0 {
 		return []Topic{}, nil
@@ -253,13 +207,44 @@ func (s *Service) findByIDs(ctx context.Context, topicIDs []string) ([]Topic, er
 	if err := cur.All(ctx, &topics); err != nil {
 		return nil, fmt.Errorf("decode topics by ids: %w", err)
 	}
-	for i := range topics {
-		topics[i].Imgs = result.EnsureSlice(topics[i].Imgs)
+	s.prepareTopics(topics)
+
+	ordered := make([]Topic, 0, len(topics))
+	byID := make(map[string]Topic, len(topics))
+	for _, topic := range topics {
+		byID[topic.ID.Hex()] = topic
 	}
-	return topics, nil
+	for _, id := range topicIDs {
+		topic, ok := byID[id]
+		if ok {
+			ordered = append(ordered, topic)
+		}
+	}
+	return ordered, nil
 }
 
-func mustObjectID(hexID string) primitive.ObjectID {
-	oid, _ := primitive.ObjectIDFromHex(hexID)
+func (s *Service) sendTopicNotify(ctx context.Context, targetUserID, senderUserID, topicID, content, notifyType string) {
+	if s.producer == nil || targetUserID == "" || targetUserID == senderUserID {
+		return
+	}
+
+	err := s.producer.SendNotifyUser(ctx, mq.NotifyMsg{
+		TargetUserID: targetUserID,
+		Type:         notifyType,
+		Content: map[string]interface{}{
+			"senderId":    senderUserID,
+			"topicId":     topicID,
+			"content":     content,
+			"notifyType":  notifyType,
+			"createdTime": time.Now(),
+		},
+	})
+	if err != nil {
+		s.logger.Warn("send topic notify failed", zap.Error(err), zap.String("topicID", topicID), zap.String("type", notifyType))
+	}
+}
+
+func mustObjectID(id string) primitive.ObjectID {
+	oid, _ := primitive.ObjectIDFromHex(id)
 	return oid
 }

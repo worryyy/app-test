@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	robcron "github.com/robfig/cron/v3"
 	"github.com/redis/go-redis/v9"
+	robcron "github.com/robfig/cron/v3"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -40,7 +40,7 @@ func (s *Scheduler) Start() error {
 	}
 
 	_, err := s.cron.AddFunc("0 1 2 * * *", func() {
-		if runErr := s.suggest.Generate(context.Background()); runErr != nil {
+		if _, runErr := s.suggest.Generate(context.Background()); runErr != nil {
 			s.logger.Error("run suggest job failed", zap.Error(runErr))
 		}
 	})
