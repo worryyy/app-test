@@ -3,54 +3,83 @@ package user
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strconv"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
 func (s *Service) Follow(ctx context.Context, followerID, targetUserID int64) error {
-	if followerID == targetUserID {
-		return ErrFollowSelf
+	targetUser, err := s.GetByID(ctx, targetUserID)
+	if err != nil {
+		return err
 	}
-	coll := s.mongoDB.Collection("campus_follow")
+	if targetUser == nil {
+		return result.ErrNotExisted
+	}
+	if followerID == targetUserID {
+		return result.NewBizError(result.CodeFollowSelf, "用户不可关注自己")
+	}
+
+	filter := bson.M{
+		"followerId":  strconv.FormatInt(followerID, 10),
+		"followingId": strconv.FormatInt(targetUserID, 10),
+	}
+	exists, err := s.mongoDB.Collection("campus_follow").CountDocuments(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("check follow exists: %w", err)
+	}
+	if exists > 0 {
+		return result.NewBizError(result.CodeFollowRepeat, "不可重复关注")
+	}
+
 	doc := Follow{
 		FollowerID:  strconv.FormatInt(followerID, 10),
 		FollowingID: strconv.FormatInt(targetUserID, 10),
 		FollowAt:    time.Now(),
 	}
-	_, err := coll.UpdateOne(
-		ctx,
-		bson.M{"followerId": doc.FollowerID, "followingId": doc.FollowingID},
-		bson.M{"$setOnInsert": doc},
-		options.Update().SetUpsert(true),
-	)
-	if err != nil {
+	if _, err := s.mongoDB.Collection("campus_follow").InsertOne(ctx, doc); err != nil {
 		return fmt.Errorf("follow user: %w", err)
 	}
 	return nil
 }
 
 func (s *Service) Unfollow(ctx context.Context, followerID, targetUserID int64) error {
-	coll := s.mongoDB.Collection("campus_follow")
-	_, err := coll.DeleteOne(ctx, bson.M{
+	filter := bson.M{
 		"followerId":  strconv.FormatInt(followerID, 10),
 		"followingId": strconv.FormatInt(targetUserID, 10),
-	})
+	}
+	exists, err := s.mongoDB.Collection("campus_follow").CountDocuments(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("check follow before unfollow: %w", err)
+	}
+	if exists == 0 {
+		return result.NewBizError(result.CodeFollowNotFollow, "不可对未关注用户取关")
+	}
+
+	res, err := s.mongoDB.Collection("campus_follow").DeleteOne(ctx, filter)
 	if err != nil {
 		return fmt.Errorf("unfollow user: %w", err)
+	}
+	if res.DeletedCount != 1 {
+		return result.NewBizError(result.CodeFail, "取关失败")
 	}
 	return nil
 }
 
 func (s *Service) IsFollowing(ctx context.Context, followerID, targetUserID int64) (bool, error) {
-	coll := s.mongoDB.Collection("campus_follow")
-	count, err := coll.CountDocuments(ctx, bson.M{
+	targetUser, err := s.GetByID(ctx, targetUserID)
+	if err != nil {
+		return false, err
+	}
+	if targetUser == nil {
+		return false, result.NewBizError(result.CodeFail, "目标用户不存在")
+	}
+
+	count, err := s.mongoDB.Collection("campus_follow").CountDocuments(ctx, bson.M{
 		"followerId":  strconv.FormatInt(followerID, 10),
 		"followingId": strconv.FormatInt(targetUserID, 10),
 	})
@@ -60,13 +89,30 @@ func (s *Service) IsFollowing(ctx context.Context, followerID, targetUserID int6
 	return count > 0, nil
 }
 
-func (s *Service) GetStats(ctx context.Context, currentUserID, targetUserID int64) (*UserProfile, error) {
-	u, err := s.GetByID(ctx, targetUserID)
+func (s *Service) GetUserProfile(ctx context.Context, targetUserID int64) (*UserProfileVO, error) {
+	user, err := s.GetByID(ctx, targetUserID)
 	if err != nil {
 		return nil, err
 	}
-	if u == nil {
-		return nil, ErrUserNotFound
+	if user == nil {
+		return nil, result.NewBizError(result.CodeNotExisted, "用户不存在")
+	}
+	return &UserProfileVO{
+		Avatar:    user.Avatar,
+		Nickname:  user.Nickname,
+		Gender:    user.Gender,
+		StuCla:    user.StuCla,
+		Signature: user.Signature,
+	}, nil
+}
+
+func (s *Service) GetStats(ctx context.Context, targetUserID int64) (*UserStatsVO, error) {
+	user, err := s.GetByID(ctx, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, result.NewBizError(result.CodeNotExisted, "用户不存在")
 	}
 
 	followerCount, err := s.mongoDB.Collection("campus_follow").
@@ -74,56 +120,70 @@ func (s *Service) GetStats(ctx context.Context, currentUserID, targetUserID int6
 	if err != nil {
 		return nil, fmt.Errorf("count followers: %w", err)
 	}
-
 	followingCount, err := s.mongoDB.Collection("campus_follow").
 		CountDocuments(ctx, bson.M{"followerId": strconv.FormatInt(targetUserID, 10)})
 	if err != nil {
 		return nil, fmt.Errorf("count followings: %w", err)
 	}
 
-	likeCount, err := s.mongoDB.Collection("campus_topic_like").
-		CountDocuments(ctx, bson.M{"userId": strconv.FormatInt(targetUserID, 10)})
+	cur, err := s.mongoDB.Collection("campus_topic").
+		Find(ctx, bson.M{"userId": strconv.FormatInt(targetUserID, 10)})
 	if err != nil {
-		return nil, fmt.Errorf("count likes: %w", err)
+		return nil, fmt.Errorf("find user topics for likes: %w", err)
+	}
+	defer func() { _ = cur.Close(ctx) }()
+
+	var topics []userTopicLikeDoc
+	if err := cur.All(ctx, &topics); err != nil {
+		return nil, fmt.Errorf("decode user topics for likes: %w", err)
 	}
 
-	topicCount, err := s.mongoDB.Collection("campus_topic").
-		CountDocuments(ctx, bson.M{"userId": strconv.FormatInt(targetUserID, 10), "hasCheck": true})
-	if err != nil {
-		return nil, fmt.Errorf("count topics: %w", err)
+	var likeCount int64
+	for _, item := range topics {
+		likeCount += item.LikeNum
 	}
 
-	isFollowing, err := s.IsFollowing(ctx, currentUserID, targetUserID)
-	if err != nil {
-		return nil, err
-	}
-
-	profile := &UserProfile{
-		User:           *u,
+	return &UserStatsVO{
 		FollowerCount:  followerCount,
 		FollowingCount: followingCount,
 		LikeCount:      likeCount,
-		TopicCount:     topicCount,
-		IsFollowing:    isFollowing,
+	}, nil
+}
+
+func (s *Service) ListFollowers(ctx context.Context, targetUserID int64, page, size int) (*result.CusPage[FollowVO], error) {
+	targetUser, err := s.GetByID(ctx, targetUserID)
+	if err != nil {
+		return nil, err
 	}
-	profile.StuPwd = ""
-	return profile, nil
+	if targetUser == nil {
+		return nil, result.NewBizError(result.CodeNotExisted, "目标用户不存在")
+	}
+	return s.listFollowVO(ctx, bson.M{"followingId": strconv.FormatInt(targetUserID, 10)}, true, targetUserID, page, size)
 }
 
-func (s *Service) ListFollowers(ctx context.Context, targetUserID int64, page, size int) (*result.CusPage[User], error) {
-	return s.listFollowUsers(ctx, bson.M{"followingId": strconv.FormatInt(targetUserID, 10)}, "followerId", page, size)
+func (s *Service) ListFollowings(ctx context.Context, targetUserID int64, page, size int) (*result.CusPage[FollowVO], error) {
+	targetUser, err := s.GetByID(ctx, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	if targetUser == nil {
+		return nil, result.NewBizError(result.CodeNotExisted, "目标用户不存在")
+	}
+	return s.listFollowVO(ctx, bson.M{"followerId": strconv.FormatInt(targetUserID, 10)}, false, targetUserID, page, size)
 }
 
-func (s *Service) ListFollowings(ctx context.Context, targetUserID int64, page, size int) (*result.CusPage[User], error) {
-	return s.listFollowUsers(ctx, bson.M{"followerId": strconv.FormatInt(targetUserID, 10)}, "followingId", page, size)
-}
-
-func (s *Service) listFollowUsers(ctx context.Context, filter bson.M, field string, page, size int) (*result.CusPage[User], error) {
+func (s *Service) listFollowVO(
+	ctx context.Context,
+	filter bson.M,
+	isFollowers bool,
+	targetUserID int64,
+	page, size int,
+) (*result.CusPage[FollowVO], error) {
 	if page <= 0 {
 		page = 1
 	}
 	if size <= 0 {
-		size = 15
+		size = s.defaultPageSize()
 	}
 
 	coll := s.mongoDB.Collection("campus_follow")
@@ -132,62 +192,158 @@ func (s *Service) listFollowUsers(ctx context.Context, filter bson.M, field stri
 		return nil, fmt.Errorf("count follow users: %w", err)
 	}
 
-	opts := options.Find().SetSkip(int64((page - 1) * size)).SetLimit(int64(size)).SetSort(bson.M{"followAt": -1})
+	opts := options.Find().
+		SetSkip(int64((page - 1) * size)).
+		SetLimit(int64(size)).
+		SetSort(bson.M{"_id": -1})
 	cur, err := coll.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, fmt.Errorf("find follow users: %w", err)
 	}
-	defer func() {
-		if closeErr := cur.Close(ctx); closeErr != nil {
-			s.logger.Warn("close follow cursor failed", zap.Error(closeErr))
-		}
-	}()
+	defer func() { _ = cur.Close(ctx) }()
 
 	var docs []Follow
 	if err := cur.All(ctx, &docs); err != nil {
 		return nil, fmt.Errorf("decode follow users: %w", err)
 	}
+	if len(docs) == 0 {
+		return result.NewCusPage([]FollowVO{}, total, page, size), nil
+	}
 
 	ids := make([]int64, 0, len(docs))
-	for _, d := range docs {
-		raw := d.FollowerID
-		if field == "followingId" {
-			raw = d.FollowingID
+	for _, doc := range docs {
+		rawID := doc.FollowerID
+		if !isFollowers {
+			rawID = doc.FollowingID
 		}
-		id, convErr := strconv.ParseInt(raw, 10, 64)
-		if convErr == nil {
+		id, err := strconv.ParseInt(rawID, 10, 64)
+		if err == nil {
 			ids = append(ids, id)
 		}
 	}
-	users, err := s.loadUsersByIDs(ctx, ids)
+
+	usersByID, err := s.loadUsersMapByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	return result.NewCusPage(users, total, page, size), nil
-}
-
-func (s *Service) loadUsersByIDs(ctx context.Context, ids []int64) ([]User, error) {
-	if len(ids) == 0 {
-		return []User{}, nil
+	mutualSet, err := s.loadMutualSet(ctx, ids, targetUserID, isFollowers)
+	if err != nil {
+		return nil, err
 	}
 
+	items := make([]FollowVO, 0, len(docs))
+	for _, doc := range docs {
+		var (
+			counterpartID int64
+			parseErr      error
+		)
+		if isFollowers {
+			counterpartID, parseErr = strconv.ParseInt(doc.FollowerID, 10, 64)
+		} else {
+			counterpartID, parseErr = strconv.ParseInt(doc.FollowingID, 10, 64)
+		}
+		if parseErr != nil {
+			continue
+		}
+		user, ok := usersByID[counterpartID]
+		if !ok {
+			continue
+		}
+		item := FollowVO{
+			Avatar:      user.Avatar,
+			Nickname:    user.Nickname,
+			FollowerID:  counterpartFollowerID(isFollowers, counterpartID, targetUserID),
+			FollowingID: counterpartFollowingID(isFollowers, counterpartID, targetUserID),
+			FollowAt:    doc.FollowAt,
+			CoFollow:    false,
+			BothFollow:  mutualSet[counterpartID],
+		}
+		items = append(items, item)
+	}
+	return result.NewCusPage(items, total, page, size), nil
+}
+
+func (s *Service) loadUsersMapByIDs(ctx context.Context, ids []int64) (map[int64]User, error) {
+	if len(ids) == 0 {
+		return map[int64]User{}, nil
+	}
 	var users []User
 	if err := s.db.WithContext(ctx).Where("id IN ?", ids).Find(&users).Error; err != nil {
 		return nil, fmt.Errorf("load users by ids: %w", err)
 	}
+	users = s.sanitizeUsers(users)
+	out := make(map[int64]User, len(users))
+	for _, user := range users {
+		out[user.ID] = user
+	}
+	return out, nil
+}
 
-	byID := make(map[int64]User, len(users))
-	for _, u := range users {
-		u.StuPwd = ""
-		byID[u.ID] = u
+func (s *Service) loadMutualSet(ctx context.Context, ids []int64, targetUserID int64, isFollowers bool) (map[int64]bool, error) {
+	if len(ids) == 0 {
+		return map[int64]bool{}, nil
+	}
+	filter := bson.M{}
+	if isFollowers {
+		filter = bson.M{"followerId": strconv.FormatInt(targetUserID, 10), "followingId": bson.M{"$in": stringifyIDs(ids)}}
+	} else {
+		filter = bson.M{"followerId": bson.M{"$in": stringifyIDs(ids)}, "followingId": strconv.FormatInt(targetUserID, 10)}
 	}
 
-	out := make([]User, 0, len(ids))
-	for _, id := range ids {
-		if u, ok := byID[id]; ok {
-			out = append(out, u)
+	cur, err := s.mongoDB.Collection("campus_follow").Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("find mutual follows: %w", err)
+	}
+	defer func() { _ = cur.Close(ctx) }()
+
+	var docs []Follow
+	if err := cur.All(ctx, &docs); err != nil {
+		return nil, fmt.Errorf("decode mutual follows: %w", err)
+	}
+
+	out := make(map[int64]bool, len(docs))
+	for _, doc := range docs {
+		rawID := doc.FollowingID
+		if !isFollowers {
+			rawID = doc.FollowerID
+		}
+		id, err := strconv.ParseInt(rawID, 10, 64)
+		if err == nil {
+			out[id] = true
 		}
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
+}
+
+func counterpartFollowerID(isFollowers bool, counterpartID, targetUserID int64) int64 {
+	if isFollowers {
+		return counterpartID
+	}
+	return targetUserID
+}
+
+func counterpartFollowingID(isFollowers bool, counterpartID, targetUserID int64) int64 {
+	if isFollowers {
+		return targetUserID
+	}
+	return counterpartID
+}
+
+func (s *Service) defaultPageSize() int {
+	if s.cfg != nil && s.cfg.Custom.PageSize > 0 {
+		return s.cfg.Custom.PageSize
+	}
+	return 15
+}
+
+func stringifyIDs(ids []int64) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, strconv.FormatInt(id, 10))
+	}
+	return out
+}
+
+type userTopicLikeDoc struct {
+	LikeNum int64 `bson:"likeNum"`
 }

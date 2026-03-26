@@ -49,6 +49,8 @@ type TopicUserUpdateMsg struct {
 	UserID      string `json:"userId"`
 	NickName    string `json:"nickName"`
 	Avatar      string `json:"avatar"`
+	Gender      string `json:"gender"`
+	Signature   string `json:"signature"`
 	AccountType int    `json:"accountType"`
 }
 
@@ -56,6 +58,8 @@ type CommentUserUpdateMsg struct {
 	UserID      string `json:"userId"`
 	NickName    string `json:"nickName"`
 	Avatar      string `json:"avatar"`
+	Gender      string `json:"gender"`
+	Signature   string `json:"signature"`
 	AccountType int    `json:"accountType"`
 }
 

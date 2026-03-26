@@ -2,51 +2,85 @@ package user
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
+	"strings"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gorm.io/gorm"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/encrypt"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
-func (s *Service) RandomNickname() string {
-	return s.randomNickname()
+func (s *Service) RandomNickname(accountType string) (string, error) {
+	switch accountType {
+	case accountTypeBase:
+		return randomHumorousID(), nil
+	case accountTypeAnonymous:
+		return randomAnonymousID(), nil
+	default:
+		return "", result.ErrParam
+	}
 }
 
-func (s *Service) PreAuthentication(ctx context.Context, stuNum, stuPwd string) error {
-	if stuNum == "" || stuPwd == "" {
+func (s *Service) PreAuthentication(ctx context.Context, userID int64, nickname, pwd string) error {
+	if userID <= 0 || strings.TrimSpace(nickname) == "" {
 		return result.ErrParam
+	}
+	if pwd != "zjb&bjz" {
+		return result.NewBizError(result.CodeFail, "预认证密码错误")
+	}
+
+	res := s.db.WithContext(ctx).
+		Model(&User{}).
+		Where("id = ? AND nickname = ?", userID, nickname).
+		Update("stuIsCheck", true)
+	if res.Error != nil {
+		return fmt.Errorf("pre-authenticate user: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return result.NewBizError(result.CodeUnknownError, "预认证更新失败")
 	}
 	return nil
 }
 
-func (s *Service) Authenticate(ctx context.Context, userID int64, stuNum, stuPwd string) error {
-	if stuNum == "" || stuPwd == "" {
-		return result.ErrParam
+func (s *Service) Authenticate(
+	ctx context.Context,
+	userID int64,
+	req AuthenticationReq,
+) (*JWLoginData, error) {
+	loginResp, err := s.checkJWLogin(ctx, req.SchoolID, req.Password)
+	if err != nil {
+		return nil, err
 	}
-	encPwd := stuPwd
-	if s.cfg != nil && s.cfg.Encryption.Key != "" {
-		if v, err := encrypt.AESEncrypt(stuPwd, s.cfg.Encryption.Key); err == nil {
-			encPwd = v
-		}
+
+	encPwd, err := s.encryptAES(req.Password)
+	if err != nil {
+		return nil, err
 	}
+
 	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).Updates(map[string]interface{}{
-		"stuNum":     stuNum,
-		"stuPwd":     encPwd,
 		"stuIsCheck": true,
+		"stuNum":     req.SchoolID,
+		"stuCla":     loginResp.Major,
+		"stuName":    loginResp.Name,
+		"stuPwd":     encPwd,
+		"school":     req.School,
 	}).Error; err != nil {
-		return fmt.Errorf("authenticate user: %w", err)
+		return nil, fmt.Errorf("authenticate user: %w", err)
 	}
-	return nil
+	return loginResp, nil
 }
 
-func (s *Service) ReAuthentication(ctx context.Context, userID int64, stuNum, stuPwd string) error {
-	return s.Authenticate(ctx, userID, stuNum, stuPwd)
+func (s *Service) ReAuthentication(
+	ctx context.Context,
+	userID int64,
+	req AuthenticationReq,
+) (*JWLoginData, error) {
+	return s.Authenticate(ctx, userID, req)
 }
 
 func (s *Service) DelAuthentication(ctx context.Context, userID int64) error {
@@ -62,86 +96,127 @@ func (s *Service) DelAuthentication(ctx context.Context, userID int64) error {
 	return nil
 }
 
-func (s *Service) CheckLogin(ctx context.Context, userID int64) (bool, error) {
-	u, err := s.GetByID(ctx, userID)
+func (s *Service) CheckLogin(ctx context.Context, req CheckLoginReq) (*JWLoginData, error) {
+	return s.checkJWLogin(ctx, req.SchoolID, req.Password)
+}
+
+func (s *Service) GetCourseByWeeks(ctx context.Context, req UserCourseReq) (*JWCommonResp, error) {
+	if s.jwClient == nil {
+		return nil, fmt.Errorf("jw client not initialized")
+	}
+	return s.jwClient.GetCourseByWeeks(ctx, req.StartDate, req.Week, JWGetCourseReq{
+		Term:     req.Term,
+		SchoolID: req.SchoolID,
+		Password: req.Password,
+	})
+}
+
+func (s *Service) GetExam(ctx context.Context, req ExamReq) (*JWCommonResp, error) {
+	if s.jwClient == nil {
+		return nil, fmt.Errorf("jw client not initialized")
+	}
+	return s.jwClient.GetExam(ctx, JWGetExamReq{
+		SchoolID: req.SchoolID,
+		Password: req.Password,
+		XNXQID:   req.XNXQID,
+	})
+}
+
+func (s *Service) GetExamScore(ctx context.Context, req ExamScoreReq) (*JWCommonResp, error) {
+	if s.jwClient == nil {
+		return nil, fmt.Errorf("jw client not initialized")
+	}
+	return s.jwClient.GetExamScore(ctx, JWGetExamScoreReq{
+		SchoolID: req.SchoolID,
+		Password: req.Password,
+		SS:       req.SS,
+	})
+}
+
+func (s *Service) OfficialLogin(ctx context.Context, loginAccount, loginPassword string) (string, string, *User, error) {
+	encPwd, err := s.encryptAES(loginPassword)
 	if err != nil {
-		return false, err
-	}
-	if u == nil {
-		return false, ErrUserNotFound
-	}
-	return u.StuIsCheck, nil
-}
-
-func (s *Service) GetCourseByWeeks(ctx context.Context, userID int64, term string, weeks []int) ([]map[string]interface{}, error) {
-	_ = ctx
-	_ = userID
-	_ = term
-	_ = weeks
-	return []map[string]interface{}{}, nil
-}
-
-func (s *Service) GetExam(ctx context.Context, userID int64) ([]map[string]interface{}, error) {
-	_ = ctx
-	_ = userID
-	return []map[string]interface{}{}, nil
-}
-
-func (s *Service) GetExamScore(ctx context.Context, userID int64) ([]map[string]interface{}, error) {
-	_ = ctx
-	_ = userID
-	return []map[string]interface{}{}, nil
-}
-
-func (s *Service) OfficialLogin(ctx context.Context, username, password string) (string, string, *User, error) {
-	if username == "" || password == "" {
-		return "", "", nil, result.ErrParam
-	}
-	encPwd := password
-	if s.cfg != nil && s.cfg.Encryption.Key != "" {
-		if v, err := encrypt.AESEncrypt(password, s.cfg.Encryption.Key); err == nil {
-			encPwd = v
-		}
+		return "", "", nil, err
 	}
 
-	var u User
-	err := s.db.WithContext(ctx).Where("stuNum = ? AND accountType = ?", username, "official").First(&u).Error
+	var user User
+	err = s.db.WithContext(ctx).
+		Where("stuNum = ? AND stuPwd = ?", loginAccount, encPwd).
+		First(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return "", "", nil, ErrUserNotFound
+		return "", "", nil, result.NewBizError(result.CodeFail, "登录账号或密码错误")
 	}
 	if err != nil {
 		return "", "", nil, fmt.Errorf("query official user: %w", err)
 	}
-	if u.StuPwd != encPwd {
-		return "", "", nil, errors.New("账号或密码错误")
+	if !strings.HasPrefix(user.OpenID, "official:") {
+		return "", "", nil, result.NewBizError(result.CodeFail, "该账号不是官方账号")
 	}
 
-	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(&jwtutil.TokenUser{
-		ID:          u.ID,
-		OpenID:      u.OpenID,
-		Power:       u.Power,
-		AccountType: u.AccountType,
-		RootUserID:  u.RootUserID,
-	})
+	rootUser, err := s.getRootUser(ctx, &user)
 	if err != nil {
 		return "", "", nil, err
 	}
-	u.StuPwd = ""
-	return token, refreshToken, &u, nil
+	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildTokenUser(&user, rootUser))
+	if err != nil {
+		return "", "", nil, result.NewBizError(result.CodeFail, "登录失败，请重试")
+	}
+	return token, refreshToken, s.sanitizeUser(&user), nil
 }
 
-func (s *Service) SubmitOfficialCertification(ctx context.Context, userID int64, name, reason string) error {
-	doc := OfficialCertification{
-		UserID:    strconv.FormatInt(userID, 10),
-		Name:      name,
-		Reason:    reason,
-		Status:    0,
-		CreatedAt: time.Now(),
+func (s *Service) SubmitOfficialCertification(ctx context.Context, req OfficialCertReq) (*OfficialCertification, error) {
+	exists, err := s.mongoDB.Collection("campus_official_certification").CountDocuments(
+		ctx,
+		map[string]interface{}{"loginAccount": req.LoginAccount},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("check official certification account: %w", err)
 	}
-	if _, err := s.mongoDB.Collection("campus_official_certification").InsertOne(ctx, doc); err != nil {
-		return fmt.Errorf("insert official certification: %w", err)
+	if exists > 0 {
+		return nil, result.NewBizError(result.CodeFail, "该登录账号已被申请，请使用其他账号")
 	}
-	return nil
+
+	var existingUser User
+	err = s.db.WithContext(ctx).Where("stuNum = ?", req.LoginAccount).First(&existingUser).Error
+	if err == nil {
+		return nil, result.NewBizError(result.CodeFail, "该登录账号已被使用，请使用其他账号")
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("check existing official login account: %w", err)
+	}
+
+	encryptedPassword, err := s.encryptAES(req.LoginPassword)
+	if err != nil {
+		return nil, result.NewBizError(result.CodeFail, "提交失败，密码加密异常")
+	}
+
+	now := time.Now()
+	doc := &OfficialCertification{
+		AvatarURL:         req.AvatarURL,
+		FullName:          req.FullName,
+		ShortName:         req.ShortName,
+		Nature:            req.Nature,
+		Introduction:      req.Introduction,
+		ResponsiblePerson: req.ResponsiblePerson,
+		WechatAccount:     req.WechatAccount,
+		LoginAccount:      req.LoginAccount,
+		LoginPassword:     encryptedPassword,
+		Status:            certificationStatusPending,
+		RejectReason:      "",
+		ReviewedBy:        0,
+		ReviewedAt:        nil,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+
+	res, err := s.mongoDB.Collection("campus_official_certification").InsertOne(ctx, doc)
+	if err != nil {
+		return nil, fmt.Errorf("insert official certification: %w", err)
+	}
+	if oid, ok := res.InsertedID.(primitive.ObjectID); ok {
+		doc.ID = oid
+	}
+	return doc, nil
 }
 
 func (s *Service) GenerateUnlimitedWXACode(ctx context.Context, scene, page string) ([]byte, error) {
@@ -153,4 +228,49 @@ func (s *Service) GenerateUnlimitedWXACode(ctx context.Context, scene, page stri
 		return nil, fmt.Errorf("generate unlimited wxa code: %w", err)
 	}
 	return data, nil
+}
+
+func (s *Service) checkJWLogin(ctx context.Context, schoolID, password string) (*JWLoginData, error) {
+	if s.jwClient == nil {
+		return nil, fmt.Errorf("jw client not initialized")
+	}
+	resp, err := s.jwClient.CheckLogin(ctx, schoolID, password)
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil {
+		return nil, result.NewBizError(result.CodeFail, "登陆失败")
+	}
+	if resp.Code != 200 {
+		return nil, result.NewBizError(result.CodeFail, resp.Message)
+	}
+
+	dataMap, err := toJWLoginData(resp.Data)
+	if err != nil {
+		return nil, fmt.Errorf("decode jw login response: %w", err)
+	}
+	return dataMap, nil
+}
+
+func (s *Service) encryptAES(raw string) (string, error) {
+	if s.cfg == nil || strings.TrimSpace(s.cfg.Encryption.Key) == "" {
+		return raw, nil
+	}
+	encrypted, err := encrypt.AESEncrypt(raw, s.cfg.Encryption.Key)
+	if err != nil {
+		return "", fmt.Errorf("encrypt password: %w", err)
+	}
+	return encrypted, nil
+}
+
+func toJWLoginData(data interface{}) (*JWLoginData, error) {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	var out JWLoginData
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
 }

@@ -27,6 +27,12 @@ func (c *Consumers) handleTopicUpdate(ctx context.Context, data json.RawMessage)
 	if msg.Avatar != "" {
 		update["avatar"] = msg.Avatar
 	}
+	if msg.Gender != "" {
+		update["gender"] = msg.Gender
+	}
+	if msg.Signature != "" {
+		update["signature"] = msg.Signature
+	}
 	if msg.AccountType > 0 {
 		update["accountType"] = msg.AccountType
 	}
@@ -59,6 +65,12 @@ func (c *Consumers) handleCommentUpdate(ctx context.Context, data json.RawMessag
 	}
 	if msg.Avatar != "" {
 		userSet["user.avatar"] = msg.Avatar
+	}
+	if msg.Gender != "" {
+		userSet["user.gender"] = msg.Gender
+	}
+	if msg.Signature != "" {
+		userSet["user.signature"] = msg.Signature
 	}
 	if msg.AccountType > 0 {
 		userSet["user.accountType"] = msg.AccountType

@@ -41,6 +41,7 @@ type Service struct {
 	logger    *zap.Logger
 	jwtHelper *jwtutil.Helper
 	wxClient  *wxutil.Client
+	jwClient  *JWClient
 	producer  *mq.Producer
 }
 
@@ -60,6 +61,7 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 	if cfg != nil {
 		s.jwtHelper = jwtutil.NewHelper(cfg.JWT, rds)
 		s.wxClient = wxutil.NewClient(cfg.WX, logger)
+		s.jwClient = NewJWClient(cfg, logger)
 	}
 
 	return s
@@ -86,6 +88,7 @@ func (s *Service) GetByID(ctx context.Context, id int64) (*User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get user by id %d: %w", id, err)
 	}
+	s.ensureUserDefaults(&u)
 	return &u, nil
 }
 
@@ -98,23 +101,17 @@ func (s *Service) GetByOpenID(ctx context.Context, openID string) (*User, error)
 	if err != nil {
 		return nil, fmt.Errorf("get user by openid %s: %w", openID, err)
 	}
+	s.ensureUserDefaults(&u)
 	return &u, nil
 }
 
-func (s *Service) Edit(ctx context.Context, userID int64, req *User) error {
-	if req == nil {
-		return result.ErrParam
-	}
-
+func (s *Service) Edit(ctx context.Context, userID int64, req UserEditReq) (*User, error) {
 	updates := map[string]interface{}{}
 	if req.Nickname != "" {
 		updates["nickname"] = req.Nickname
 	}
 	if req.Avatar != "" {
 		updates["avatar"] = req.Avatar
-	}
-	if req.Tag != "" {
-		updates["tag"] = req.Tag
 	}
 	if req.Gender != "" {
 		updates["gender"] = req.Gender
@@ -123,23 +120,29 @@ func (s *Service) Edit(ctx context.Context, userID int64, req *User) error {
 		updates["signature"] = req.Signature
 	}
 	if len(updates) == 0 {
-		return nil
+		return s.sanitizeUserByID(ctx, userID)
 	}
 
 	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
-		return fmt.Errorf("edit user %d: %w", userID, err)
+		return nil, fmt.Errorf("edit user %d: %w", userID, err)
+	}
+
+	user, err := s.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrUserNotFound
 	}
 
 	if s.producer != nil {
-		accountType := 0
-		if req.AccountType != "" {
-			accountType = mapAccountType(req.AccountType)
-		}
 		msg := mq.TopicUserUpdateMsg{
 			UserID:      strconv.FormatInt(userID, 10),
 			NickName:    req.Nickname,
 			Avatar:      req.Avatar,
-			AccountType: accountType,
+			Gender:      req.Gender,
+			Signature:   req.Signature,
+			AccountType: mapAccountType(user.AccountType),
 		}
 		if err := s.producer.SendUpdateTopicUser(ctx, msg); err != nil {
 			s.logger.Warn("send topic user update mq failed", zap.Error(err), zap.Int64("userID", userID))
@@ -149,21 +152,21 @@ func (s *Service) Edit(ctx context.Context, userID int64, req *User) error {
 			s.logger.Warn("send comment user update mq failed", zap.Error(err), zap.Int64("userID", userID))
 		}
 	}
-	return nil
+	return s.sanitizeUser(user), nil
 }
 
-func (s *Service) WechatLogin(ctx context.Context, code string) (string, string, *User, bool, error) {
+func (s *Service) WechatLogin(ctx context.Context, code string) (string, string, *User, *User, bool, error) {
 	if s.wxClient == nil || s.jwtHelper == nil {
-		return "", "", nil, false, errors.New("user service dependencies not initialized")
+		return "", "", nil, nil, false, errors.New("user service dependencies not initialized")
 	}
 	resp, err := s.wxClient.Jscode2Session(ctx, code)
 	if err != nil {
-		return "", "", nil, false, fmt.Errorf("wx jscode2session: %w", err)
+		return "", "", nil, nil, false, fmt.Errorf("wx jscode2session: %w", err)
 	}
 
 	u, err := s.GetByOpenID(ctx, resp.OpenID)
 	if err != nil {
-		return "", "", nil, false, err
+		return "", "", nil, nil, false, err
 	}
 
 	isNew := false
@@ -171,43 +174,52 @@ func (s *Service) WechatLogin(ctx context.Context, code string) (string, string,
 		isNew = true
 		u = &User{
 			OpenID:      resp.OpenID,
-			Nickname:    s.randomNickname(),
+			Nickname:    randomHumorousID(),
 			Avatar:      s.pickDefaultAvatar(),
 			Power:       0,
-			AccountType: "base",
+			AccountType: accountTypeBase,
 			Tag:         "student",
 			Gender:      "保密",
+			CreatedBy:   0,
+			UpdatedBy:   0,
 		}
 
 		if err := s.db.WithContext(ctx).Create(u).Error; err != nil {
-			return "", "", nil, false, fmt.Errorf("create user: %w", err)
+			return "", "", nil, nil, false, fmt.Errorf("create user: %w", err)
 		}
 		u.RootUserID = u.ID
-		if err := s.db.WithContext(ctx).Model(u).Update("rootUserId", u.ID).Error; err != nil {
-			return "", "", nil, false, fmt.Errorf("update root user id: %w", err)
+		u.LastSwitchID = &u.ID
+		if err := s.db.WithContext(ctx).Model(u).Updates(map[string]interface{}{
+			"rootUserId":   u.ID,
+			"lastSwitchId": u.ID,
+			"accountType":  accountTypeBase,
+		}).Error; err != nil {
+			return "", "", nil, nil, false, fmt.Errorf("update root user id: %w", err)
 		}
 	}
 
-	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(&jwtutil.TokenUser{
-		ID:          u.ID,
-		OpenID:      u.OpenID,
-		Power:       u.Power,
-		AccountType: u.AccountType,
-		RootUserID:  u.RootUserID,
-	})
+	rootUser, err := s.getRootUser(ctx, u)
 	if err != nil {
-		return "", "", nil, false, fmt.Errorf("generate token pair: %w", err)
+		return "", "", nil, nil, false, err
+	}
+	activeIdentity, err := s.resolveActiveIdentity(ctx, rootUser)
+	if err != nil {
+		return "", "", nil, nil, false, err
+	}
+
+	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildTokenUser(activeIdentity, rootUser))
+	if err != nil {
+		return "", "", nil, nil, false, fmt.Errorf("generate token pair: %w", err)
 	}
 
 	if s.redis != nil {
 		today := time.Now().Format("20060102")
-		if err := s.redis.PFAdd(ctx, rediskey.ActiveDay(today), u.ID).Err(); err != nil {
-			s.logger.Warn("record active user failed", zap.Error(err), zap.Int64("userID", u.ID))
+		if err := s.redis.PFAdd(ctx, rediskey.ActiveDay(today), rootUser.ID).Err(); err != nil {
+			s.logger.Warn("record active user failed", zap.Error(err), zap.Int64("userID", rootUser.ID))
 		}
 	}
 
-	u.StuPwd = ""
-	return token, refreshToken, u, isNew, nil
+	return token, refreshToken, s.sanitizeUser(rootUser), s.sanitizeUser(activeIdentity), isNew, nil
 }
 
 func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (string, string, *User, error) {
@@ -247,25 +259,16 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (string
 	if u == nil {
 		return "", "", nil, ErrUserNotFound
 	}
-
-	token, newRefreshToken, err := s.jwtHelper.GenerateTokenPair(&jwtutil.TokenUser{
-		ID:          u.ID,
-		OpenID:      u.OpenID,
-		Power:       u.Power,
-		AccountType: u.AccountType,
-		RootUserID:  u.RootUserID,
-	})
+	rootUser, err := s.getRootUser(ctx, u)
 	if err != nil {
 		return "", "", nil, err
 	}
-	u.StuPwd = ""
-	return token, newRefreshToken, u, nil
-}
 
-func (s *Service) randomNickname() string {
-	prefix := "用户"
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	return fmt.Sprintf("%s%06d", prefix, r.Intn(1000000))
+	token, newRefreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildTokenUser(u, rootUser))
+	if err != nil {
+		return "", "", nil, err
+	}
+	return token, newRefreshToken, s.sanitizeUser(u), nil
 }
 
 func (s *Service) pickDefaultAvatar() string {
@@ -294,9 +297,9 @@ func sha1Hex(s string) string {
 
 func mapAccountType(accountType string) int {
 	switch accountType {
-	case "official":
+	case accountTypeOfficial:
 		return 2
-	case "anonymous":
+	case accountTypeAnonymous:
 		return 3
 	default:
 		return 1

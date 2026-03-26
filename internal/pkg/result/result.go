@@ -16,6 +16,19 @@ type Result struct {
 	Data    interface{} `json:"data"`
 }
 
+type BizError struct {
+	Status int
+	Code   int
+	Msg    string
+}
+
+func (e *BizError) Error() string {
+	if e == nil {
+		return ""
+	}
+	return e.Msg
+}
+
 const (
 	CodeSuccess         = 200
 	CodeData            = 0
@@ -35,6 +48,9 @@ const (
 	CodeRTKNotExisted   = 10006
 	CodeRTKUsed         = 10007
 	CodeRTKError        = 10008
+	CodeFollowSelf      = 1001
+	CodeFollowRepeat    = 1002
+	CodeFollowNotFollow = 1003
 )
 
 var (
@@ -55,12 +71,7 @@ var (
 )
 
 func Success(c *gin.Context, data interface{}) {
-	c.JSON(http.StatusOK, Result{
-		Success: true,
-		Code:    CodeSuccess,
-		Msg:     "成功",
-		Data:    normalizeData(data),
-	})
+	Write(c, http.StatusOK, true, CodeSuccess, "成功", data)
 }
 
 func Fail(c *gin.Context, code int, msg string) {
@@ -68,21 +79,44 @@ func Fail(c *gin.Context, code int, msg string) {
 }
 
 func FailWithStatus(c *gin.Context, status int, code int, msg string) {
-	c.JSON(status, Result{
-		Success: false,
-		Code:    code,
-		Msg:     msg,
-		Data:    nil,
-	})
+	Write(c, status, false, code, msg, nil)
 }
 
 func Data(c *gin.Context, data interface{}) {
-	c.JSON(http.StatusOK, Result{
-		Success: true,
-		Code:    CodeData,
-		Msg:     "",
+	Write(c, http.StatusOK, true, CodeData, "", data)
+}
+
+func SuccessMsg(c *gin.Context, msg string, data interface{}) {
+	Write(c, http.StatusOK, true, CodeSuccess, msg, data)
+}
+
+func SuccessCodeMsg(c *gin.Context, code int, msg string, data interface{}) {
+	Write(c, http.StatusOK, true, code, msg, data)
+}
+
+func Write(c *gin.Context, status int, success bool, code int, msg string, data interface{}) {
+	c.JSON(status, Result{
+		Success: success,
+		Code:    code,
+		Msg:     msg,
 		Data:    normalizeData(data),
 	})
+}
+
+func NewBizError(code int, msg string) error {
+	return &BizError{
+		Status: http.StatusOK,
+		Code:   code,
+		Msg:    msg,
+	}
+}
+
+func NewBizStatusError(status, code int, msg string) error {
+	return &BizError{
+		Status: status,
+		Code:   code,
+		Msg:    msg,
+	}
 }
 
 func BindJSON(c *gin.Context, obj interface{}) bool {
@@ -101,6 +135,9 @@ func HandleError(c *gin.Context, err error) {
 	switch {
 	case err == nil:
 		Success(c, nil)
+	case asBizError(err) != nil:
+		bizErr := asBizError(err)
+		Write(c, bizErr.Status, false, bizErr.Code, bizErr.Msg, nil)
 	case errors.Is(err, ErrParam):
 		Fail(c, CodeParamError, err.Error())
 	case errors.Is(err, ErrIDZero):
@@ -132,6 +169,14 @@ func HandleError(c *gin.Context, err error) {
 	default:
 		Fail(c, CodeUnknownError, "系统错误")
 	}
+}
+
+func asBizError(err error) *BizError {
+	var bizErr *BizError
+	if errors.As(err, &bizErr) {
+		return bizErr
+	}
+	return nil
 }
 
 func normalizeData(data interface{}) interface{} {

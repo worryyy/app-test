@@ -3,167 +3,202 @@ package user
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
-	"gorm.io/gorm"
 )
 
-func (s *Service) CreateAnonymousIdentity(ctx context.Context, currentUserID int64, nickname string) (*User, error) {
-	baseUser, err := s.GetByID(ctx, currentUserID)
+func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64) (*IdentityVO, error) {
+	rootUser, err := s.GetByID(ctx, rootUserID)
 	if err != nil {
 		return nil, err
 	}
-	if baseUser == nil {
+	if rootUser == nil {
 		return nil, ErrUserNotFound
 	}
+	s.ensureUserDefaults(rootUser)
 
-	rootID := baseUser.RootUserID
-	if rootID == 0 {
-		rootID = baseUser.ID
+	existing, err := s.getIdentityByType(ctx, rootUser.ID, accountTypeAnonymous)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return nil, result.NewBizError(result.CodeFail, "匿名身份已存在，无法重复创建")
 	}
 
-	if nickname == "" {
-		nickname = s.randomNickname()
+	anonymous := &User{
+		Avatar:       s.defaultAnonymousAvatar(),
+		CreatedBy:    rootUser.ID,
+		UpdatedBy:    rootUser.ID,
+		Nickname:     randomAnonymousID(),
+		OpenID:       fmt.Sprintf("%s:anon:%d", rootUser.OpenID, rootUser.ID),
+		Power:        0,
+		AccountType:  accountTypeAnonymous,
+		RootUserID:   rootUser.ID,
+		StuIsCheck:   true,
+		Tag:          rootUser.Tag,
+		Gender:       rootUser.Gender,
+		Signature:    "",
+		LastSwitchID: nil,
 	}
 
-	u := &User{
-		OpenID:      baseUser.OpenID,
-		Nickname:    nickname,
-		Avatar:      s.cfg.Custom.DefaultAnonymousAvatar,
-		Power:       baseUser.Power,
-		AccountType: "anonymous",
-		Tag:         baseUser.Tag,
-		Gender:      baseUser.Gender,
-		RootUserID:  rootID,
-	}
-
-	if err := s.db.WithContext(ctx).Create(u).Error; err != nil {
+	if err := s.db.WithContext(ctx).Create(anonymous).Error; err != nil {
 		return nil, fmt.Errorf("create anonymous identity: %w", err)
 	}
-	u.StuPwd = ""
-	return u, nil
-}
-
-func (s *Service) UpdateAnonymousNickname(ctx context.Context, userID int64, nickname string) error {
-	if nickname == "" {
-		return nil
-	}
+	anonymous.LastSwitchID = &anonymous.ID
 	if err := s.db.WithContext(ctx).
 		Model(&User{}).
-		Where("id = ? AND accountType = ?", userID, "anonymous").
-		Update("nickname", nickname).Error; err != nil {
+		Where("id = ?", anonymous.ID).
+		Update("lastSwitchId", anonymous.ID).Error; err != nil {
+		return nil, fmt.Errorf("update anonymous last switch id: %w", err)
+	}
+
+	return buildIdentityVO(anonymous), nil
+}
+
+func (s *Service) UpdateAnonymousNickname(ctx context.Context, rootUserID int64, nickname string) error {
+	if nickname == "" {
+		return result.ErrParam
+	}
+
+	rootUser, err := s.GetByID(ctx, rootUserID)
+	if err != nil {
+		return err
+	}
+	if rootUser == nil {
+		return ErrUserNotFound
+	}
+
+	anonymous, err := s.getIdentityByType(ctx, rootUserID, accountTypeAnonymous)
+	if err != nil {
+		return err
+	}
+	if anonymous == nil {
+		return result.NewBizError(result.CodeFail, "匿名身份不存在")
+	}
+
+	if !anonymous.UpdatedAt.IsZero() {
+		hoursSinceUpdate := int(time.Since(anonymous.UpdatedAt).Hours())
+		if hoursSinceUpdate < anonymousNicknameUpdateHourLimit {
+			return result.NewBizError(
+				result.CodeFail,
+				fmt.Sprintf("昵称修改还需等待 %d 小时", anonymousNicknameUpdateHourLimit-hoursSinceUpdate),
+			)
+		}
+	}
+
+	if err := s.db.WithContext(ctx).
+		Model(&User{}).
+		Where("id = ?", anonymous.ID).
+		Updates(map[string]interface{}{
+			"nickname":  nickname,
+			"updatedBy": rootUser.ID,
+		}).Error; err != nil {
 		return fmt.Errorf("update anonymous nickname: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) ListIdentities(ctx context.Context, currentUserID int64) ([]User, error) {
-	current, err := s.GetByID(ctx, currentUserID)
+func (s *Service) ListIdentities(ctx context.Context, rootUserID int64) (*IdentityListResp, error) {
+	rootUser, err := s.GetByID(ctx, rootUserID)
 	if err != nil {
 		return nil, err
 	}
-	if current == nil {
+	if rootUser == nil {
 		return nil, ErrUserNotFound
 	}
 
-	rootID := current.RootUserID
-	if rootID == 0 {
-		rootID = current.ID
-	}
-
 	var users []User
-	if err := s.db.WithContext(ctx).Where("rootUserId = ?", rootID).Order("id ASC").Find(&users).Error; err != nil {
+	if err := s.db.WithContext(ctx).
+		Where("rootUserId = ?", rootUserID).
+		Order("id ASC").
+		Find(&users).Error; err != nil {
 		return nil, fmt.Errorf("list identities: %w", err)
 	}
+
+	identities := make([]*IdentityVO, 0, len(users))
+	hasAnonymous := false
 	for i := range users {
-		users[i].StuPwd = ""
+		s.ensureUserDefaults(&users[i])
+		identities = append(identities, buildIdentityVO(&users[i]))
+		if users[i].AccountType == accountTypeAnonymous {
+			hasAnonymous = true
+		}
 	}
-	return users, nil
+
+	return &IdentityListResp{
+		RootUserID:   rootUserID,
+		Identities:   identities,
+		HasAnonymous: hasAnonymous,
+	}, nil
 }
 
-func (s *Service) SwitchIdentity(ctx context.Context, currentUserID, targetUserID int64) (string, string, *User, int64, error) {
+func (s *Service) SwitchIdentity(ctx context.Context, rootID int64, targetUserID int64) (string, string, *User, int64, error) {
 	if s.jwtHelper == nil {
 		return "", "", nil, 0, fmt.Errorf("jwt helper not initialized")
 	}
 
-	current, err := s.GetByID(ctx, currentUserID)
+	rootUser, err := s.GetByID(ctx, rootID)
 	if err != nil {
 		return "", "", nil, 0, err
 	}
-	target, err := s.GetByID(ctx, targetUserID)
+	targetUser, err := s.GetByID(ctx, targetUserID)
 	if err != nil {
 		return "", "", nil, 0, err
 	}
-	if current == nil || target == nil {
+	if rootUser == nil || targetUser == nil {
 		return "", "", nil, 0, ErrUserNotFound
 	}
-
-	curRoot := current.RootUserID
-	if curRoot == 0 {
-		curRoot = current.ID
-	}
-	targetRoot := target.RootUserID
-	if targetRoot == 0 {
-		targetRoot = target.ID
-	}
-	if curRoot != targetRoot {
+	if rootUserID(targetUser) != rootUser.ID {
 		return "", "", nil, 0, ErrIdentityDenied
 	}
 
-	current.LastSwitchID = &target.ID
-	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", current.ID).Update("lastSwitchId", target.ID).Error; err != nil {
-		return "", "", nil, 0, fmt.Errorf("update last switch id: %w", err)
+	if err := s.persistLastSwitch(ctx, rootUser.ID, targetUser.ID); err != nil {
+		return "", "", nil, 0, err
 	}
-
-	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(&jwtutil.TokenUser{
-		ID:          target.ID,
-		OpenID:      target.OpenID,
-		Power:       target.Power,
-		AccountType: target.AccountType,
-		RootUserID:  target.RootUserID,
-	})
+	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildTokenUser(targetUser, rootUser))
 	if err != nil {
 		return "", "", nil, 0, err
 	}
-	target.StuPwd = ""
-	return token, refreshToken, target, curRoot, nil
+	return token, refreshToken, s.sanitizeUser(targetUser), rootUser.ID, nil
 }
 
-func (s *Service) SwitchIdentityByAccountType(ctx context.Context, currentUserID int64, accountType string) (string, string, *User, int64, error) {
-	current, err := s.GetByID(ctx, currentUserID)
+func (s *Service) SwitchIdentityByAccountType(
+	ctx context.Context,
+	rootUserID int64,
+	accountType string,
+) (string, string, *User, int64, error) {
+	rootUser, err := s.GetByID(ctx, rootUserID)
 	if err != nil {
 		return "", "", nil, 0, err
 	}
-	if current == nil {
+	if rootUser == nil {
 		return "", "", nil, 0, ErrUserNotFound
 	}
 
-	rootID := rootUserID(current)
-	target := current
 	if accountType == "" {
 		return "", "", nil, 0, result.ErrParam
 	}
-	if accountType == "base" {
-		if current.ID != rootID {
-			target, err = s.GetByID(ctx, rootID)
-			if err != nil {
-				return "", "", nil, 0, err
-			}
-		}
-	} else {
-		err = s.db.WithContext(ctx).
-			Where("rootUserId = ? AND accountType = ?", rootID, accountType).
-			First(&target).Error
-		if err != nil {
-			if err == gorm.ErrRecordNotFound {
-				return "", "", nil, 0, result.ErrNotExisted
-			}
-			return "", "", nil, 0, fmt.Errorf("find identity by account type: %w", err)
-		}
+	if accountType != accountTypeBase && accountType != accountTypeAnonymous && accountType != accountTypeOfficial {
+		return "", "", nil, 0, result.NewBizError(result.CodeFail, "account_type 非法")
 	}
-	if target == nil {
-		return "", "", nil, 0, result.ErrNotExisted
+	if accountType == accountTypeBase {
+		return s.SwitchIdentity(ctx, rootUser.ID, rootUser.ID)
 	}
-	return s.SwitchIdentity(ctx, currentUserID, target.ID)
+
+	targetUser, err := s.getIdentityByType(ctx, rootUser.ID, accountType)
+	if err != nil {
+		return "", "", nil, 0, err
+	}
+	if targetUser == nil {
+		return "", "", nil, 0, result.NewBizError(result.CodeFail, "目标身份不存在，请先创建")
+	}
+	return s.SwitchIdentity(ctx, rootUser.ID, targetUser.ID)
+}
+
+func (s *Service) defaultAnonymousAvatar() string {
+	if s.cfg == nil {
+		return ""
+	}
+	return s.cfg.Custom.DefaultAnonymousAvatar
 }

@@ -9,14 +9,14 @@ import (
 
 type User struct {
 	ID           int64          `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	OpenID       string         `gorm:"column:openId" json:"openId"`
+	OpenID       string         `gorm:"column:openId" json:"-"`
 	Nickname     string         `gorm:"column:nickname" json:"nickname"`
 	Avatar       string         `gorm:"column:avatar" json:"avatar"`
 	Power        int            `gorm:"column:power" json:"power"`
 	AccountType  string         `gorm:"column:accountType;default:base" json:"accountType"`
 	StuNum       string         `gorm:"column:stuNum" json:"stuNum"`
 	StuName      string         `gorm:"column:stuName" json:"stuName"`
-	StuPwd       string         `gorm:"column:stuPwd" json:"-"`
+	StuPwd       string         `gorm:"column:stuPwd" json:"stuPwd"`
 	StuCla       string         `gorm:"column:stuCla" json:"stuCla"`
 	StuIsCheck   bool           `gorm:"column:stuIsCheck" json:"stuIsCheck"`
 	School       string         `gorm:"column:school" json:"school"`
@@ -25,10 +25,10 @@ type User struct {
 	RootUserID   int64          `gorm:"column:rootUserId" json:"rootUserId"`
 	LastSwitchID *int64         `gorm:"column:lastSwitchId" json:"lastSwitchId"`
 	Signature    string         `gorm:"column:signature" json:"signature"`
-	CreatedAt    time.Time      `gorm:"column:createdAt;autoCreateTime" json:"createdAt"`
-	CreatedBy    int64          `gorm:"column:createdBy" json:"createdBy"`
-	UpdatedAt    time.Time      `gorm:"column:updatedAt;autoUpdateTime" json:"updatedAt"`
-	UpdatedBy    int64          `gorm:"column:updatedBy" json:"updatedBy"`
+	CreatedAt    time.Time      `gorm:"column:createdAt;autoCreateTime" json:"-"`
+	CreatedBy    int64          `gorm:"column:createdBy" json:"-"`
+	UpdatedAt    time.Time      `gorm:"column:updatedAt;autoUpdateTime" json:"-"`
+	UpdatedBy    int64          `gorm:"column:updatedBy" json:"-"`
 	DeletedAt    gorm.DeletedAt `gorm:"column:deletedAt" json:"-"`
 	DeletedBy    int64          `gorm:"column:deletedBy" json:"-"`
 }
@@ -64,25 +64,26 @@ type UserBlacklist struct {
 }
 
 type OfficialCertification struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID    string             `bson:"userId" json:"userId"`
-	Name      string             `bson:"name" json:"name"`
-	Reason    string             `bson:"reason" json:"reason"`
-	Status    int                `bson:"status" json:"status"`
-	CreatedAt time.Time          `bson:"createdAt" json:"createdAt"`
+	ID                primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	AvatarURL         string             `bson:"avatarUrl" json:"avatarUrl"`
+	FullName          string             `bson:"fullName" json:"fullName"`
+	ShortName         string             `bson:"shortName" json:"shortName"`
+	Nature            string             `bson:"nature" json:"nature"`
+	Introduction      string             `bson:"introduction" json:"introduction"`
+	ResponsiblePerson string             `bson:"responsiblePerson" json:"responsiblePerson"`
+	WechatAccount     string             `bson:"wechatAccount" json:"wechatAccount"`
+	LoginAccount      string             `bson:"loginAccount" json:"loginAccount"`
+	LoginPassword     string             `bson:"loginPassword" json:"loginPassword"`
+	Status            string             `bson:"status" json:"status"`
+	RejectReason      string             `bson:"rejectReason" json:"rejectReason"`
+	ReviewedBy        int64              `bson:"reviewedBy" json:"reviewedBy"`
+	ReviewedAt        *time.Time         `bson:"reviewedAt" json:"reviewedAt"`
+	CreatedAt         time.Time          `bson:"createdAt" json:"createdAt"`
+	UpdatedAt         time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
 type AdminLoginReq struct {
 	Username          string `json:"username" binding:"required"`
 	Password          string `json:"password" binding:"required"`
 	SecondaryPassword string `json:"secondaryPassword" binding:"required"`
-}
-
-type UserProfile struct {
-	User
-	FollowerCount  int64 `json:"followerCount"`
-	FollowingCount int64 `json:"followingCount"`
-	LikeCount      int64 `json:"likeCount"`
-	TopicCount     int64 `json:"topicCount"`
-	IsFollowing    bool  `json:"isFollowing"`
 }

@@ -6,12 +6,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/encrypt"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
@@ -32,15 +32,15 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 		return "", "", nil, fmt.Errorf("check admin lock: %w", err)
 	}
 	if locked > 0 {
-		return "", "", nil, errors.New("账号已锁定，请明天后再试")
+		return "", "", nil, result.NewBizError(result.CodeFail, "账号已锁定，请明天后再试")
 	}
 
-	if s.cfg != nil && s.cfg.Admin.SecondaryPassword != "" && req.SecondaryPassword != s.cfg.Admin.SecondaryPassword {
+	if req.SecondaryPassword != s.adminSecondaryPassword() {
 		remaining, countErr := s.handleLoginFail(ctx, failCountKey, lockKey)
 		if countErr != nil {
 			return "", "", nil, countErr
 		}
-		return "", "", nil, fmt.Errorf("二级密码错误，今日还有 %d 次机会", remaining)
+		return "", "", nil, result.NewBizError(result.CodeFail, fmt.Sprintf("二级密码错误，今日还有 %d 次机会", remaining))
 	}
 
 	var admin Admin
@@ -55,7 +55,7 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 			if countErr != nil {
 				return "", "", nil, countErr
 			}
-			return "", "", nil, fmt.Errorf("账号或密码错误，今日还有 %d 次机会", remaining)
+			return "", "", nil, result.NewBizError(result.CodeFail, fmt.Sprintf("账号或密码错误，今日还有 %d 次机会", remaining))
 		}
 		admin, err = s.migrateLegacyAdmin(ctx, legacyUser, req.Username, req.Password)
 		if err != nil {
@@ -70,7 +70,7 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 		if countErr != nil {
 			return "", "", nil, countErr
 		}
-		return "", "", nil, fmt.Errorf("账号或密码错误，今日还有 %d 次机会", remaining)
+		return "", "", nil, result.NewBizError(result.CodeFail, fmt.Sprintf("账号或密码错误，今日还有 %d 次机会", remaining))
 	}
 
 	u, err := s.GetByID(ctx, admin.UserID)
@@ -78,26 +78,23 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 		return "", "", nil, err
 	}
 	if u == nil {
-		return "", "", nil, errors.New("管理员关联用户不存在")
+		return "", "", nil, result.NewBizError(result.CodeFail, "管理员关联用户不存在或已失效")
 	}
 
 	if err := s.redis.Del(ctx, failCountKey).Err(); err != nil {
 		return "", "", nil, fmt.Errorf("clear admin fail count: %w", err)
 	}
 
-	u.Power = admin.Power
-	u.StuPwd = ""
-	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(&jwtutil.TokenUser{
-		ID:          u.ID,
-		OpenID:      u.OpenID,
-		Power:       u.Power,
-		AccountType: u.AccountType,
-		RootUserID:  u.RootUserID,
-	})
+	u.Power = resolveAdminPower(admin.Power)
+	rootUser, err := s.getRootUser(ctx, u)
 	if err != nil {
 		return "", "", nil, err
 	}
-	return token, refreshToken, u, nil
+	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildTokenUser(u, rootUser))
+	if err != nil {
+		return "", "", nil, err
+	}
+	return token, refreshToken, s.sanitizeUser(u), nil
 }
 
 func (s *Service) handleLoginFail(ctx context.Context, failCountKey, lockKey string) (int, error) {
@@ -158,13 +155,24 @@ func (s *Service) migrateLegacyAdmin(ctx context.Context, u *User, username, raw
 }
 
 func resolveAdminPower(power int) int {
-	if power >= 999 {
-		return 999
+	if power <= 0 {
+		return 2
 	}
-	return 2
+	return power
 }
 
 func md5Hex(s string) string {
 	h := md5.Sum([]byte(s))
 	return hex.EncodeToString(h[:])
+}
+
+func (s *Service) adminSecondaryPassword() string {
+	if s.cfg == nil {
+		return defaultAdminSecondaryPassword
+	}
+	pwd := strings.TrimSpace(s.cfg.Admin.SecondaryPassword)
+	if pwd == "" || pwd == "replace-me" {
+		return defaultAdminSecondaryPassword
+	}
+	return pwd
 }

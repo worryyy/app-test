@@ -10,62 +10,95 @@ type RefreshTokenReq struct {
 }
 
 type AuthenticationReq struct {
-	StuNum string `json:"stuNum" binding:"required"`
-	StuPwd string `json:"stuPwd" binding:"required"`
+	SchoolID string `json:"schoolId" binding:"required"`
+	Password string `json:"password" binding:"required"`
+	School   string `json:"school" binding:"required"`
+}
+
+type CheckLoginReq struct {
+	SchoolID string `json:"schoolId" binding:"required"`
+	Password string `json:"password" binding:"required"`
 }
 
 type OfficialLoginReq struct {
-	Username          string `json:"username"`
-	Password          string `json:"password"`
-	LoginAccount      string `json:"loginAccount"`
-	LoginPassword     string `json:"loginPassword"`
-	SecondaryPassword string `json:"secondaryPassword"`
+	LoginAccount  string `json:"loginAccount" binding:"required"`
+	LoginPassword string `json:"loginPassword" binding:"required"`
 }
 
 type OfficialCertReq struct {
-	Name   string `json:"name" binding:"required"`
-	Reason string `json:"reason" binding:"required"`
-}
-
-type IdentityAnonymousReq struct {
-	Nickname string `json:"nickname" binding:"required"`
+	AvatarURL         string `json:"avatarUrl"`
+	FullName          string `json:"fullName" binding:"required"`
+	ShortName         string `json:"shortName" binding:"required"`
+	Nature            string `json:"nature"`
+	Introduction      string `json:"introduction"`
+	ResponsiblePerson string `json:"responsiblePerson" binding:"required"`
+	WechatAccount     string `json:"wechatAccount"`
+	LoginAccount      string `json:"loginAccount" binding:"required"`
+	LoginPassword     string `json:"loginPassword" binding:"required"`
 }
 
 type IdentitySwitchReq struct {
-	AccountType  string `json:"accountType"`
+	AccountType  string `json:"accountType" binding:"required"`
 	TargetUserID int64  `json:"targetUserId"`
 }
 
-type FollowReq struct {
-	TargetUserID int64 `json:"targetUserId" binding:"required"`
+type UpdateAnonymousNicknameReq struct {
+	Nickname string `json:"nickname" binding:"required"`
 }
 
 type UserCourseReq struct {
-	Weeks []int  `json:"weeks" binding:"required"`
-	Term  string `json:"term" binding:"required"`
+	SchoolID  string `json:"schoolId" binding:"required"`
+	Password  string `json:"password" binding:"required"`
+	Week      int    `json:"week"`
+	Term      string `json:"term" binding:"required"`
+	StartDate string `json:"startDate" binding:"required"`
+}
+
+type ExamReq struct {
+	SchoolID string `json:"schoolId" binding:"required"`
+	Password string `json:"password" binding:"required"`
+	XNXQID   string `json:"xnxqid" binding:"required"`
+}
+
+type ExamScoreReq struct {
+	SchoolID string `json:"schoolId" binding:"required"`
+	Password string `json:"password" binding:"required"`
+	SS       string `json:"ss"`
+}
+
+type UserEditReq struct {
+	Nickname  string `json:"nickname"`
+	Avatar    string `json:"avatar"`
+	Gender    string `json:"gender"`
+	Signature string `json:"signature"`
 }
 
 type AddAdminReq struct {
 	UserID   int64  `json:"userId" binding:"required"`
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+	Power    *int   `json:"power"`
 }
 
 type UserIDReq struct {
 	UserID int64 `json:"userId" binding:"required"`
 }
 
-type UserIDsReq struct {
-	UserIDs []int64 `json:"userIds" binding:"required"`
+type AdminEditUserReq struct {
+	Nickname   string `json:"nickname"`
+	Avatar     string `json:"avatar"`
+	Power      *int   `json:"power"`
+	StuNum     string `json:"stuNum"`
+	StuName    string `json:"stuName"`
+	StuCla     string `json:"stuCla"`
+	StuIsCheck *bool  `json:"stuIsCheck"`
 }
 
 type CertReviewReq struct {
-	CertID   string `json:"certId" binding:"required"`
-	Approved bool   `json:"approved"`
-}
-
-type CourseFetchReq struct {
-	Key string `json:"key" binding:"required"`
+	CertificationID string `json:"certificationId" binding:"required"`
+	Action          string `json:"action" binding:"required"`
+	RejectReason    string `json:"rejectReason"`
+	Tag             string `json:"tag" binding:"required"`
 }
 
 func (r RefreshTokenReq) Value() string {
@@ -73,11 +106,4 @@ func (r RefreshTokenReq) Value() string {
 		return r.RefreshToken
 	}
 	return r.RefreshTokenAlt
-}
-
-func (r OfficialLoginReq) Credentials() (string, string) {
-	if r.LoginAccount != "" || r.LoginPassword != "" {
-		return r.LoginAccount, r.LoginPassword
-	}
-	return r.Username, r.Password
 }

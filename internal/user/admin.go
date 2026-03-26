@@ -1,6 +1,8 @@
 package user
 
 import (
+	"errors"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -47,17 +49,17 @@ func (h *AdminHandler) AddAdmin(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.AddAdmin(c.Request.Context(), req.UserID, req.Username, req.Password); err != nil {
+	if err := h.svc.AddAdmin(c.Request.Context(), req.UserID, req.Username, req.Password, req.Power); err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.SuccessMsg(c, "添加成功", nil)
 }
 
 func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if id < 1 {
@@ -74,52 +76,51 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 func (h *AdminHandler) EditUser(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if id < 1 {
 		result.HandleError(c, result.ErrIDZero)
 		return
 	}
-	var req User
+	var req AdminEditUserReq
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.Edit(c.Request.Context(), id, &req); err != nil {
+	if err := h.svc.EditAdminUser(c.Request.Context(), id, currentUserID(c), req); err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.SuccessMsg(c, "更新成功", nil)
 }
 
 func (h *AdminHandler) GetUser(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if id < 1 {
 		result.HandleError(c, result.ErrIDZero)
 		return
 	}
-	u, err := h.svc.GetByID(c.Request.Context(), id)
+	user, err := h.svc.GetByID(c.Request.Context(), id)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Data(c, u)
+	result.Data(c, h.svc.sanitizeUser(user))
 }
 
 func (h *AdminHandler) ListUsers(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	size, _ := strconv.Atoi(c.DefaultQuery("size", "15"))
-	name := c.Query("name")
-	data, err := h.svc.ListUsers(c.Request.Context(), page, size, name)
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "0"))
+	data, err := h.svc.ListUsers(c.Request.Context(), page, size, c.Query("nickName"))
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *AdminHandler) ClearAuthentication(c *gin.Context) {
@@ -135,21 +136,29 @@ func (h *AdminHandler) ClearAuthentication(c *gin.Context) {
 }
 
 func (h *AdminHandler) UserCourse(c *gin.Context) {
-	var req CourseFetchReq
-	if !result.BindJSON(c, &req) {
+	key := strings.TrimSpace(c.Query("key"))
+	if key == "" {
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
-	if err := h.svc.RequestCourseByKey(c.Request.Context(), req.Key); err != nil {
+	course, err := h.svc.GetCourseFileByKey(c.Request.Context(), key)
+	if err != nil {
+		var bizErr *result.BizError
+		if errors.As(err, &bizErr) && bizErr.Status == http.StatusNotFound {
+			c.Data(http.StatusNotFound, "text/plain; charset=utf-8", []byte(bizErr.Msg))
+			return
+		}
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	c.Header("Content-Disposition", "attachment;filename="+key)
+	c.Data(http.StatusOK, "application/msexcel", course.Val)
 }
 
 func (h *AdminHandler) AddBlackList(c *gin.Context) {
 	ids := blacklistQueryValues(c, "blockedUserIds")
 	if len(ids) == 0 {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if err := h.svc.AddBlackList(c.Request.Context(), ids); err != nil {
@@ -162,7 +171,7 @@ func (h *AdminHandler) AddBlackList(c *gin.Context) {
 func (h *AdminHandler) DelBlackList(c *gin.Context) {
 	ids := blacklistQueryValues(c, "blockedUserIds")
 	if len(ids) == 0 {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if err := h.svc.DelBlackList(c.Request.Context(), ids); err != nil {
@@ -183,13 +192,13 @@ func (h *AdminHandler) BlackList(c *gin.Context) {
 
 func (h *AdminHandler) CertificationList(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	size, _ := strconv.Atoi(c.DefaultQuery("size", "15"))
-	data, err := h.svc.ListOfficialCertifications(c.Request.Context(), page, size)
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+	data, err := h.svc.ListOfficialCertifications(c.Request.Context(), page, size, c.Query("status"))
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *AdminHandler) CertificationReview(c *gin.Context) {
@@ -197,11 +206,15 @@ func (h *AdminHandler) CertificationReview(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.ReviewCertification(c.Request.Context(), req.CertID, req.Approved); err != nil {
+	if err := h.svc.ReviewCertification(c.Request.Context(), currentUserID(c), req); err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	if req.Action == certificationStatusApproved {
+		result.SuccessMsg(c, "审核通过，用户创建成功", nil)
+		return
+	}
+	result.SuccessMsg(c, "审核拒绝成功", nil)
 }
 
 func blacklistQueryValues(c *gin.Context, key string) []string {
@@ -215,10 +228,10 @@ func blacklistQueryValues(c *gin.Context, key string) []string {
 	}
 
 	out := make([]string, 0, len(values))
-	for _, v := range values {
-		v = strings.TrimSpace(v)
-		if v != "" {
-			out = append(out, v)
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			out = append(out, value)
 		}
 	}
 	return out
