@@ -43,10 +43,13 @@ type Message struct {
 }
 
 type Notification struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID    string             `bson:"userId" json:"userId"`
-	Type      string             `bson:"type" json:"type"`
-	Content   interface{}        `bson:"content" json:"content"`
-	CreatedAt time.Time          `bson:"createdAt" json:"createdAt"`
-	IsRead    bool               `bson:"isRead" json:"isRead"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	ReceiverID  string             `bson:"receiver_id" json:"receiverId"`
+	SenderID    string             `bson:"sender_id" json:"senderId"`
+	Type        string             `bson:"type" json:"type"`
+	Content     string             `bson:"content" json:"content"`
+	TopicID     string             `bson:"topic_id" json:"topicId"`
+	CommentID   string             `bson:"comment_id" json:"commentId"`
+	CreatedTime time.Time          `bson:"created_time" json:"createdTime"`
+	IsRead      bool               `bson:"is_read" json:"isRead"`
 }

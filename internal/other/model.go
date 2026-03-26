@@ -109,13 +109,15 @@ func (Task) TableName() string {
 }
 
 type ReportComment struct {
-	ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	CommentID  string             `bson:"commentId" json:"commentId"`
-	TopicID    string             `bson:"topicId" json:"topicId"`
-	ReporterID string             `bson:"reporterId" json:"reporterId"`
-	Reason     string             `bson:"reason" json:"reason"`
-	Status     int                `bson:"status" json:"status"`
-	CreatedAt  time.Time          `bson:"createdAt" json:"createdAt"`
+	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	CommentID      string             `bson:"commentId" json:"commentId"`
+	ReportContent  string             `bson:"reportContent" json:"reportContent"`
+	CreatedTime    time.Time          `bson:"createdTime" json:"createdTime"`
+	ReportUserID   string             `bson:"reportUserId" json:"reportUserId"`
+	HasHandle      bool               `bson:"hasHandle" json:"hasHandle"`
+	HandlerContent string             `bson:"handlerContent" json:"handlerContent"`
+	HandlerUserID  string             `bson:"handlerUserId" json:"handlerUserId"`
+	HandlerTime    *time.Time         `bson:"handlerTime" json:"handlerTime"`
 }
 
 type MerchantTheme struct {

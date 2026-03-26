@@ -66,13 +66,20 @@ func (c *Consumers) handleNotifyUser(ctx context.Context, data json.RawMessage) 
 	if msg.TargetUserID == "" {
 		return nil
 	}
+	createdTime := msg.CreatedTime
+	if createdTime.IsZero() {
+		createdTime = time.Now()
+	}
 
 	notification := bson.M{
-		"userId":    msg.TargetUserID,
-		"type":      msg.Type,
-		"content":   msg.Content,
-		"createdAt": time.Now(),
-		"isRead":    false,
+		"receiver_id":  msg.TargetUserID,
+		"sender_id":    msg.SenderUserID,
+		"type":         msg.Type,
+		"content":      msg.Content,
+		"topic_id":     msg.TopicID,
+		"comment_id":   msg.CommentID,
+		"created_time": createdTime,
+		"is_read":      false,
 	}
 	if _, err := c.mongoDB.Collection("campus_notifications").InsertOne(ctx, notification); err != nil {
 		return fmt.Errorf("insert notification: %w", err)

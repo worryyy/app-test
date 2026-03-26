@@ -73,7 +73,7 @@ func (c *Consumers) handleCommentUpdate(ctx context.Context, data json.RawMessag
 		userSet["user.signature"] = msg.Signature
 	}
 	if msg.AccountType > 0 {
-		userSet["user.accountType"] = msg.AccountType
+		userSet["user.accountType"] = accountTypeName(msg.AccountType)
 	}
 	if len(userSet) == 0 {
 		return nil
@@ -167,7 +167,6 @@ func (c *Consumers) handleCommentDelete(ctx context.Context, data json.RawMessag
 	}
 
 	_, _ = c.mongoDB.Collection("campus_comment_like").DeleteMany(ctx, bson.M{"commentId": msg.CommentID})
-	_, _ = c.mongoDB.Collection("campus_report_comment").DeleteMany(ctx, bson.M{"commentId": msg.CommentID})
 
 	if _, err := c.mongoDB.Collection("campus_comment").DeleteOne(ctx, bson.M{"_id": commentOID}); err != nil {
 		return fmt.Errorf("delete comment: %w", err)

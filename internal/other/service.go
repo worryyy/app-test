@@ -37,7 +37,7 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 	}
 }
 
-func listMongoPage[T any](ctx context.Context, coll *mongo.Collection, filter bson.M, sort bson.M, page, size int) (*result.CusPage[T], error) {
+func listMongoPage[T any](ctx context.Context, coll *mongo.Collection, filter bson.M, sort interface{}, page, size int) (*result.CusPage[T], error) {
 	if page <= 0 {
 		page = 1
 	}

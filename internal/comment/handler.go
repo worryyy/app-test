@@ -2,6 +2,7 @@ package comment
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -22,21 +23,7 @@ func (h *Handler) Create(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	userID := getUserID(c)
-	claims := getClaims(c)
-	accountType := 1
-	if claims != nil {
-		switch claims.AccountType {
-		case "official":
-			accountType = 2
-		case "anonymous":
-			accountType = 3
-		}
-	}
-	_, err := h.svc.AddComment(c.Request.Context(), c.Param("topic_id"), CommentUser{
-		UserID:      strconv.FormatInt(userID, 10),
-		AccountType: accountType,
-	}, req.Comment, req.ParentCmtID, req.RootCmtID, false)
+	_, err := h.svc.AddComment(c.Request.Context(), c.Param("topic_id"), getUserID(c), req.Comment, req.ParentCmtID)
 	if err != nil {
 		result.HandleError(c, err)
 		return
@@ -54,12 +41,13 @@ func (h *Handler) Delete(c *gin.Context) {
 
 func (h *Handler) ListByTopic(c *gin.Context) {
 	page, size := getPageSize(c)
-	data, err := h.svc.ListByTopic(c.Request.Context(), c.Param("topic_id"), page, size)
+	rootID := firstNonEmpty(c.Query("root_id"), c.Query("rootId"))
+	data, err := h.svc.ListByTopic(c.Request.Context(), c.Param("topic_id"), rootID, getUserID(c), page, size)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) Mine(c *gin.Context) {
@@ -69,22 +57,18 @@ func (h *Handler) Mine(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) TargetUserComments(c *gin.Context) {
 	page, size := getPageSize(c)
-	targetUserID, err := strconv.ParseInt(c.Query("targetUserId"), 10, 64)
-	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
-		return
-	}
+	targetUserID := firstNonEmpty(c.Query("target_user_id"), c.Query("targetUserId"))
 	data, err := h.svc.ListTargetUserComments(c.Request.Context(), targetUserID, page, size)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) Like(c *gin.Context) {
@@ -113,6 +97,15 @@ func getPageSize(c *gin.Context) (int, int) {
 		size = 15
 	}
 	return page, size
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func getClaims(c *gin.Context) *jwtutil.Claims {

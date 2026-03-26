@@ -40,9 +40,13 @@ type CourseMsg struct {
 }
 
 type NotifyMsg struct {
-	TargetUserID string      `json:"targetUserId"`
-	Type         string      `json:"type"`
-	Content      interface{} `json:"content"`
+	TargetUserID string    `json:"targetUserId"`
+	SenderUserID string    `json:"senderUserId,omitempty"`
+	Type         string    `json:"type"`
+	Content      string    `json:"content"`
+	TopicID      string    `json:"topicId,omitempty"`
+	CommentID    string    `json:"commentId,omitempty"`
+	CreatedTime  time.Time `json:"createdTime,omitempty"`
 }
 
 type TopicUserUpdateMsg struct {

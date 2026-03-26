@@ -13,7 +13,7 @@ type WordsReq struct {
 }
 
 type ReportReviewReq struct {
-	Status int `json:"status" binding:"required"`
+	HandlerContent string `json:"handlerContent" binding:"required"`
 }
 
 type MerchantThemeReq struct {

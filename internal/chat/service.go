@@ -202,7 +202,7 @@ func (s *Service) ListNotifications(ctx context.Context, userID int64, typ strin
 	if size <= 0 {
 		size = 15
 	}
-	filter := bson.M{"userId": fmt.Sprintf("%d", userID)}
+	filter := bson.M{"receiver_id": fmt.Sprintf("%d", userID)}
 	if typ != "" {
 		filter["type"] = typ
 	}
@@ -213,7 +213,7 @@ func (s *Service) ListNotifications(ctx context.Context, userID int64, typ strin
 	}
 
 	cur, err := s.notifyColl().Find(ctx, filter, options.Find().
-		SetSort(bson.M{"createdAt": -1}).
+		SetSort(bson.M{"created_time": -1}).
 		SetSkip(int64((page-1)*size)).
 		SetLimit(int64(size)))
 	if err != nil {
@@ -233,7 +233,7 @@ func (s *Service) ListNotifications(ctx context.Context, userID int64, typ strin
 }
 
 func (s *Service) HaveUnreadNotification(ctx context.Context, userID int64, typ string) (bool, error) {
-	filter := bson.M{"userId": fmt.Sprintf("%d", userID), "isRead": false}
+	filter := bson.M{"receiver_id": fmt.Sprintf("%d", userID), "is_read": false}
 	if typ != "" {
 		filter["type"] = typ
 	}
@@ -245,13 +245,13 @@ func (s *Service) HaveUnreadNotification(ctx context.Context, userID int64, typ 
 }
 
 func (s *Service) LatestNotification(ctx context.Context, userID int64, typ string) (*Notification, error) {
-	filter := bson.M{"userId": fmt.Sprintf("%d", userID)}
+	filter := bson.M{"receiver_id": fmt.Sprintf("%d", userID)}
 	if typ != "" {
 		filter["type"] = typ
 	}
 
 	var n Notification
-	err := s.notifyColl().FindOne(ctx, filter, options.FindOne().SetSort(bson.M{"createdAt": -1})).Decode(&n)
+	err := s.notifyColl().FindOne(ctx, filter, options.FindOne().SetSort(bson.M{"created_time": -1})).Decode(&n)
 	if err == mongo.ErrNoDocuments {
 		return nil, nil
 	}

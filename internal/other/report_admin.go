@@ -3,6 +3,7 @@ package other
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
@@ -11,7 +12,7 @@ func (h *AdminHandler) ReportReview(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.ReviewReportComment(c.Request.Context(), c.Param("id"), req.Status); err != nil {
+	if err := h.svc.ReviewReportComment(c.Request.Context(), c.Param("id"), middleware.GetUserID(c), req.HandlerContent); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -25,5 +26,5 @@ func (h *AdminHandler) ReportList(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }

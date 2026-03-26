@@ -11,23 +11,20 @@ import (
 
 func (h *Handler) ReportComment(c *gin.Context) {
 	var req struct {
-		CommentID string `json:"commentId" binding:"required"`
-		TopicID   string `json:"topicId" binding:"required"`
-		Reason    string `json:"reason" binding:"required"`
+		CommentID     string `json:"commentId" binding:"required"`
+		ReportContent string `json:"reportContent" binding:"required"`
 	}
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	_, err := h.svc.CreateReportComment(c.Request.Context(), &ReportComment{
-		CommentID:  req.CommentID,
-		TopicID:    req.TopicID,
-		ReporterID: strconv.FormatInt(middleware.GetUserID(c), 10),
-		Reason:     req.Reason,
-		Status:     0,
+	report, err := h.svc.CreateReportComment(c.Request.Context(), &ReportComment{
+		CommentID:     req.CommentID,
+		ReportContent: req.ReportContent,
+		ReportUserID:  strconv.FormatInt(middleware.GetUserID(c), 10),
 	})
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.Data(c, report)
 }

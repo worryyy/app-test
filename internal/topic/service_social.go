@@ -230,14 +230,11 @@ func (s *Service) sendTopicNotify(ctx context.Context, targetUserID, senderUserI
 
 	err := s.producer.SendNotifyUser(ctx, mq.NotifyMsg{
 		TargetUserID: targetUserID,
+		SenderUserID: senderUserID,
 		Type:         notifyType,
-		Content: map[string]interface{}{
-			"senderId":    senderUserID,
-			"topicId":     topicID,
-			"content":     content,
-			"notifyType":  notifyType,
-			"createdTime": time.Now(),
-		},
+		Content:      content,
+		TopicID:      topicID,
+		CreatedTime:  time.Now(),
 	})
 	if err != nil {
 		s.logger.Warn("send topic notify failed", zap.Error(err), zap.String("topicID", topicID), zap.String("type", notifyType))

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -176,24 +177,34 @@ func (c *Consumers) handleCommentAdd(ctx context.Context, data json.RawMessage) 
 
 	var topic topicDoc
 	if err := c.mongoDB.Collection("campus_topic").FindOne(ctx, bson.M{"_id": topicOID}).Decode(&topic); err == nil {
-		if topic.UserID != "" && topic.UserID != cmt.User.UserID {
+		c.notifyCommentUsers(ctx, cmt, filteredComment, topic.UserID, now)
+	}
+
+	incCommentPublish("success")
+	return nil
+}
+
+func (c *Consumers) notifyCommentUsers(ctx context.Context, cmt commentDoc, filteredComment, topicAuthorID string, createdTime time.Time) {
+	if cmt.ParentCmtID == comment.DefaultRootCommentID {
+		if topicAuthorID != "" && topicAuthorID != cmt.User.UserID {
 			c.sendNotify(ctx, NotifyMsg{
-				TargetUserID: topic.UserID,
-				Type:         "comment",
-				Content: map[string]string{
-					"topicId":   cmt.TopicID,
-					"comment":   filteredComment,
-					"commentId": cmt.ID.Hex(),
-				},
+				TargetUserID: topicAuthorID,
+				SenderUserID: cmt.User.UserID,
+				Type:         "COMMENT_ADD",
+				Content:      filteredComment,
+				TopicID:      cmt.TopicID,
+				CommentID:    cmt.ID.Hex(),
+				CreatedTime:  createdTime,
 			})
 		}
+		return
 	}
 
 	parentUserID := ""
 	if cmt.Parent != nil {
 		parentUserID = cmt.Parent.UserID
 	}
-	if parentUserID == "" && cmt.ParentCmtID != "" {
+	if parentUserID == "" && cmt.ParentCmtID != "" && cmt.ParentCmtID != comment.DefaultRootCommentID {
 		parentOID, convErr := primitive.ObjectIDFromHex(cmt.ParentCmtID)
 		if convErr == nil {
 			var parent commentDoc
@@ -202,20 +213,34 @@ func (c *Consumers) handleCommentAdd(ctx context.Context, data json.RawMessage) 
 			}
 		}
 	}
-	if parentUserID != "" && parentUserID != cmt.User.UserID {
-		c.sendNotify(ctx, NotifyMsg{
-			TargetUserID: parentUserID,
-			Type:         "comment",
-			Content: map[string]string{
-				"topicId":   cmt.TopicID,
-				"comment":   filteredComment,
-				"commentId": cmt.ID.Hex(),
-			},
-		})
+	if parentUserID == cmt.User.UserID {
+		return
 	}
 
-	incCommentPublish("success")
-	return nil
+	receivers := make(map[string]struct{}, 2)
+	if topicAuthorID != "" {
+		receivers[topicAuthorID] = struct{}{}
+	}
+	if parentUserID != "" {
+		receivers[parentUserID] = struct{}{}
+	}
+	delete(receivers, cmt.User.UserID)
+
+	for receiverID := range receivers {
+		notifyType := "COMMENT_ADD"
+		if receiverID == parentUserID {
+			notifyType = "COMMENT_REPLY"
+		}
+		c.sendNotify(ctx, NotifyMsg{
+			TargetUserID: receiverID,
+			SenderUserID: cmt.User.UserID,
+			Type:         notifyType,
+			Content:      filteredComment,
+			TopicID:      cmt.TopicID,
+			CommentID:    cmt.ID.Hex(),
+			CreatedTime:  createdTime,
+		})
+	}
 }
 
 func (c *Consumers) handleTopicSearchAdd(ctx context.Context, data json.RawMessage) error {
