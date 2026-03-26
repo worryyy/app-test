@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/encrypt"
@@ -71,7 +72,9 @@ func (c *Consumers) handleNotifyUser(ctx context.Context, data json.RawMessage) 
 		createdTime = time.Now()
 	}
 
+	id := primitive.NewObjectID()
 	notification := bson.M{
+		"_id":          id,
 		"receiver_id":  msg.TargetUserID,
 		"sender_id":    msg.SenderUserID,
 		"type":         msg.Type,

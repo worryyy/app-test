@@ -40,11 +40,11 @@ func (h *Handler) Conversations(c *gin.Context) {
 }
 
 func (h *Handler) ConversationEnter(c *gin.Context) {
-	var req ConversationEnterReq
-	if !result.BindJSON(c, &req) {
-		return
+	req := ConversationEnterReq{
+		ConversationID: c.Query("conversation_id"),
+		LastMessageID:  c.Query("last_message_id"),
 	}
-	if err := h.svc.EnterConversation(c.Request.Context(), middleware.GetUserID(c), req.ConversationID); err != nil {
+	if err := h.svc.EnterConversation(c.Request.Context(), middleware.GetUserID(c), req.ConversationID, req.LastMessageID); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -52,66 +52,64 @@ func (h *Handler) ConversationEnter(c *gin.Context) {
 }
 
 func (h *Handler) ConversationUnreadCount(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
-		return
-	}
-	count, err := h.svc.GetUnreadCount(c.Request.Context(), middleware.GetUserID(c), id)
+	data, err := h.svc.GetUnreadCount(c.Request.Context(), middleware.GetUserID(c), c.Param("id"))
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, count)
+	result.Success(c, data)
 }
 
 func (h *Handler) ConversationQuery(c *gin.Context) {
-	targetUserID, err := strconv.ParseInt(c.Query("targetUserId"), 10, 64)
-	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
-		return
-	}
-	data, err := h.svc.QueryConversation(c.Request.Context(), middleware.GetUserID(c), targetUserID)
+	data, err := h.svc.QueryConversation(c.Request.Context(), middleware.GetUserID(c), c.Query("target_user_id"))
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) ProfileByConversationID(c *gin.Context) {
-	conversationID, err := strconv.ParseInt(c.Query("conversationId"), 10, 64)
-	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
-		return
-	}
-	peerID, err := h.svc.GetPeerUserID(c.Request.Context(), conversationID, middleware.GetUserID(c))
+	peerID, err := h.svc.GetPeerUserID(c.Request.Context(), c.Query("conversation_id"), middleware.GetUserID(c))
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	var data interface{}
-	if h.userSvc != nil && peerID > 0 {
-		data, err = h.userSvc.GetByID(c.Request.Context(), peerID)
-		if err != nil {
-			result.HandleError(c, err)
-			return
-		}
+	userID, err := strconv.ParseInt(peerID, 10, 64)
+	if err != nil {
+		result.HandleError(c, result.NewBizError(result.CodeNotExisted, "会话中用户信息未找到"))
+		return
 	}
-	result.Success(c, data)
+	if h.userSvc == nil {
+		result.Data(c, nil)
+		return
+	}
+
+	profileUser, err := h.userSvc.GetByID(c.Request.Context(), userID)
+	if err != nil {
+		result.HandleError(c, err)
+		return
+	}
+	if profileUser == nil {
+		result.HandleError(c, result.NewBizError(result.CodeNotExisted, "会话中用户信息未找到"))
+		return
+	}
+	result.Data(c, &ConversationProfile{
+		Avatar:    profileUser.Avatar,
+		Nickname:  profileUser.Nickname,
+		UserID:    strconv.FormatInt(profileUser.ID, 10),
+		Gender:    profileUser.Gender,
+		StuCla:    profileUser.StuCla,
+		Signature: profileUser.Signature,
+	})
 }
 
 func (h *Handler) DeleteConversation(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
-		return
-	}
-	if err := h.svc.DeleteConversation(c.Request.Context(), middleware.GetUserID(c), id); err != nil {
+	if err := h.svc.DeleteConversation(c.Request.Context(), middleware.GetUserID(c), c.Param("id")); err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.SuccessMsg(c, "删除会话成功", nil)
 }
 
 func (h *Handler) OfflineMessages(c *gin.Context) {
@@ -130,21 +128,33 @@ func (h *Handler) OfflineMessages(c *gin.Context) {
 
 func (h *Handler) HistoryMessages(c *gin.Context) {
 	page, size := pageSize(c)
-	conversationID, err := strconv.ParseInt(c.Query("conversationId"), 10, 64)
-	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
-		return
+	var oldestMessageID *int64
+	if rawOldest := c.Query("oldest_message_id"); rawOldest != "" {
+		parsed, err := strconv.ParseInt(rawOldest, 10, 64)
+		if err != nil {
+			result.Fail(c, result.CodeParamError, "参数错误")
+			return
+		}
+		oldestMessageID = &parsed
 	}
-	data, err := h.svc.GetHistoryMessages(c.Request.Context(), conversationID, page, size)
+
+	data, err := h.svc.GetHistoryMessages(
+		c.Request.Context(),
+		middleware.GetUserID(c),
+		c.Query("conversation_id"),
+		oldestMessageID,
+		page,
+		size,
+	)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) UnreadMessages(c *gin.Context) {
-	data, err := h.svc.GetUnreadMessages(c.Request.Context(), middleware.GetUserID(c))
+	data, err := h.svc.HasUnreadMessages(c.Request.Context(), middleware.GetUserID(c))
 	if err != nil {
 		result.HandleError(c, err)
 		return
@@ -157,6 +167,10 @@ func (h *Handler) NotifyList(c *gin.Context) {
 	data, err := h.svc.ListNotifications(c.Request.Context(), middleware.GetUserID(c), c.Query("type"), page, size)
 	if err != nil {
 		result.HandleError(c, err)
+		return
+	}
+	if data == nil || len(data.Data) == 0 {
+		result.Data(c, []Notification{})
 		return
 	}
 	result.Success(c, data)
@@ -177,7 +191,7 @@ func (h *Handler) NotifyLatest(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func pageSize(c *gin.Context) (int, int) {
@@ -188,6 +202,8 @@ func pageSize(c *gin.Context) (int, int) {
 	}
 	if size <= 0 {
 		size = 15
+	} else if size > maxPageSize {
+		size = maxPageSize
 	}
 	return page, size
 }

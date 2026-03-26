@@ -14,9 +14,34 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
+const (
+	wsHeartbeatInterval = 30 * time.Second
+	wsSessionTimeout    = 60 * time.Second
+	wsPingPayload       = "server_heartbeat"
+)
+
 type Session struct {
 	UserID int64
 	Conn   *websocket.Conn
+	mu     sync.Mutex
+}
+
+func (s *Session) WriteJSON(v interface{}) error {
+	if s == nil || s.Conn == nil {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.Conn.WriteJSON(v)
+}
+
+func (s *Session) WriteMessage(messageType int, data []byte) error {
+	if s == nil || s.Conn == nil {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.Conn.WriteMessage(messageType, data)
 }
 
 type SessionManager struct {
@@ -39,8 +64,8 @@ func (m *SessionManager) Set(userID int64, s *Session) {
 func (m *SessionManager) Get(userID int64) (*Session, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	v, ok := m.sessions[userID]
-	return v, ok
+	session, ok := m.sessions[userID]
+	return session, ok
 }
 
 func (m *SessionManager) Remove(userID int64) {
@@ -49,12 +74,9 @@ func (m *SessionManager) Remove(userID int64) {
 	delete(m.sessions, userID)
 }
 
-type wsEnvelope struct {
-	Type           string `json:"type"`
-	Token          string `json:"token"`
-	ConversationID int64  `json:"conversationId"`
-	ReceiverID     int64  `json:"receiverId"`
-	Content        string `json:"content"`
+type wsAuthEnvelope struct {
+	Type  string `json:"type"`
+	Token string `json:"token"`
 }
 
 func (h *Handler) WS(c *gin.Context) {
@@ -67,78 +89,79 @@ func (h *Handler) WS(c *gin.Context) {
 		result.Fail(c, result.CodeFail, "websocket upgrade failed")
 		return
 	}
+	defer func() {
+		_ = conn.Close()
+	}()
 
 	conn.SetReadLimit(1 << 20)
-	if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
-		if closeErr := conn.Close(); closeErr != nil && h.svc != nil && h.svc.logger != nil {
-			h.svc.logger.Warn("close ws conn after set deadline failed")
-		}
+	if err := conn.SetReadDeadline(time.Now().Add(wsSessionTimeout)); err != nil {
 		return
 	}
 	conn.SetPongHandler(func(string) error {
-		if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
-			return err
-		}
-		return nil
+		return conn.SetReadDeadline(time.Now().Add(wsSessionTimeout))
 	})
 
 	userID, err := h.handleWSAuth(c, conn)
 	if err != nil {
 		_ = conn.WriteJSON(gin.H{"type": "auth_failed", "msg": err.Error()})
-		_ = conn.Close()
 		return
 	}
 
-	s := &Session{UserID: userID, Conn: conn}
-	h.sessions.Set(userID, s)
-	defer func() {
-		h.sessions.Remove(userID)
-		_ = conn.Close()
-	}()
+	session := &Session{UserID: userID, Conn: conn}
+	h.sessions.Set(userID, session)
+	defer h.sessions.Remove(userID)
 
-	pingTicker := time.NewTicker(30 * time.Second)
-	defer pingTicker.Stop()
-
-	done := make(chan struct{})
+	stopPing := make(chan struct{})
 	go func() {
-		defer close(done)
+		ticker := time.NewTicker(wsHeartbeatInterval)
+		defer ticker.Stop()
 		for {
-			if writeErr := conn.WriteMessage(websocket.PingMessage, []byte("ping")); writeErr != nil {
+			select {
+			case <-stopPing:
 				return
+			case <-ticker.C:
+				if err := session.WriteMessage(websocket.PingMessage, []byte(wsPingPayload)); err != nil {
+					return
+				}
 			}
-			<-pingTicker.C
 		}
 	}()
+	defer close(stopPing)
 
 	for {
-		_, msg, readErr := conn.ReadMessage()
+		_, raw, readErr := conn.ReadMessage()
 		if readErr != nil {
 			return
 		}
-		var env wsEnvelope
-		if unmarshalErr := json.Unmarshal(msg, &env); unmarshalErr != nil {
-			_ = conn.WriteJSON(gin.H{"type": "error", "msg": "invalid message"})
+		if err := conn.SetReadDeadline(time.Now().Add(wsSessionTimeout)); err != nil {
+			return
+		}
+
+		var messageTypeProbe map[string]interface{}
+		if err := json.Unmarshal(raw, &messageTypeProbe); err != nil {
+			_ = session.WriteJSON(gin.H{"type": "error", "msg": "invalid message"})
 			continue
 		}
-		if env.Type == "auth" {
-			_ = conn.WriteJSON(gin.H{"type": "auth_success", "userId": strconv.FormatInt(userID, 10)})
-			continue
-		}
-		if env.Type != "message" {
-			_ = conn.WriteJSON(gin.H{"type": "error", "msg": "unsupported message type"})
+		if stringField(messageTypeProbe, "type") == "auth" {
+			_ = session.WriteJSON(gin.H{"type": "auth_success", "userId": strconv.FormatInt(userID, 10)})
 			continue
 		}
 
-		data, handleErr := h.svc.HandleMessage(c.Request.Context(), env.ConversationID, userID, env.ReceiverID, env.Content)
-		if handleErr != nil {
-			_ = conn.WriteJSON(gin.H{"type": "error", "msg": handleErr.Error()})
+		message, err := h.svc.HandleWSMessage(c.Request.Context(), userID, raw)
+		if err != nil {
+			_ = session.WriteJSON(gin.H{"type": "error", "msg": err.Error()})
 			continue
 		}
-		_ = conn.WriteJSON(gin.H{"type": "message_ack", "data": data})
 
-		if peer, ok := h.sessions.Get(env.ReceiverID); ok {
-			_ = peer.Conn.WriteJSON(gin.H{"type": "message", "data": data})
+		receiverID, err := strconv.ParseInt(message.ReceiverID, 10, 64)
+		if err != nil {
+			continue
 		}
+		peer, ok := h.sessions.Get(receiverID)
+		if !ok {
+			continue
+		}
+		_ = peer.WriteJSON(message)
 	}
 }
 
@@ -146,12 +169,13 @@ func (h *Handler) handleWSAuth(c *gin.Context, conn *websocket.Conn) (int64, err
 	if h.jwtHelper == nil {
 		return 0, errors.New("jwt helper not configured")
 	}
+
 	_, raw, err := conn.ReadMessage()
 	if err != nil {
 		return 0, err
 	}
 
-	var first wsEnvelope
+	var first wsAuthEnvelope
 	if err := json.Unmarshal(raw, &first); err != nil {
 		return 0, err
 	}
@@ -163,6 +187,8 @@ func (h *Handler) handleWSAuth(c *gin.Context, conn *websocket.Conn) (int64, err
 	if err != nil {
 		return 0, err
 	}
-	_ = conn.WriteJSON(gin.H{"type": "auth_success", "userId": strconv.FormatInt(claims.UserID, 10)})
+	if err := conn.WriteJSON(gin.H{"type": "auth_success", "userId": strconv.FormatInt(claims.UserID, 10)}); err != nil {
+		return 0, err
+	}
 	return claims.UserID, nil
 }
