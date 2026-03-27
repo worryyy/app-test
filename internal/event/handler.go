@@ -1,8 +1,11 @@
 package event
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
 
-import "github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+)
 
 type Handler struct {
 	svc *Service
@@ -17,9 +20,9 @@ func (h *Handler) Add(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.AddEvent(c.Request.Context(), &req); err != nil {
+	if err := h.svc.AddEvent(c.Request.Context(), &req, middleware.GetUserID(c)); err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.SuccessMsg(c, "添加成功", nil)
 }

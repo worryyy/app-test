@@ -37,6 +37,13 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 	}
 }
 
+func (s *Service) defaultPageSize() int {
+	if s != nil && s.cfg != nil && s.cfg.Custom.PageSize > 0 {
+		return s.cfg.Custom.PageSize
+	}
+	return 15
+}
+
 func listMongoPage[T any](ctx context.Context, coll *mongo.Collection, filter bson.M, sort interface{}, page, size int) (*result.CusPage[T], error) {
 	if page <= 0 {
 		page = 1

@@ -97,6 +97,7 @@ func SuccessCodeMsg(c *gin.Context, code int, msg string, data interface{}) {
 }
 
 func Write(c *gin.Context, status int, success bool, code int, msg string, data interface{}) {
+	c.Set("result_success", success)
 	c.JSON(status, Result{
 		Success: success,
 		Code:    code,

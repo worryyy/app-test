@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func (h *AdminHandler) MerchantAdd(c *gin.Context) {
@@ -16,7 +17,9 @@ func (h *AdminHandler) MerchantAdd(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, id)
+	doc := MerchantTheme{ThemeID: req.ThemeID}
+	doc.ID, _ = primitive.ObjectIDFromHex(id)
+	result.Data(c, doc)
 }
 
 func (h *AdminHandler) MerchantDelete(c *gin.Context) {
@@ -33,5 +36,5 @@ func (h *AdminHandler) MerchantList(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }

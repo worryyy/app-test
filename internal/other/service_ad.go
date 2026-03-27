@@ -48,13 +48,16 @@ func (s *Service) ListAds(ctx context.Context, page, size int) (*result.PageResu
 	return result.NewPage(list, total, page, size), nil
 }
 
-func (s *Service) ListAdByLevel(ctx context.Context, level int) ([]Ad, error) {
-	var list []Ad
-	q := s.db.WithContext(ctx).Where("isOk = ?", true)
-	if level > 0 {
-		q = q.Where("level = ?", level)
+func (s *Service) ListAdByLevel(ctx context.Context, size int) ([]Ad, error) {
+	if size <= 0 {
+		size = s.defaultPageSize()
 	}
-	if err := q.Order("level DESC, id DESC").Find(&list).Error; err != nil {
+	var list []Ad
+	if err := s.db.WithContext(ctx).
+		Where("isOk = ?", true).
+		Order("level DESC, id DESC").
+		Limit(size).
+		Find(&list).Error; err != nil {
 		return nil, fmt.Errorf("list ads by level: %w", err)
 	}
 	return list, nil

@@ -12,12 +12,13 @@ import (
 )
 
 type Scheduler struct {
-	cron      *robcron.Cron
-	logger    *zap.Logger
-	suggest   *SuggestJob
-	event     *EventFlushJob
-	metrics   *MetricsJob
-	expDetail *ExpFlushJob
+	cron           *robcron.Cron
+	logger         *zap.Logger
+	suggest        *SuggestJob
+	event          *EventFlushJob
+	metrics        *MetricsJob
+	expDetail      *ExpFlushJob
+	controllerTime *ControllerTimeFlushJob
 }
 
 func NewScheduler(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, logger *zap.Logger) *Scheduler {
@@ -25,12 +26,13 @@ func NewScheduler(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, logge
 		logger = zap.NewNop()
 	}
 	return &Scheduler{
-		cron:      robcron.New(robcron.WithSeconds()),
-		logger:    logger,
-		suggest:   NewSuggestJob(mongoDB, rds, logger),
-		event:     NewEventFlushJob(db, rds, logger),
-		metrics:   NewMetricsJob(rds, logger),
-		expDetail: NewExpFlushJob(db, rds, logger),
+		cron:           robcron.New(robcron.WithSeconds()),
+		logger:         logger,
+		suggest:        NewSuggestJob(mongoDB, rds, logger),
+		event:          NewEventFlushJob(db, rds, logger),
+		metrics:        NewMetricsJob(rds, logger),
+		expDetail:      NewExpFlushJob(db, rds, logger),
+		controllerTime: NewControllerTimeFlushJob(db, rds, logger),
 	}
 }
 
@@ -82,6 +84,15 @@ func (s *Scheduler) Start() error {
 	})
 	if err != nil {
 		return fmt.Errorf("register exp flush cron: %w", err)
+	}
+
+	_, err = s.cron.AddFunc("0 */10 * * * *", func() {
+		if runErr := s.controllerTime.Run(context.Background()); runErr != nil {
+			s.logger.Error("run controller time flush job failed", zap.Error(runErr))
+		}
+	})
+	if err != nil {
+		return fmt.Errorf("register controller time flush cron: %w", err)
 	}
 
 	s.cron.Start()

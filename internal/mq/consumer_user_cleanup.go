@@ -79,12 +79,37 @@ func (c *Consumers) handleCommentUpdate(ctx context.Context, data json.RawMessag
 		return nil
 	}
 
-	if _, err := c.mongoDB.Collection("campus_comment").UpdateMany(
+	commentColl := c.mongoDB.Collection("campus_comment")
+	if _, err := commentColl.UpdateMany(
 		ctx,
 		bson.M{"user.userId": msg.UserID},
 		bson.M{"$set": userSet},
 	); err != nil {
 		return fmt.Errorf("update comment user profile: %w", err)
+	}
+
+	parentSet := bson.M{}
+	if msg.NickName != "" {
+		parentSet["parent.nickName"] = msg.NickName
+	}
+	if msg.Avatar != "" {
+		parentSet["parent.avatar"] = msg.Avatar
+	}
+	if msg.Gender != "" {
+		parentSet["parent.gender"] = msg.Gender
+	}
+	if msg.Signature != "" {
+		parentSet["parent.signature"] = msg.Signature
+	}
+	if len(parentSet) == 0 {
+		return nil
+	}
+	if _, err := commentColl.UpdateMany(
+		ctx,
+		bson.M{"parent.userId": msg.UserID},
+		bson.M{"$set": parentSet},
+	); err != nil {
+		return fmt.Errorf("update comment parent profile: %w", err)
 	}
 	return nil
 }
@@ -98,41 +123,15 @@ func (c *Consumers) handleTopicDelete(ctx context.Context, data json.RawMessage)
 		return nil
 	}
 
-	topicOID, err := primitive.ObjectIDFromHex(msg.TopicID)
-	if err == nil {
-		if _, err := c.mongoDB.Collection("campus_topic").DeleteOne(ctx, bson.M{"_id": topicOID}); err != nil {
-			return fmt.Errorf("delete topic: %w", err)
-		}
-	}
 	_, _ = c.mongoDB.Collection("campus_topic_search").DeleteOne(ctx, bson.M{"topicId": msg.TopicID})
 	_, _ = c.mongoDB.Collection("campus_topic_like").UpdateMany(ctx, bson.M{}, bson.M{"$pull": bson.M{"topicIds": msg.TopicID}})
 	_, _ = c.mongoDB.Collection("campus_topic_collection").UpdateMany(ctx, bson.M{}, bson.M{"$pull": bson.M{"topicIds": msg.TopicID}})
-	_, _ = c.mongoDB.Collection("campus_report_comment").DeleteMany(ctx, bson.M{"topicId": msg.TopicID})
-
-	cur, err := c.mongoDB.Collection("campus_comment").Find(ctx, bson.M{"topicId": msg.TopicID})
-	if err != nil {
-		return fmt.Errorf("find comments for topic delete: %w", err)
-	}
-	defer func() {
-		if closeErr := cur.Close(ctx); closeErr != nil {
-			c.logger.Warn("close topic comment cursor failed", zap.Error(closeErr))
-		}
-	}()
-
-	var docs []commentDoc
-	if err := cur.All(ctx, &docs); err == nil {
-		commentIDs := make([]string, 0, len(docs))
-		for _, doc := range docs {
-			if !doc.ID.IsZero() {
-				commentIDs = append(commentIDs, doc.ID.Hex())
-			}
-		}
-		if len(commentIDs) > 0 {
-			_, _ = c.mongoDB.Collection("campus_comment_like").DeleteMany(ctx, bson.M{"commentId": bson.M{"$in": commentIDs}})
-		}
-	}
-	if _, err := c.mongoDB.Collection("campus_comment").DeleteMany(ctx, bson.M{"topicId": msg.TopicID}); err != nil {
-		return fmt.Errorf("delete topic comments: %w", err)
+	if _, err := c.mongoDB.Collection("campus_comment").UpdateMany(
+		ctx,
+		bson.M{"topicId": msg.TopicID},
+		bson.M{"$set": bson.M{"hasCheck": false}},
+	); err != nil {
+		return fmt.Errorf("soft delete topic comments: %w", err)
 	}
 	return nil
 }

@@ -2,6 +2,7 @@ package other
 
 import (
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
@@ -16,7 +17,8 @@ func (h *AdminHandler) SupportAdd(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, id)
+	req.ID, _ = primitive.ObjectIDFromHex(id)
+	result.Data(c, req)
 }
 
 func (h *AdminHandler) SupportUpdate(c *gin.Context) {
@@ -28,7 +30,12 @@ func (h *AdminHandler) SupportUpdate(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	saved, err := h.svc.GetSupportByKey(c.Request.Context(), req.Key)
+	if err != nil {
+		result.HandleError(c, err)
+		return
+	}
+	result.Data(c, saved)
 }
 
 func (h *AdminHandler) SupportDelete(c *gin.Context) {
@@ -45,5 +52,5 @@ func (h *AdminHandler) SupportList(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }

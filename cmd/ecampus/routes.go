@@ -47,6 +47,7 @@ func registerUserRoutes(
 	engine.Use(middleware.CORS())
 
 	pub := engine.Group("")
+	pub.Use(middleware.ControllerTimeTrack(rds, logger))
 	{
 		pub.POST("/api/user/login", handlers.User.Login)
 		pub.POST("/api/user/refresh", handlers.User.RefreshToken)
@@ -64,6 +65,7 @@ func registerUserRoutes(
 		middleware.JWTAuth(jwtHelper, rds),
 		middleware.BlackListCheck(rds),
 		middleware.RequestLog(logger),
+		middleware.ControllerTimeTrack(rds, logger),
 		middleware.CertifiedUserCheck(db),
 	)
 	{
@@ -153,10 +155,11 @@ func registerUserRoutes(
 		api.POST("/wx/unlimited/wxa_code", handlers.User.UnlimitedWXACode)
 
 		api.POST("/event", handlers.Event.Add)
+		api.POST("/event/", handlers.Event.Add)
 	}
 
 	fileAuth := engine.Group("/file")
-	fileAuth.Use(middleware.JWTAuth(jwtHelper, rds))
+	fileAuth.Use(middleware.JWTAuth(jwtHelper, rds), middleware.ControllerTimeTrack(rds, logger))
 	{
 		fileAuth.POST("/upload", handlers.File.Upload)
 		fileAuth.DELETE("/del/:md5", handlers.File.Delete)

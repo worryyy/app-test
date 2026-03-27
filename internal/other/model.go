@@ -50,16 +50,16 @@ type VoteInfo struct {
 	ID            int64          `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	Title         string         `gorm:"column:title" json:"title"`
 	Content       string         `gorm:"column:content" json:"content"`
-	AccessDraft   bool           `gorm:"column:accessDraft" json:"accessDraft"`
-	AccessEndTime time.Time      `gorm:"column:accessEndTime" json:"accessEndTime"`
-	VoteStart     time.Time      `gorm:"column:voteStart" json:"voteStart"`
-	VoteEnd       time.Time      `gorm:"column:voteEnd" json:"voteEnd"`
+	AccessDraft   int            `gorm:"column:access_draft" json:"accessDraft"`
+	AccessEndTime time.Time      `gorm:"column:access_end_time" json:"accessEndTime"`
+	VoteStart     time.Time      `gorm:"column:vote_start" json:"voteStart"`
+	VoteEnd       time.Time      `gorm:"column:vote_end" json:"voteEnd"`
 	Mode          int            `gorm:"column:mode" json:"mode"`
-	OptionType    int            `gorm:"column:optionType" json:"optionType"`
-	UserID        int64          `gorm:"column:userId" json:"userId"`
-	CreatedAt     time.Time      `gorm:"column:createdAt;autoCreateTime" json:"createdAt"`
-	UpdatedAt     time.Time      `gorm:"column:updatedAt;autoUpdateTime" json:"updatedAt"`
-	DeletedAt     gorm.DeletedAt `gorm:"column:deletedAt" json:"-"`
+	OptionType    int            `gorm:"column:option_type" json:"optionType"`
+	CreatedBy     int64          `gorm:"column:created_by" json:"createdBy"`
+	CreatedAt     time.Time      `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
+	UpdatedAt     time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
+	DeletedAt     gorm.DeletedAt `gorm:"column:deleted_at" json:"-"`
 }
 
 func (VoteInfo) TableName() string {
@@ -68,13 +68,14 @@ func (VoteInfo) TableName() string {
 
 type VoteOption struct {
 	ID         int64          `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	VoteInfoID int64          `gorm:"column:voteInfoId" json:"voteInfoId"`
-	VoteText   string         `gorm:"column:voteText" json:"voteText"`
-	VoteImg    string         `gorm:"column:voteImg" json:"voteImg"`
-	IsOk       bool           `gorm:"column:isOk" json:"isOk"`
-	CreatedAt  time.Time      `gorm:"column:createdAt;autoCreateTime" json:"createdAt"`
-	UpdatedAt  time.Time      `gorm:"column:updatedAt;autoUpdateTime" json:"updatedAt"`
-	DeletedAt  gorm.DeletedAt `gorm:"column:deletedAt" json:"-"`
+	VoteInfoID int64          `gorm:"column:vote_info_id" json:"voteInfoId"`
+	VoteText   string         `gorm:"column:vote_text" json:"voteText"`
+	VoteImg    string         `gorm:"column:vote_img" json:"voteImg"`
+	CreatedBy  int64          `gorm:"column:created_by" json:"createdBy"`
+	IsOk       int            `gorm:"column:is_ok" json:"isOk"`
+	CreatedAt  time.Time      `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
+	UpdatedAt  time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
+	DeletedAt  gorm.DeletedAt `gorm:"column:deleted_at" json:"-"`
 }
 
 func (VoteOption) TableName() string {
@@ -82,11 +83,10 @@ func (VoteOption) TableName() string {
 }
 
 type VoteAns struct {
-	ID           int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	VoteInfoID   int64     `gorm:"column:voteInfoId" json:"voteInfoId"`
-	VoteDate     time.Time `gorm:"column:voteDate" json:"voteDate"`
-	VoteUserID   int64     `gorm:"column:voteUserId" json:"voteUserId"`
-	VoteOptionID int64     `gorm:"column:voteOptionId" json:"voteOptionId"`
+	VoteInfoID   int64     `gorm:"column:vote_info_id" json:"voteInfoId"`
+	VoteDate     time.Time `gorm:"column:vote_date" json:"voteDate"`
+	VoteUserID   int64     `gorm:"column:vote_user_id" json:"voteUserId"`
+	VoteOptionID int64     `gorm:"column:vote_option_id" json:"voteOptionId"`
 }
 
 func (VoteAns) TableName() string {
@@ -99,9 +99,9 @@ type Task struct {
 	Detail    string         `gorm:"column:detail" json:"detail"`
 	Parent    int64          `gorm:"column:parent" json:"parent"`
 	Func      string         `gorm:"column:func" json:"func"`
-	CreatedAt time.Time      `gorm:"column:createdAt;autoCreateTime" json:"createdAt"`
-	UpdatedAt time.Time      `gorm:"column:updatedAt;autoUpdateTime" json:"updatedAt"`
-	DeletedAt gorm.DeletedAt `gorm:"column:deletedAt" json:"-"`
+	CreatedAt time.Time      `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
+	UpdatedAt time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"`
 }
 
 func (Task) TableName() string {
@@ -126,7 +126,8 @@ type MerchantTheme struct {
 }
 
 type FrontendSupport struct {
-	ID    primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	Key   string             `bson:"key" json:"key"`
-	Value interface{}        `bson:"value" json:"value"`
+	ID      primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Key     string             `bson:"key" json:"key"`
+	Val     string             `bson:"val" json:"val"`
+	KeyDesc string             `bson:"keyDesc,omitempty" json:"keyDesc"`
 }

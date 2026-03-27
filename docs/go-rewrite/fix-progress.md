@@ -124,3 +124,33 @@
 | DIFF-LVL-05 | ✅ 已修复 | `internal/level/handler.go` 批量经验接口改回读取 `userIdList`，缺参返回 `无用户id信息`，返回字段改回 `userExp` | 编译通过 |
 
 **汇总**: 差异 17，已修复 17，编译通过；`go vet ./...`、`go test ./...` 已通过。本轮在线复核了 `campus_file`、`campus_term`、`campus_cur_term`、`exp_detail` 与 `campus:userSign:*`，其中当前共享 MySQL 环境未发现 `campus_course_color/campus_user_course` 表，故 `School` 的课程颜色持久化只能做到代码与基线对齐、无法做真实落库回放。
+
+## Fix-7: Other + Event + Theme + WX/Sensitive + MQ + Cron
+| ID | 状态 | 文件/结果 | 验证 |
+| --- | --- | --- | --- |
+| DIFF-OTH-01 | ✅ 已修复 | `internal/other/ad.go`、`internal/other/service_ad.go` 改回读取 query `size`，并只返回按 `level DESC` 排序的前 N 条有效广告 | `go build ./cmd/ecampus`、`go build ./cmd/ecampus-crm` |
+| DIFF-OTH-02 | ✅ 已修复 | `internal/other/model.go`、`internal/other/service_merchant_support_task.go`、`internal/other/support_admin.go` 恢复 `FrontendSupport{key,val,keyDesc}` 文档结构，并按 `val/keyDesc` 读写；`GetSupportByKey` 缺失时改回 `资源不存在` | 编译通过；在线 `db.campus_frontend_support.findOne()` 当前无样本 |
+| DIFF-OTH-03 | ✅ 已修复 | `internal/other/model_req.go`、`internal/other/task_admin.go`、`internal/other/service_merchant_support_task.go` 改回接受 `{name}`，并按 `func` 字段写任务；`GET /admin/task/{id}`、`GET /admin/task/list` 改回 `result.Data()` | 编译通过；在线 `DESCRIBE campus_task` 已复核 `func/created_at/updated_at/deleted_at` |
+| DIFF-OTH-04 | ✅ 已修复 | `internal/other/model.go`、`internal/other/service_vote.go`、`internal/other/vote.go` 恢复投票返回体中的 `accessDraft/isOk` 为 `0/1` 数值语义，`createdBy` 改回 Java 字段名 | 编译通过；共享 MySQL 当前无 `campus_vote_*` 表，无法做真实落库回放 |
+| DIFF-OTH-05 | ✅ 已修复 | `internal/other/model_req.go`、`internal/other/vote.go`、`internal/other/service_vote.go` 改回接受 `{info,options}` 创建投票，并在同一事务中写入投票与初始选项 | 同上 |
+| DIFF-OTH-06 | ✅ 已修复 | `internal/other/vote.go`、`internal/other/service_vote.go` 恢复 `/api/vote/draft/{info_id}` 的“仅创建者可见 + is_ok 过滤” | 同上 |
+| DIFF-OTH-07 | ✅ 已修复 | `internal/other/service_vote.go` 投票改回追加式 `INSERT IGNORE` 语义，不再先删同用户旧记录；同时兼容 Java 原始数组请求体 | 同上 |
+| DIFF-OTH-08 | ✅ 已修复 | `internal/other/service_merchant_support_task.go`、`internal/other/merchant_admin.go` 恢复商家主题新增幂等；重复 `themeId` 直接返回已有文档，并改回 `result.Data()` | 编译通过；在线 `db.campus_merchant_theme.findOne()` 当前无样本 |
+| DIFF-EVT-01 | ✅ 已修复 | `cmd/ecampus/routes.go` 补回 `/api/event/` 路由别名，不再依赖 Gin 重定向 | 编译通过 |
+| DIFF-EVT-02 | ✅ 已修复 | `internal/event/model.go`、`internal/event/handler.go`、`internal/event/service.go` 改回服务端注入 `userId(string)` 与 `triggerTime` | 编译通过；共享 MySQL 当前无 `event_data` 表 |
+| DIFF-EVT-03 | ✅ 已修复 | `internal/event/service.go` 改回请求成功即直写 MySQL，不再先写 Redis 等待 15 分钟 flush | 同上 |
+| DIFF-EVT-04 | ✅ 已修复 | `internal/event/model_req.go`、`internal/event/admin.go`、`internal/event/service.go` 恢复 `/admin/event/list` 的 `prev_id/start_time/user_id/event_type/key_word` 查询协议与 `{data,total}` 返回结构 | 同上 |
+| DIFF-THM-01 | ⏭️ 已跳过 | 当前 `internal/theme/model.go` 的 `suggestType` 已为 `int` 且 `bson:"suggestType"`，与 Java 主题文档字段兼容 | 代码确认；在线 `db.campus_theme.findOne()` 当前无样本 |
+| DIFF-THM-02 | ⏭️ 已跳过 | 当前 `internal/theme/model_req.go`、`internal/theme/admin.go`、`internal/theme/service_admin.go` 已保留 `category_name` 并返回更新后的 `Theme` | 代码确认 |
+| DIFF-THM-03 | ⏭️ 已跳过 | 当前 `PUT /admin/theme/search` 已接受 `{"themeIds":[...]}` 批量请求并调用 `UpdateNeedSearch` | 代码确认 |
+| DIFF-THM-04 | ⏭️ 已跳过 | 当前 `POST /admin/theme/suggest` 已按 Java 的 `ThemeSuggestDTO` 批量按主题名更新推荐配置 | 代码确认 |
+| DIFF-THM-05 | ⏭️ 已跳过 | 当前 `internal/theme/service.go` 的主题名过滤已回到 `name = ?` 精确匹配，不再是正则包含 | 代码确认 |
+| DIFF-WXS-01 | ⏭️ 已跳过 | 当前 `internal/user/service_extra.go` + `internal/user/handler.go` 已返回 Base64 字符串，不再输出 PNG 二进制 | 代码确认 |
+| DIFF-WXS-02 | ⏭️ 已跳过 | 当前 `internal/other/sensitive_admin.go` 的新增/更新已回到 query `word/updateWord` 契约 | 代码确认 |
+| DIFF-WXS-03 | ⏭️ 已跳过 | 当前 `internal/other/sensitive_admin.go` 的批量新增/删除已接受 Java 原始字符串数组，不再要求 `{"words":[...]}` | 代码确认 |
+| DIFF-MQ-01 | ✅ 已修复 | `internal/mq/consumer_user_cleanup.go` 在更新 `user.*` 之外，补回 `parent.nickName/avatar/gender/signature` 快照同步 | `go build ./cmd/ecampus`、`go build ./cmd/ecampus-crm`、`go vet ./...`、`go test ./...` |
+| DIFF-MQ-02 | ✅ 已修复 | `internal/mq/consumer_user_cleanup.go` 删帖清理改回“保留 `campus_topic` 软删除结果 + 将 `campus_comment.hasCheck=false`”，不再物理删帖/删评论 | 同上 |
+| DIFF-CRN-01 | ✅ 已修复 | `internal/pkg/result/result.go`、新增 `internal/middleware/controller_time.go`、新增 `internal/cron/controller_time_flush.go`、`internal/cron/scheduler.go`、`internal/monitor/model.go`、两端 `routes.go`：补回 `controller_time` Redis 采集与 10 分钟批量落库链路 | 编译通过；在线 `DESCRIBE controller_time` 已复核；当前 Redis `KEYS campus:controllerTime:*` 为空，尚未跑本地服务产生样本 |
+| DIFF-ROUTE-04 | ✅ 已修复 | `cmd/ecampus-crm/routes.go` 补回 `/admin/sensitive/getByWord/` 尾斜杠路由别名 | 编译通过 |
+
+**汇总**: 差异 24，已修复 16，已跳过 8，编译通过；`go build ./cmd/ecampus`、`go build ./cmd/ecampus-crm`、`go vet ./...`、`go test ./...` 已通过。本轮在线复核了 `controller_time`、`campus_task`、`campus_theme_id` 与 `campus:controllerTime:*`；共享环境当前无 `event_data`、`campus_vote_*`、`campus_frontend_support`、`campus_theme`、`campus_merchant_theme` 样本，因此这些链路只能做到代码与 Java 基线对齐，无法在共享环境做真实写入回放。

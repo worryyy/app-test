@@ -9,11 +9,11 @@ import (
 )
 
 func (h *AdminHandler) TaskAdd(c *gin.Context) {
-	var req Task
+	var req TaskNameReq
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.CreateTask(c.Request.Context(), &req); err != nil {
+	if err := h.svc.CreateTask(c.Request.Context(), req.Name); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -47,11 +47,11 @@ func (h *AdminHandler) TaskUpdate(c *gin.Context) {
 		result.HandleError(c, result.ErrIDZero)
 		return
 	}
-	var req Task
+	var req TaskNameReq
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.UpdateTask(c.Request.Context(), id, &req); err != nil {
+	if err := h.svc.UpdateTask(c.Request.Context(), id, req.Name); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -73,7 +73,7 @@ func (h *AdminHandler) TaskGet(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *AdminHandler) TaskList(c *gin.Context) {
@@ -83,5 +83,5 @@ func (h *AdminHandler) TaskList(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }

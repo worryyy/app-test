@@ -1,9 +1,11 @@
 package other
 
 import (
+	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
@@ -25,7 +27,9 @@ func (h *Handler) VoteDraft(c *gin.Context) {
 		result.Fail(c, result.CodeParamError, "参数错误")
 		return
 	}
-	data, err := h.svc.GetVoteOptions(c.Request.Context(), infoID)
+	page, size := pageSize(c)
+	isOK, _ := strconv.Atoi(c.DefaultQuery("is_ok", "1"))
+	data, err := h.svc.GetVoteOptions(c.Request.Context(), infoID, middleware.GetUserID(c), page, size, isOK)
 	if err != nil {
 		result.HandleError(c, err)
 		return
@@ -39,11 +43,11 @@ func (h *Handler) VoteDraftAccept(c *gin.Context) {
 		result.Fail(c, result.CodeParamError, "参数错误")
 		return
 	}
-	var req VoteAcceptReq
-	if !result.BindJSON(c, &req) {
+	optionIDs, ok := bindVoteOptionIDs(c)
+	if !ok {
 		return
 	}
-	if err := h.svc.AcceptVoteOptions(c.Request.Context(), infoID, req.OptionIDs); err != nil {
+	if err := h.svc.AcceptVoteOptions(c.Request.Context(), infoID, middleware.GetUserID(c), optionIDs); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -51,12 +55,11 @@ func (h *Handler) VoteDraftAccept(c *gin.Context) {
 }
 
 func (h *Handler) VoteCreate(c *gin.Context) {
-	var req VoteInfo
+	var req VoteCreateReq
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	req.UserID = middleware.GetUserID(c)
-	if err := h.svc.CreateVoteInfo(c.Request.Context(), &req); err != nil {
+	if err := h.svc.CreateVoteInfo(c.Request.Context(), middleware.GetUserID(c), &req); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -73,8 +76,7 @@ func (h *Handler) VoteAddOption(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	req.VoteInfoID = infoID
-	if err := h.svc.AddVoteOption(c.Request.Context(), &req); err != nil {
+	if err := h.svc.AddVoteOption(c.Request.Context(), infoID, middleware.GetUserID(c), &req); err != nil {
 		result.HandleError(c, err)
 		return
 	}
@@ -87,13 +89,28 @@ func (h *Handler) VoteDo(c *gin.Context) {
 		result.Fail(c, result.CodeParamError, "参数错误")
 		return
 	}
-	var req VoteReq
-	if !result.BindJSON(c, &req) {
+	optionIDs, ok := bindVoteOptionIDs(c)
+	if !ok {
 		return
 	}
-	if err := h.svc.Vote(c.Request.Context(), infoID, middleware.GetUserID(c), req.OptionIDs); err != nil {
+	if err := h.svc.Vote(c.Request.Context(), infoID, middleware.GetUserID(c), optionIDs); err != nil {
 		result.HandleError(c, err)
 		return
 	}
 	result.Success(c, nil)
+}
+
+func bindVoteOptionIDs(c *gin.Context) ([]int64, bool) {
+	var rawIDs []int64
+	if err := c.ShouldBindBodyWith(&rawIDs, binding.JSON); err == nil {
+		return rawIDs, true
+	}
+
+	var req VoteReq
+	if err := c.ShouldBindBodyWith(&req, binding.JSON); err == nil {
+		return req.OptionIDs, true
+	}
+
+	result.FailWithStatus(c, http.StatusBadRequest, result.CodeParamError, result.ErrParam.Error())
+	return nil, false
 }

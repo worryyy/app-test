@@ -2,6 +2,7 @@ package event
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -43,7 +44,7 @@ func (h *AdminHandler) Update(c *gin.Context) {
 		result.HandleError(c, result.ErrIDZero)
 		return
 	}
-	var req Event
+	var req EventUpdateReq
 	if !result.BindJSON(c, &req) {
 		return
 	}
@@ -73,9 +74,26 @@ func (h *AdminHandler) Get(c *gin.Context) {
 }
 
 func (h *AdminHandler) List(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	size, _ := strconv.Atoi(c.DefaultQuery("size", "15"))
-	data, err := h.svc.ListEvents(c.Request.Context(), page, size, c.Query("eventType"))
+	startTime, err := time.ParseInLocation(
+		"2006-01-02 15:04:05",
+		c.DefaultQuery("start_time", "2023-09-18 12:00:00"),
+		time.Local,
+	)
+	if err != nil {
+		result.Fail(c, result.CodeParamError, "参数错误")
+		return
+	}
+
+	prevID, _ := strconv.ParseInt(c.DefaultQuery("prev_id", "1"), 10, 64)
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "0"))
+	data, err := h.svc.ListEvents(c.Request.Context(), EventListReq{
+		PrevID:    prevID,
+		Size:      size,
+		StartTime: startTime,
+		UserID:    c.Query("user_id"),
+		EventType: c.Query("event_type"),
+		KeyWord:   c.Query("key_word"),
+	})
 	if err != nil {
 		result.HandleError(c, err)
 		return

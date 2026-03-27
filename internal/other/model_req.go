@@ -8,8 +8,9 @@ type VoteReq struct {
 	OptionIDs []int64 `json:"optionIds" binding:"required"`
 }
 
-type WordsReq struct {
-	Words []string `json:"words" binding:"required"`
+type VoteCreateReq struct {
+	Info    VoteInfo     `json:"info" binding:"required"`
+	Options []VoteOption `json:"options"`
 }
 
 type ReportReviewReq struct {
@@ -18,4 +19,8 @@ type ReportReviewReq struct {
 
 type MerchantThemeReq struct {
 	ThemeID string `json:"themeId" binding:"required"`
+}
+
+type TaskNameReq struct {
+	Name string `json:"name" binding:"required"`
 }

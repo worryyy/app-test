@@ -9,8 +9,8 @@ import (
 )
 
 func (h *Handler) AdListByLevel(c *gin.Context) {
-	level, _ := strconv.Atoi(c.DefaultQuery("level", "0"))
-	data, err := h.svc.ListAdByLevel(c.Request.Context(), level)
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "0"))
+	data, err := h.svc.ListAdByLevel(c.Request.Context(), size)
 	if err != nil {
 		result.HandleError(c, err)
 		return

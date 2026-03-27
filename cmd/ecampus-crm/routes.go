@@ -42,13 +42,14 @@ func registerAdminRoutes(
 	handlers AdminHandlers,
 ) {
 	engine.Use(middleware.CORS())
-	engine.POST("/admin/user/login", handlers.User.Login)
+	engine.POST("/admin/user/login", middleware.ControllerTimeTrack(rds, logger), handlers.User.Login)
 
 	admin := engine.Group("/admin")
 	admin.Use(
 		middleware.JWTAuth(jwtHelper, rds),
 		middleware.BlackListCheck(rds),
 		middleware.RequestLog(logger),
+		middleware.ControllerTimeTrack(rds, logger),
 		middleware.AdminCheck(db),
 		middleware.CertifiedUserCheck(db),
 	)
@@ -99,6 +100,7 @@ func registerAdminRoutes(
 
 		admin.GET("/sensitive/getAllList", handlers.Other.SensitiveGetAllList)
 		admin.GET("/sensitive/getByWord", handlers.Other.SensitiveGetByWord)
+		admin.GET("/sensitive/getByWord/", handlers.Other.SensitiveGetByWord)
 		admin.DELETE("/sensitive/deleteByWord", handlers.Other.SensitiveDeleteByWord)
 		admin.DELETE("/sensitive/batchDelete", handlers.Other.SensitiveBatchDelete)
 		admin.POST("/sensitive/add", handlers.Other.SensitiveAdd)
