@@ -89,16 +89,25 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/key && chmod 600 ~/.ssh/key
-          SSH="ssh -i ~/.ssh/key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST"
-          SCP="scp -i ~/.ssh/key -o StrictHostKeyChecking=no"
+          SSH_OPTS="-i ~/.ssh/key -o StrictHostKeyChecking=no -o ConnectTimeout=15"
 
-          $SCP /tmp/images.tar.gz $SSH_USER@$SSH_HOST:/tmp/images.tar.gz
-          $SSH "gunzip -c /tmp/images.tar.gz | docker load"
-          $SSH "docker stop campus_ecampus campus_ecampus_crm 2>/dev/null || true"
-          $SSH "docker rm campus_ecampus campus_ecampus_crm 2>/dev/null || true"
-          $SSH "docker run -d --name campus_ecampus --network campus -e APP_PROFILE=$APP_PROFILE -p 8080:8080 --restart unless-stopped $DOCKERHUB_USER/ecampus:latest"
-          $SSH "docker run -d --name campus_ecampus_crm --network campus -e APP_PROFILE=$APP_PROFILE -p 8081:8081 --restart unless-stopped $DOCKERHUB_USER/ecampus-crm:latest"
-          $SSH "rm -f /tmp/images.tar.gz"
+          retry() {
+            for i in 1 2 3 4 5; do
+              "$@" && return 0
+              echo "Attempt $i failed, retrying in 15s..."
+              sleep 15
+            done
+            echo "All 5 attempts failed"
+            return 1
+          }
+
+          retry scp $SSH_OPTS /tmp/images.tar.gz $SSH_USER@$SSH_HOST:/tmp/images.tar.gz
+          retry ssh $SSH_OPTS $SSH_USER@$SSH_HOST "gunzip -c /tmp/images.tar.gz | docker load"
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST "docker stop campus_ecampus campus_ecampus_crm 2>/dev/null || true"
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST "docker rm campus_ecampus campus_ecampus_crm 2>/dev/null || true"
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST "docker run -d --name campus_ecampus --network campus -e APP_PROFILE=$APP_PROFILE -p 8080:8080 --restart unless-stopped $DOCKERHUB_USER/ecampus:latest"
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST "docker run -d --name campus_ecampus_crm --network campus -e APP_PROFILE=$APP_PROFILE -p 8081:8081 --restart unless-stopped $DOCKERHUB_USER/ecampus-crm:latest"
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST "rm -f /tmp/images.tar.gz"
 
   # ==================== Deploy to Production ====================
   deploy-prod:
@@ -124,13 +133,22 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/key && chmod 600 ~/.ssh/key
-          SSH="ssh -i ~/.ssh/key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST"
-          SCP="scp -i ~/.ssh/key -o StrictHostKeyChecking=no"
+          SSH_OPTS="-i ~/.ssh/key -o StrictHostKeyChecking=no -o ConnectTimeout=15"
 
-          $SCP /tmp/images.tar.gz $SSH_USER@$SSH_HOST:/tmp/images.tar.gz
-          $SSH "gunzip -c /tmp/images.tar.gz | docker load"
-          $SSH "docker stop campus_ecampus campus_ecampus_crm 2>/dev/null || true"
-          $SSH "docker rm campus_ecampus campus_ecampus_crm 2>/dev/null || true"
-          $SSH "docker run -d --name campus_ecampus --network campus -e APP_PROFILE=$APP_PROFILE -p 8080:8080 --restart unless-stopped $DOCKERHUB_USER/ecampus:latest"
-          $SSH "docker run -d --name campus_ecampus_crm --network campus -e APP_PROFILE=$APP_PROFILE -p 8081:8081 --restart unless-stopped $DOCKERHUB_USER/ecampus-crm:latest"
-          $SSH "rm -f /tmp/images.tar.gz"
+          retry() {
+            for i in 1 2 3 4 5; do
+              "$@" && return 0
+              echo "Attempt $i failed, retrying in 15s..."
+              sleep 15
+            done
+            echo "All 5 attempts failed"
+            return 1
+          }
+
+          retry scp $SSH_OPTS /tmp/images.tar.gz $SSH_USER@$SSH_HOST:/tmp/images.tar.gz
+          retry ssh $SSH_OPTS $SSH_USER@$SSH_HOST "gunzip -c /tmp/images.tar.gz | docker load"
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST "docker stop campus_ecampus campus_ecampus_crm 2>/dev/null || true"
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST "docker rm campus_ecampus campus_ecampus_crm 2>/dev/null || true"
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST "docker run -d --name campus_ecampus --network campus -e APP_PROFILE=$APP_PROFILE -p 8080:8080 --restart unless-stopped $DOCKERHUB_USER/ecampus:latest"
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST "docker run -d --name campus_ecampus_crm --network campus -e APP_PROFILE=$APP_PROFILE -p 8081:8081 --restart unless-stopped $DOCKERHUB_USER/ecampus-crm:latest"
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST "rm -f /tmp/images.tar.gz"
