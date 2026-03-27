@@ -77,7 +77,7 @@ jobs:
             docker pull $DOCKERHUB_USER/ecampus:latest
             docker pull $DOCKERHUB_USER/ecampus-crm:latest
             cd /opt/ecampus/deployments
-            docker compose up -d ecampus ecampus-crm
+            docker compose up -d --no-build ecampus ecampus-crm
 
   # ==================== Deploy to Production ====================
   deploy-prod:
@@ -103,4 +103,4 @@ jobs:
             docker pull $DOCKERHUB_USER/ecampus:latest
             docker pull $DOCKERHUB_USER/ecampus-crm:latest
             cd /opt/ecampus/deployments
-            docker compose up -d ecampus ecampus-crm
+            docker compose up -d --no-build ecampus ecampus-crm
