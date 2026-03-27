@@ -73,11 +73,12 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           envs: DOCKERHUB_USER,DOCKERHUB_TOKEN,APP_PROFILE
           script: |
+            cd /opt/ecampus && git pull
             echo $DOCKERHUB_TOKEN | docker login -u $DOCKERHUB_USER --password-stdin
             docker pull $DOCKERHUB_USER/ecampus:latest
             docker pull $DOCKERHUB_USER/ecampus-crm:latest
-            cd /opt/ecampus/deployments
-            docker compose up -d --no-build ecampus ecampus-crm
+            cd deployments
+            docker compose up -d --no-build --no-deps ecampus ecampus-crm
 
   # ==================== Deploy to Production ====================
   deploy-prod:
@@ -99,8 +100,9 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           envs: DOCKERHUB_USER,DOCKERHUB_TOKEN,APP_PROFILE
           script: |
+            cd /opt/ecampus && git pull
             echo $DOCKERHUB_TOKEN | docker login -u $DOCKERHUB_USER --password-stdin
             docker pull $DOCKERHUB_USER/ecampus:latest
             docker pull $DOCKERHUB_USER/ecampus-crm:latest
-            cd /opt/ecampus/deployments
-            docker compose up -d --no-build ecampus ecampus-crm
+            cd deployments
+            docker compose up -d --no-build --no-deps ecampus ecampus-crm
