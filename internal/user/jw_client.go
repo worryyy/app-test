@@ -28,9 +28,8 @@ type JWCommonResp struct {
 }
 
 type JWLoginData struct {
-	IsLogin bool   `json:"isLogin"`
+	IsLogin bool   `json:"is_login"`
 	Major   string `json:"major"`
-	Message string `json:"message"`
 	Name    string `json:"name"`
 }
 

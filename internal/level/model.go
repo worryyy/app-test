@@ -13,8 +13,13 @@ func (ExpDetail) TableName() string {
 	return "exp_detail"
 }
 
-type SignDetail struct {
-	Exp         int  `json:"exp"`
-	SignDays    int  `json:"signDays"`
-	TodaySigned bool `json:"todaySigned"`
+type UserSignDetail struct {
+	UserID  int64 `json:"userId"`
+	UserExp int   `json:"userExp"`
+	Signed  bool  `json:"signed"`
+}
+
+type UserExpVO struct {
+	UserID  int64 `json:"userId"`
+	UserExp int   `json:"userExp"`
 }

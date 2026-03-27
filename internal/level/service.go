@@ -2,8 +2,6 @@ package level
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -15,11 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
-)
-
-var (
-	ErrAlreadySigned = errors.New("already signed today")
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
 type Service struct {
@@ -45,66 +39,41 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 
 func (s *Service) SignIn(ctx context.Context, userID int64) error {
 	yearMonth := time.Now().Format("200601")
-	day := int64(time.Now().Day())
-	key := rediskey.UserSign(yearMonth)
-	offset := userID*31 + day
+	day := int64(time.Now().Day() - 1)
+	key := userSignKey(userID, yearMonth)
 
-	already, err := s.redis.GetBit(ctx, key, offset).Result()
+	already, err := s.redis.GetBit(ctx, key, day).Result()
 	if err != nil {
 		return fmt.Errorf("check sign status: %w", err)
 	}
 	if already == 1 {
-		return ErrAlreadySigned
+		return result.NewBizError(result.CodeFail, "今日已签到")
 	}
 
-	if err := s.redis.SetBit(ctx, key, offset, 1).Err(); err != nil {
+	if err := s.redis.SetBit(ctx, key, day, 1).Err(); err != nil {
 		return fmt.Errorf("set sign bit: %w", err)
-	}
-
-	detail := ExpDetail{UserID: userID, GetExpDate: time.Now(), GetExp: 10}
-	data, err := json.Marshal(detail)
-	if err != nil {
-		return fmt.Errorf("marshal exp detail: %w", err)
-	}
-
-	if err := s.redis.LPush(ctx, rediskey.ExpDetailKey, string(data)).Err(); err != nil {
-		return fmt.Errorf("push exp detail: %w", err)
-	}
-	if err := s.redis.Del(ctx, rediskey.UserExp(userID)).Err(); err != nil {
-		return fmt.Errorf("clear user exp cache: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) GetSignDetail(ctx context.Context, userID int64) (*SignDetail, error) {
+func (s *Service) GetSignDetail(ctx context.Context, userID int64) (*UserSignDetail, error) {
 	yearMonth := time.Now().Format("200601")
-	key := rediskey.UserSign(yearMonth)
+	key := userSignKey(userID, yearMonth)
 	day := time.Now().Day()
 
-	todaySigned, err := s.redis.GetBit(ctx, key, userID*31+int64(day)).Result()
+	todaySigned, err := s.redis.GetBit(ctx, key, int64(day-1)).Result()
 	if err != nil {
 		return nil, fmt.Errorf("get today sign status: %w", err)
-	}
-
-	signDays := 0
-	for d := 1; d <= day; d++ {
-		bit, bitErr := s.redis.GetBit(ctx, key, userID*31+int64(d)).Result()
-		if bitErr != nil {
-			return nil, fmt.Errorf("count sign days: %w", bitErr)
-		}
-		if bit == 1 {
-			signDays++
-		}
 	}
 
 	exp, err := s.GetExp(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	return &SignDetail{
-		Exp:         exp,
-		SignDays:    signDays,
-		TodaySigned: todaySigned == 1,
+	return &UserSignDetail{
+		UserID:  userID,
+		UserExp: exp,
+		Signed:  todaySigned == 1,
 	}, nil
 }
 
@@ -125,7 +94,7 @@ func (s *Service) GetExpBatch(ctx context.Context, userIDs []int64) (map[int64]i
 }
 
 func (s *Service) getExpWithCache(ctx context.Context, userID int64) (int, error) {
-	key := rediskey.UserExp(userID)
+	key := fmt.Sprintf("campus:userExp:%d", userID)
 	cached, err := s.redis.Get(ctx, key).Result()
 	if err == nil && cached != "" {
 		v, convErr := strconv.Atoi(cached)
@@ -150,4 +119,14 @@ func (s *Service) getExpWithCache(ctx context.Context, userID int64) (int, error
 		s.logger.Warn("cache user exp failed", zap.Error(setErr), zap.Int64("userID", userID))
 	}
 	return int(sum), nil
+}
+
+func (s *Service) TestAOP(context.Context) string {
+	return "这是/testAop接口"
+}
+
+func (s *Service) ExpPlus3(context.Context, int64) {}
+
+func userSignKey(userID int64, yearMonth string) string {
+	return fmt.Sprintf("campus:userSign:%d:%s", userID, yearMonth)
 }

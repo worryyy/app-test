@@ -44,15 +44,27 @@ func NewClient(cfg config.COSConfig, logger *zap.Logger) *Client {
 	}
 }
 
-func (c *Client) PutWithImageProcess(ctx context.Context, objectKey string, data []byte, process string) (string, error) {
-	contentType := http.DetectContentType(data)
-	if strings.TrimSpace(process) != "" && c.compressClient != nil {
-		if _, err := putObject(ctx, c.compressClient, objectKey, data, contentType); err == nil {
-			return buildURL(c.cfg.CompressBaseCDN, objectKey), nil
-		}
-		c.logger.Warn("upload to compress bucket failed, fallback to base bucket", zap.String("key", objectKey))
+func (c *Client) PutWithImageProcess(
+	ctx context.Context,
+	objectKey string,
+	data []byte,
+	contentType string,
+	process string,
+) (string, error) {
+	originURL, err := c.Put(ctx, objectKey, data, contentType)
+	if err != nil {
+		return "", err
 	}
-	return c.Put(ctx, objectKey, data, contentType)
+	if strings.TrimSpace(process) == "" || c.compressClient == nil {
+		return originURL, nil
+	}
+
+	compressKey := c.compressObjectKey(objectKey)
+	if _, err := putObject(ctx, c.compressClient, compressKey, data, contentType); err == nil {
+		return buildURL(c.cfg.CompressBaseCDN, compressKey), nil
+	}
+	c.logger.Warn("upload to compress bucket failed, fallback to base bucket", zap.String("key", compressKey))
+	return originURL, nil
 }
 
 func (c *Client) Put(ctx context.Context, objectKey string, data []byte, contentType string) (string, error) {
@@ -75,11 +87,19 @@ func (c *Client) Delete(ctx context.Context, objectKey string) error {
 		}
 	}
 	if c.compressClient != nil {
-		if _, err := c.compressClient.Object.Delete(ctx, objectKey); err != nil {
+		if _, err := c.compressClient.Object.Delete(ctx, c.compressObjectKey(objectKey)); err != nil {
 			c.logger.Warn("delete object from compress cos failed", zap.Error(err), zap.String("objectKey", objectKey))
 		}
 	}
 	return nil
+}
+
+func (c *Client) compressObjectKey(objectKey string) string {
+	compress := strings.TrimSpace(c.cfg.Compress)
+	if compress == "" {
+		return objectKey
+	}
+	return objectKey + "." + compress
 }
 
 func buildURL(base, objectKey string) string {

@@ -1,7 +1,7 @@
 package school
 
 type CourseColorReq struct {
-	Colors map[string]string `json:"colors" binding:"required"`
+	Colors []string `json:"colors" binding:"required"`
 }
 
 type CurTermReq struct {

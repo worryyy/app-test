@@ -32,18 +32,37 @@ func (h *Handler) SignIn(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.SuccessMsg(c, "签到成功", nil)
+}
+
+func (h *Handler) TestAOP(c *gin.Context) {
+	result.Data(c, h.svc.TestAOP(c.Request.Context()))
+}
+
+func (h *Handler) ExpPlus3(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
+		return
+	}
+	h.svc.ExpPlus3(c.Request.Context(), id)
+	result.SuccessMsg(c, "经验+3，告辞", nil)
 }
 
 func (h *Handler) UserExp(c *gin.Context) {
-	raw := c.Query("userIds")
-	if strings.TrimSpace(raw) == "" {
-		result.Success(c, []map[string]interface{}{})
+	rawIDs := c.QueryArray("userIdList")
+	if len(rawIDs) == 0 {
+		raw := strings.TrimSpace(c.Query("userIdList"))
+		if raw != "" {
+			rawIDs = strings.Split(raw, ",")
+		}
+	}
+	if len(rawIDs) == 0 {
+		result.Fail(c, result.CodeFail, "无用户id信息")
 		return
 	}
-	parts := strings.Split(raw, ",")
-	ids := make([]int64, 0, len(parts))
-	for _, p := range parts {
+	ids := make([]int64, 0, len(rawIDs))
+	for _, p := range rawIDs {
 		p = strings.TrimSpace(p)
 		if p == "" {
 			continue
@@ -58,9 +77,9 @@ func (h *Handler) UserExp(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	out := make([]map[string]interface{}, 0, len(data))
+	out := make([]UserExpVO, 0, len(data))
 	for _, id := range ids {
-		out = append(out, map[string]interface{}{"userId": id, "exp": data[id]})
+		out = append(out, UserExpVO{UserID: id, UserExp: data[id]})
 	}
 	result.Success(c, out)
 }

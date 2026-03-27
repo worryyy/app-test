@@ -1,8 +1,12 @@
 package file
 
-import "github.com/gin-gonic/gin"
+import (
+	"fmt"
 
-import "github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/gin-gonic/gin"
+
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+)
 
 type AdminHandler struct {
 	svc *Service
@@ -13,15 +17,21 @@ func NewAdminHandler(svc *Service) *AdminHandler {
 }
 
 func (h *AdminHandler) SetPublic(c *gin.Context) {
-	var req FilePublicReq
-	if !result.BindJSON(c, &req) {
+	ids := c.QueryArray("img_list")
+	if len(ids) == 0 {
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
-	if err := h.svc.SetPublic(c.Request.Context(), req.MD5List, true); err != nil {
+	modified, err := h.svc.SetPublic(c.Request.Context(), ids, true)
+	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	if modified <= 0 {
+		result.Fail(c, result.CodeFail, "失败")
+		return
+	}
+	result.SuccessMsg(c, fmt.Sprintf("更改 %d 条记录", modified), nil)
 }
 
 func (h *AdminHandler) List(c *gin.Context) {

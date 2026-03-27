@@ -17,12 +17,12 @@ func (h *AdminHandler) AddTerm(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	id, err := h.svc.AddTerm(c.Request.Context(), &req)
+	term, err := h.svc.AddTerm(c.Request.Context(), &req)
 	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, id)
+	result.Data(c, term)
 }
 
 func (h *AdminHandler) DeleteTerm(c *gin.Context) {
@@ -38,9 +38,10 @@ func (h *AdminHandler) SetCurrentTerm(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.SetCurrentTerm(c.Request.Context(), req.TermID); err != nil {
+	curTerm, err := h.svc.SetCurrentTerm(c.Request.Context(), req.TermID)
+	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.Data(c, curTerm)
 }

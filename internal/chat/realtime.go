@@ -25,7 +25,7 @@ func (h *Handler) PushNotification(ctx context.Context, targetUserID string, pay
 	if err != nil {
 		return err
 	}
-	return session.WriteJSON(notification)
+	return session.WriteJSON(newRealtimeNotification(notification))
 }
 
 func normalizeNotificationPayload(payload interface{}) (*Notification, error) {
@@ -55,6 +55,46 @@ func normalizeNotificationPayload(payload interface{}) (*Notification, error) {
 	default:
 		return nil, fmt.Errorf("unsupported notification payload type %T", payload)
 	}
+}
+
+type realtimeNotification struct {
+	ID          string `json:"id"`
+	ReceiverID  string `json:"receiverId"`
+	SenderID    string `json:"senderId"`
+	Type        string `json:"type"`
+	Content     string `json:"content"`
+	TopicID     string `json:"topicId"`
+	CommentID   string `json:"commentId"`
+	CreatedTime int64  `json:"createdTime"`
+	IsRead      bool   `json:"isRead"`
+}
+
+func newRealtimeNotification(notification *Notification) realtimeNotification {
+	if notification == nil {
+		return realtimeNotification{}
+	}
+	createdTime := int64(0)
+	if !notification.CreatedTime.IsZero() {
+		createdTime = notification.CreatedTime.UnixMilli()
+	}
+	return realtimeNotification{
+		ID:          objectIDString(notification.ID),
+		ReceiverID:  notification.ReceiverID,
+		SenderID:    notification.SenderID,
+		Type:        notification.Type,
+		Content:     notification.Content,
+		TopicID:     notification.TopicID,
+		CommentID:   notification.CommentID,
+		CreatedTime: createdTime,
+		IsRead:      notification.IsRead,
+	}
+}
+
+func objectIDString(id primitive.ObjectID) string {
+	if id.IsZero() {
+		return ""
+	}
+	return id.Hex()
 }
 
 func mapString(data map[string]interface{}, keys ...string) string {

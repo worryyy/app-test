@@ -50,6 +50,7 @@ func registerAdminRoutes(
 		middleware.BlackListCheck(rds),
 		middleware.RequestLog(logger),
 		middleware.AdminCheck(db),
+		middleware.CertifiedUserCheck(db),
 	)
 	{
 		admin.POST("/user", handlers.User.AddUser)

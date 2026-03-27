@@ -112,7 +112,7 @@ func run() error {
 
 	engine := gin.New()
 	engine.Use(gin.Recovery())
-	registerUserRoutes(engine, logger, jwtHelper, rds, UserHandlers{
+	registerUserRoutes(engine, logger, db, jwtHelper, rds, UserHandlers{
 		User:    userH,
 		Topic:   topicH,
 		Comment: commentH,

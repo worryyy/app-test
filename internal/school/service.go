@@ -2,16 +2,13 @@ package school
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/gorm"
 
 	"github.com/redis/go-redis/v9"
@@ -67,6 +64,9 @@ func (s *Service) TermList(ctx context.Context) ([]Term, error) {
 	if err := cur.All(ctx, &list); err != nil {
 		return nil, fmt.Errorf("decode terms: %w", err)
 	}
+	if list == nil {
+		return []Term{}, nil
+	}
 	return list, nil
 }
 
@@ -94,84 +94,6 @@ func (s *Service) CurrentTerm(ctx context.Context) (*CurDateAndTermVO, error) {
 		StartDate:  term.StartDate,
 		TotalWeeks: term.TotalWeeks,
 	}, nil
-}
-
-func (s *Service) AddTerm(ctx context.Context, term *Term) (string, error) {
-	res, err := s.mongoDB.Collection("campus_term").InsertOne(ctx, term)
-	if err != nil {
-		return "", fmt.Errorf("add term: %w", err)
-	}
-	oid, ok := res.InsertedID.(primitive.ObjectID)
-	if !ok {
-		return "", fmt.Errorf("term id invalid")
-	}
-	return oid.Hex(), nil
-}
-
-func (s *Service) DeleteTerm(ctx context.Context, termID string) error {
-	oid, err := primitive.ObjectIDFromHex(termID)
-	if err != nil {
-		return fmt.Errorf("invalid term id: %w", err)
-	}
-	_, err = s.mongoDB.Collection("campus_term").DeleteOne(ctx, bson.M{"_id": oid})
-	if err != nil {
-		return fmt.Errorf("delete term: %w", err)
-	}
-	return nil
-}
-
-func (s *Service) SetCurrentTerm(ctx context.Context, termID string) error {
-	oid, err := primitive.ObjectIDFromHex(termID)
-	if err != nil {
-		return fmt.Errorf("invalid term id: %w", err)
-	}
-
-	var term Term
-	if err := s.mongoDB.Collection("campus_term").FindOne(ctx, bson.M{"_id": oid}).Decode(&term); err != nil {
-		if err == mongo.ErrNoDocuments {
-			return result.ErrNotExisted
-		}
-		return fmt.Errorf("find term before set current: %w", err)
-	}
-
-	_, err = s.mongoDB.Collection("campus_cur_term").UpdateOne(
-		ctx,
-		bson.M{},
-		bson.M{"$set": bson.M{"term": term.Term}},
-		options.Update().SetUpsert(true),
-	)
-	if err != nil {
-		return fmt.Errorf("set current term: %w", err)
-	}
-	return nil
-}
-
-func (s *Service) SetCourseColor(ctx context.Context, userID int64, colors map[string]string) error {
-	data, err := json.Marshal(colors)
-	if err != nil {
-		return fmt.Errorf("marshal course colors: %w", err)
-	}
-	key := fmt.Sprintf("campus:courseColor:%d", userID)
-	if err := s.redis.Set(ctx, key, string(data), 0).Err(); err != nil {
-		return fmt.Errorf("set course color: %w", err)
-	}
-	return nil
-}
-
-func (s *Service) GetCourseColor(ctx context.Context, userID int64) (map[string]string, error) {
-	key := fmt.Sprintf("campus:courseColor:%d", userID)
-	raw, err := s.redis.Get(ctx, key).Result()
-	if err == redis.Nil {
-		return map[string]string{}, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("get course color: %w", err)
-	}
-	var colors map[string]string
-	if err := json.Unmarshal([]byte(raw), &colors); err != nil {
-		return nil, fmt.Errorf("unmarshal course colors: %w", err)
-	}
-	return colors, nil
 }
 
 func (s *Service) RequestGetCourse(ctx context.Context, userID int64, stuNum, stuPwd, term string, week int) error {

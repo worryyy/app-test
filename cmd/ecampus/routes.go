@@ -7,6 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/chat"
 	"github.com/Milchstrassse/Ecampus-go/internal/comment"
@@ -38,6 +39,7 @@ type UserHandlers struct {
 func registerUserRoutes(
 	engine *gin.Engine,
 	logger *zap.Logger,
+	db *gorm.DB,
 	jwtHelper *jwtutil.Helper,
 	rds *redis.Client,
 	handlers UserHandlers,
@@ -62,6 +64,7 @@ func registerUserRoutes(
 		middleware.JWTAuth(jwtHelper, rds),
 		middleware.BlackListCheck(rds),
 		middleware.RequestLog(logger),
+		middleware.CertifiedUserCheck(db),
 	)
 	{
 		api.GET("/user", handlers.User.GetCurrent)
@@ -126,7 +129,9 @@ func registerUserRoutes(
 		api.GET("/notify/:type", handlers.Chat.NotifyLatest)
 
 		api.GET("/getUserSignDetail", handlers.Level.GetUserSignDetail)
+		api.GET("/testAop", handlers.Level.TestAOP)
 		api.POST("/sign_in", handlers.Level.SignIn)
+		api.POST("/exp+3/:id", handlers.Level.ExpPlus3)
 		api.GET("/UserExp", handlers.Level.UserExp)
 
 		api.POST("/course_color", handlers.School.CourseColor)

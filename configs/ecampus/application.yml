@@ -43,7 +43,7 @@ custom:
   default_avatar: "5e39bbaac50af63e6d221b4f9e7fbee8,aaca0f5eb4d2d98a6ce6dffa99f8254b"
   default_anonymous_avatar: "39862f6788f0d8852a2c095e0d4f7057"
   page_size: 15
-  max_file_size_mb: 15
+  max_file_size_mb: 10
 
 jw:
   base_url: "https://www.fangfangfang.top/sztu_jw"

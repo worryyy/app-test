@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/gorm"
@@ -20,6 +21,8 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/cosutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
+
+const defaultMaxUploadMB = 10
 
 type Service struct {
 	db        *gorm.DB
@@ -47,7 +50,7 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 	return s
 }
 
-func (s *Service) Upload(ctx context.Context, file multipart.File, header *multipart.FileHeader, userID string) (string, string, error) {
+func (s *Service) Upload(ctx context.Context, file multipart.File, header *multipart.FileHeader, userID string) (string, error) {
 	defer func() {
 		if closeErr := file.Close(); closeErr != nil {
 			s.logger.Warn("close upload file failed", zap.Error(closeErr))
@@ -56,49 +59,40 @@ func (s *Service) Upload(ctx context.Context, file multipart.File, header *multi
 
 	maxBytes := s.maxUploadBytes()
 	if maxBytes > 0 && header != nil && header.Size > maxBytes {
-		return "", "", result.ErrFileLimited
+		return "", result.ErrFileLimited
 	}
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		return "", "", fmt.Errorf("read upload file: %w", err)
+		return "", fmt.Errorf("read upload file: %w", err)
 	}
 	if maxBytes > 0 && int64(len(data)) > maxBytes {
-		return "", "", result.ErrFileLimited
+		return "", result.ErrFileLimited
 	}
+	contentType, err := normalizeContentType(header)
+	if err != nil {
+		return "", err
+	}
+
 	md5Hash := md5.Sum(data)
 	md5Str := hex.EncodeToString(md5Hash[:])
 
-	coll := s.fileColl()
-	var existing File
-	err = coll.FindOneAndUpdate(
-		ctx,
-		bson.M{"md5": md5Str},
-		bson.M{"$inc": bson.M{"refCount": 1}},
-		options.FindOneAndUpdate().SetReturnDocument(options.After),
-	).Decode(&existing)
-	if err == nil {
-		return md5Str, s.fileURL(md5Str), nil
+	existing, err := s.findByUserAndMD5(ctx, userID, md5Str)
+	if err != nil {
+		return "", err
 	}
-	if err != mongo.ErrNoDocuments {
-		return "", "", fmt.Errorf("query existing file: %w", err)
+	if existing != nil {
+		if _, err := s.fileColl().UpdateByID(ctx, existing.ID, bson.M{"$inc": bson.M{"refCount": 1}}); err != nil {
+			return "", fmt.Errorf("increase file ref count: %w", err)
+		}
+		return md5Str, nil
 	}
 
-	var url string
 	if s.cosClient != nil {
-		url, err = s.cosClient.PutWithImageProcess(ctx, md5Str, data, s.cfg.COS.Compress)
+		_, err = s.cosClient.PutWithImageProcess(ctx, md5Str, data, contentType, s.cfg.COS.Compress)
 		if err != nil {
-			contentType := ""
-			if header != nil && header.Header != nil {
-				contentType = header.Header.Get("Content-Type")
-			}
-			url, err = s.cosClient.Put(ctx, md5Str, data, contentType)
-			if err != nil {
-				return "", "", fmt.Errorf("cos upload: %w", err)
-			}
+			return "", fmt.Errorf("cos upload: %w", err)
 		}
-	} else {
-		url = s.fileURL(md5Str)
 	}
 
 	doc := File{
@@ -107,25 +101,25 @@ func (s *Service) Upload(ctx context.Context, file multipart.File, header *multi
 		UserID:   userID,
 		RefCount: 1,
 	}
-	if _, err := coll.InsertOne(ctx, doc); err != nil {
-		return "", "", fmt.Errorf("insert file record: %w", err)
+	if _, err := s.fileColl().InsertOne(ctx, doc); err != nil {
+		return "", fmt.Errorf("insert file record: %w", err)
 	}
-	return md5Str, url, nil
+	return md5Str, nil
 }
 
 func (s *Service) Delete(ctx context.Context, md5Value, userID string, force bool) error {
-	coll := s.fileColl()
-	filter := bson.M{"md5": md5Value}
-	if !force && userID != "" {
-		filter["userId"] = userID
+	current, err := s.findByUserAndMD5(ctx, userID, md5Value)
+	if err != nil {
+		return err
 	}
-
-	var current File
-	if err := coll.FindOne(ctx, filter).Decode(&current); err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil
+	if force {
+		current, err = s.GetByMD5(ctx, md5Value)
+		if err != nil {
+			return err
 		}
-		return fmt.Errorf("find file before delete: %w", err)
+	}
+	if current == nil {
+		return result.ErrNotExisted
 	}
 
 	nextRef := current.RefCount - 1
@@ -133,7 +127,7 @@ func (s *Service) Delete(ctx context.Context, md5Value, userID string, force boo
 		nextRef = 0
 	}
 	if nextRef <= 0 {
-		if _, err := coll.DeleteOne(ctx, bson.M{"_id": current.ID}); err != nil {
+		if _, err := s.fileColl().DeleteOne(ctx, bson.M{"_id": current.ID}); err != nil {
 			return fmt.Errorf("delete file record: %w", err)
 		}
 		if s.cosClient != nil {
@@ -144,43 +138,54 @@ func (s *Service) Delete(ctx context.Context, md5Value, userID string, force boo
 		return nil
 	}
 
-	if _, err := coll.UpdateByID(ctx, current.ID, bson.M{"$set": bson.M{"refCount": nextRef}}); err != nil {
+	if _, err := s.fileColl().UpdateByID(ctx, current.ID, bson.M{"$set": bson.M{"refCount": nextRef}}); err != nil {
 		return fmt.Errorf("decrease refCount: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) ListPublic(ctx context.Context, page, size int) (*result.CusPage[File], error) {
-	return s.list(ctx, bson.M{"isPublic": true}, page, size)
+func (s *Service) ListPublic(ctx context.Context, page, size int) ([]File, error) {
+	return s.list(ctx, bson.M{"isPublic": true}, page, size, false)
 }
 
-func (s *Service) ListAll(ctx context.Context, page, size int) (*result.CusPage[File], error) {
-	return s.list(ctx, bson.M{}, page, size)
+func (s *Service) ListAll(ctx context.Context, page, size int) ([]File, error) {
+	return s.list(ctx, bson.M{}, page, size, true)
 }
 
-func (s *Service) SetPublic(ctx context.Context, md5List []string, isPublic bool) error {
-	if len(md5List) == 0 {
-		return nil
+func (s *Service) SetPublic(ctx context.Context, ids []string, isPublic bool) (int64, error) {
+	objectIDs := make([]primitive.ObjectID, 0, len(ids))
+	seen := make(map[primitive.ObjectID]struct{}, len(ids))
+	for _, id := range ids {
+		if !primitive.IsValidObjectID(id) {
+			continue
+		}
+		objectID, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			continue
+		}
+		if _, ok := seen[objectID]; ok {
+			continue
+		}
+		seen[objectID] = struct{}{}
+		objectIDs = append(objectIDs, objectID)
 	}
-	_, err := s.fileColl().UpdateMany(ctx, bson.M{"md5": bson.M{"$in": md5List}}, bson.M{"$set": bson.M{"isPublic": isPublic}})
+	if len(objectIDs) == 0 {
+		return 0, nil
+	}
+	res, err := s.fileColl().UpdateMany(ctx, bson.M{"_id": bson.M{"$in": objectIDs}}, bson.M{"$set": bson.M{"isPublic": isPublic}})
 	if err != nil {
-		return fmt.Errorf("set file public: %w", err)
+		return 0, fmt.Errorf("set file public: %w", err)
 	}
-	return nil
+	return res.ModifiedCount, nil
 }
 
-func (s *Service) list(ctx context.Context, filter bson.M, page, size int) (*result.CusPage[File], error) {
+func (s *Service) list(ctx context.Context, filter bson.M, page, size int, withCreatedTime bool) ([]File, error) {
 	if page <= 0 {
 		page = 1
 	}
 	if size <= 0 {
 		size = 15
 	}
-	total, err := s.fileColl().CountDocuments(ctx, filter)
-	if err != nil {
-		return nil, fmt.Errorf("count files: %w", err)
-	}
-
 	cur, err := s.fileColl().Find(ctx, filter, options.Find().
 		SetSkip(int64((page-1)*size)).
 		SetLimit(int64(size)).
@@ -198,55 +203,17 @@ func (s *Service) list(ctx context.Context, filter bson.M, page, size int) (*res
 	if err := cur.All(ctx, &files); err != nil {
 		return nil, fmt.Errorf("decode files: %w", err)
 	}
-	return result.NewCusPage(files, total, page, size), nil
+	if files == nil {
+		return []File{}, nil
+	}
+	if withCreatedTime {
+		for i := range files {
+			files[i].CreatedTime = files[i].ID.Timestamp().UnixMilli()
+		}
+	}
+	return files, nil
 }
 
 func (s *Service) fileColl() *mongo.Collection {
 	return s.mongoDB.Collection("campus_file")
-}
-
-func (s *Service) GetByMD5(ctx context.Context, md5Value string) (*File, error) {
-	var f File
-	if err := s.fileColl().FindOne(ctx, bson.M{"md5": md5Value}).Decode(&f); err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("get file by md5: %w", err)
-	}
-	return &f, nil
-}
-
-func (s *Service) GetDownloadURL(ctx context.Context, md5Value string) (string, error) {
-	_, err := s.GetByMD5(ctx, md5Value)
-	if err != nil {
-		return "", err
-	}
-	return s.fileURL(md5Value), nil
-}
-
-func (s *Service) fileURL(md5Value string) string {
-	if s.cfg == nil {
-		return md5Value
-	}
-	if s.cfg.COS.BaseCDN == "" {
-		return md5Value
-	}
-	return fmt.Sprintf("%s%s", ensureSuffixSlash(s.cfg.COS.BaseCDN), md5Value)
-}
-
-func ensureSuffixSlash(v string) string {
-	if v == "" {
-		return v
-	}
-	if v[len(v)-1] == '/' {
-		return v
-	}
-	return v + "/"
-}
-
-func (s *Service) maxUploadBytes() int64 {
-	if s.cfg == nil || s.cfg.Custom.MaxFileSizeMB <= 0 {
-		return 0
-	}
-	return int64(s.cfg.Custom.MaxFileSizeMB) * 1024 * 1024
 }

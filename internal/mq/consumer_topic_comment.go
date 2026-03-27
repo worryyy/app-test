@@ -139,6 +139,9 @@ func (c *Consumers) handleCommentAdd(ctx context.Context, data json.RawMessage) 
 		return fmt.Errorf("wx check comment: %w", err)
 	}
 	if isRisky(checkResult.Suggest) {
+		if err := c.deleteRejectedComment(ctx, cmt.ID); err != nil {
+			return err
+		}
 		_ = c.wxClient.SendSubscribeMsg(ctx, cmt.User.UserID, "您的评论未通过审核", cmt.Comment)
 		return nil
 	}
@@ -181,6 +184,16 @@ func (c *Consumers) handleCommentAdd(ctx context.Context, data json.RawMessage) 
 	}
 
 	incCommentPublish("success")
+	return nil
+}
+
+func (c *Consumers) deleteRejectedComment(ctx context.Context, commentID primitive.ObjectID) error {
+	if commentID.IsZero() {
+		return nil
+	}
+	if _, err := c.mongoDB.Collection("campus_comment").DeleteOne(ctx, bson.M{"_id": commentID}); err != nil {
+		return fmt.Errorf("delete rejected comment: %w", err)
+	}
 	return nil
 }
 

@@ -41,7 +41,7 @@ func BlackListCheck(rds *redis.Client) gin.HandlerFunc {
 			return
 		}
 		if blocked {
-			result.Fail(c, result.CodeForbidden, "账号已被封禁")
+			result.Fail(c, result.CodeForbidden, "权限不足")
 			c.Abort()
 			return
 		}

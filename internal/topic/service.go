@@ -50,6 +50,9 @@ func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *Creat
 	if err := s.ensureThemeExists(ctx, req.ThemeID); err != nil {
 		return nil, err
 	}
+	if err := s.ensureMerchantPostAllowed(ctx, claims, req.ThemeID); err != nil {
+		return nil, err
+	}
 
 	author, err := s.resolveTopicAuthor(ctx, claims, req.AccountType)
 	if err != nil {

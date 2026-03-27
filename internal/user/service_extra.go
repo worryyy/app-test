@@ -269,9 +269,18 @@ func toJWLoginData(data interface{}) (*JWLoginData, error) {
 	if err != nil {
 		return nil, err
 	}
-	var out JWLoginData
+	var out struct {
+		IsLoginSnake bool   `json:"is_login"`
+		IsLoginCamel bool   `json:"isLogin"`
+		Major        string `json:"major"`
+		Name         string `json:"name"`
+	}
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return nil, err
 	}
-	return &out, nil
+	return &JWLoginData{
+		IsLogin: out.IsLoginSnake || out.IsLoginCamel,
+		Major:   out.Major,
+		Name:    out.Name,
+	}, nil
 }

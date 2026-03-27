@@ -20,12 +20,12 @@ import (
 
 type userCourseRow struct {
 	ID        int64     `gorm:"column:id;primaryKey;autoIncrement"`
-	UserID    int64     `gorm:"column:userId"`
+	UserID    int64     `gorm:"column:user_id"`
 	Status    int       `gorm:"column:status"`
 	Term      string    `gorm:"column:term"`
 	Week      int       `gorm:"column:week"`
 	Course    string    `gorm:"column:course;type:text"`
-	UpdatedAt time.Time `gorm:"column:updatedAt"`
+	UpdatedAt time.Time `gorm:"column:updated_at"`
 }
 
 func (userCourseRow) TableName() string {
