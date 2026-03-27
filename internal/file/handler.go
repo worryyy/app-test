@@ -34,7 +34,7 @@ func (h *Handler) ListPublic(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) Upload(c *gin.Context) {
@@ -49,7 +49,7 @@ func (h *Handler) Upload(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, gin.H{"md5": md5Value, "url": url})
+	result.Data(c, gin.H{"md5": md5Value, "url": url})
 }
 
 func (h *Handler) Delete(c *gin.Context) {

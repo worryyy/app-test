@@ -51,7 +51,7 @@ func (h *AdminHandler) Update(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.Data(c, true)
 }
 
 func (h *AdminHandler) Get(c *gin.Context) {
@@ -69,7 +69,7 @@ func (h *AdminHandler) Get(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *AdminHandler) List(c *gin.Context) {
@@ -80,5 +80,5 @@ func (h *AdminHandler) List(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }

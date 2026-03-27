@@ -5,8 +5,7 @@ type LoginReq struct {
 }
 
 type RefreshTokenReq struct {
-	RefreshToken    string `json:"refresh_token"`
-	RefreshTokenAlt string `json:"refreshToken"`
+	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
 type AuthenticationReq struct {
@@ -38,8 +37,7 @@ type OfficialCertReq struct {
 }
 
 type IdentitySwitchReq struct {
-	AccountType  string `json:"accountType" binding:"required"`
-	TargetUserID int64  `json:"targetUserId"`
+	AccountType string `json:"accountType" binding:"required"`
 }
 
 type UpdateAnonymousNicknameReq struct {
@@ -99,11 +97,4 @@ type CertReviewReq struct {
 	Action          string `json:"action" binding:"required"`
 	RejectReason    string `json:"rejectReason"`
 	Tag             string `json:"tag" binding:"required"`
-}
-
-func (r RefreshTokenReq) Value() string {
-	if r.RefreshToken != "" {
-		return r.RefreshToken
-	}
-	return r.RefreshTokenAlt
 }

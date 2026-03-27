@@ -16,7 +16,7 @@ func (h *Handler) VoteList(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) VoteDraft(c *gin.Context) {
@@ -30,7 +30,7 @@ func (h *Handler) VoteDraft(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *Handler) VoteDraftAccept(c *gin.Context) {

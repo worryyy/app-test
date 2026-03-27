@@ -45,14 +45,7 @@ func (h *Handler) RefreshToken(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-
-	refreshTokenValue := req.Value()
-	if refreshTokenValue == "" {
-		result.FailWithStatus(c, http.StatusBadRequest, result.CodeParamError, result.ErrParam.Error())
-		return
-	}
-
-	token, refreshToken, user, err := h.svc.RefreshToken(c.Request.Context(), refreshTokenValue)
+	token, refreshToken, user, err := h.svc.RefreshToken(c.Request.Context(), req.RefreshToken)
 	if err != nil {
 		result.HandleError(c, err)
 		return

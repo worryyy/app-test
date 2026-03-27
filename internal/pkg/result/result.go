@@ -5,8 +5,10 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
 type Result struct {
@@ -121,14 +123,74 @@ func NewBizStatusError(status, code int, msg string) error {
 
 func BindJSON(c *gin.Context, obj interface{}) bool {
 	if err := c.ShouldBindJSON(obj); err != nil {
-		if errors.Is(err, io.EOF) {
-			FailWithStatus(c, http.StatusBadRequest, CodeBodyIsNull, ErrBodyIsNull.Error())
-			return false
-		}
-		FailWithStatus(c, http.StatusBadRequest, CodeParamError, ErrParam.Error())
+		status, code, msg := bindJSONError(err, obj)
+		FailWithStatus(c, status, code, msg)
 		return false
 	}
 	return true
+}
+
+func bindJSONError(err error, obj interface{}) (int, int, string) {
+	if errors.Is(err, io.EOF) {
+		return http.StatusBadRequest, CodeBodyIsNull, ErrBodyIsNull.Error()
+	}
+	if msg := validationErrorMessage(err, obj); msg != "" {
+		return http.StatusBadRequest, CodeParamError, msg
+	}
+	return http.StatusBadRequest, CodeParamError, ErrParam.Error()
+}
+
+func validationErrorMessage(err error, obj interface{}) string {
+	var validationErrs validator.ValidationErrors
+	if !errors.As(err, &validationErrs) {
+		return ""
+	}
+
+	var builder strings.Builder
+	for _, fieldErr := range validationErrs {
+		field := jsonFieldName(obj, fieldErr.StructField())
+		if field == "" {
+			field = fieldErr.Field()
+		}
+		builder.WriteString(field)
+		builder.WriteString(": ")
+		builder.WriteString(validationMessage(fieldErr))
+		builder.WriteString("; ")
+	}
+	return builder.String()
+}
+
+func jsonFieldName(obj interface{}, fieldName string) string {
+	typ := reflect.TypeOf(obj)
+	if typ == nil {
+		return ""
+	}
+	if typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
+	}
+	if typ.Kind() != reflect.Struct {
+		return ""
+	}
+	field, ok := typ.FieldByName(fieldName)
+	if !ok {
+		return ""
+	}
+	name := strings.Split(field.Tag.Get("json"), ",")[0]
+	if name == "" || name == "-" {
+		return ""
+	}
+	return name
+}
+
+func validationMessage(fieldErr validator.FieldError) string {
+	switch fieldErr.Tag() {
+	case "required":
+		return "不能为空"
+	case "oneof":
+		return "取值非法"
+	default:
+		return fieldErr.Error()
+	}
 }
 
 func HandleError(c *gin.Context, err error) {
