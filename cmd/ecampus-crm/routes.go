@@ -13,7 +13,12 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 	"github.com/Milchstrassse/Ecampus-go/internal/monitor"
-	"github.com/Milchstrassse/Ecampus-go/internal/other"
+	"github.com/Milchstrassse/Ecampus-go/internal/other/ad"
+	"github.com/Milchstrassse/Ecampus-go/internal/other/merchant"
+	"github.com/Milchstrassse/Ecampus-go/internal/other/notice"
+	"github.com/Milchstrassse/Ecampus-go/internal/other/report"
+	"github.com/Milchstrassse/Ecampus-go/internal/other/sensitive"
+	"github.com/Milchstrassse/Ecampus-go/internal/other/support"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
@@ -22,15 +27,20 @@ import (
 )
 
 type AdminHandlers struct {
-	User    *user.AdminHandler
-	Topic   *topic.AdminHandler
-	Comment *comment.AdminHandler
-	Theme   *theme.AdminHandler
-	File    *file.AdminHandler
-	School  *school.AdminHandler
-	Other   *other.AdminHandler
-	Event   *event.AdminHandler
-	Monitor *monitor.AdminHandler
+	User      *user.AdminHandler
+	Topic     *topic.AdminHandler
+	Comment   *comment.AdminHandler
+	Theme     *theme.AdminHandler
+	File      *file.AdminHandler
+	School    *school.AdminHandler
+	Ad        *ad.AdminHandler
+	Notice    *notice.AdminHandler
+	Sensitive *sensitive.AdminHandler
+	Report    *report.AdminHandler
+	Support   *support.AdminHandler
+	Merchant  *merchant.AdminHandler
+	Event     *event.AdminHandler
+	Monitor   *monitor.AdminHandler
 }
 
 func registerAdminRoutes(
@@ -86,46 +96,46 @@ func registerAdminRoutes(
 		admin.DELETE("/term/:id", handlers.School.DeleteTerm)
 		admin.POST("/term/cur", handlers.School.SetCurrentTerm)
 
-		admin.POST("/notice", handlers.Other.NoticeAdd)
-		admin.DELETE("/notice/:id", handlers.Other.NoticeDelete)
-		admin.PUT("/notice/:id", handlers.Other.NoticeUpdate)
-		admin.GET("/notice/:id", handlers.Other.NoticeGet)
-		admin.GET("/notice/list", handlers.Other.NoticeList)
+		admin.POST("/notice", handlers.Notice.NoticeAdd)
+		admin.DELETE("/notice/:id", handlers.Notice.NoticeDelete)
+		admin.PUT("/notice/:id", handlers.Notice.NoticeUpdate)
+		admin.GET("/notice/:id", handlers.Notice.NoticeGet)
+		admin.GET("/notice/list", handlers.Notice.NoticeList)
 
-		admin.POST("/ad", handlers.Other.AdAdd)
-		admin.DELETE("/ad/:id", handlers.Other.AdDelete)
-		admin.PUT("/ad/:id", handlers.Other.AdUpdate)
-		admin.GET("/ad/:id", handlers.Other.AdGet)
-		admin.GET("/ad/list", handlers.Other.AdList)
+		admin.POST("/ad", handlers.Ad.AdAdd)
+		admin.DELETE("/ad/:id", handlers.Ad.AdDelete)
+		admin.PUT("/ad/:id", handlers.Ad.AdUpdate)
+		admin.GET("/ad/:id", handlers.Ad.AdGet)
+		admin.GET("/ad/list", handlers.Ad.AdList)
 
-		admin.GET("/sensitive/getAllList", handlers.Other.SensitiveGetAllList)
-		admin.GET("/sensitive/getByWord", handlers.Other.SensitiveGetByWord)
-		admin.GET("/sensitive/getByWord/", handlers.Other.SensitiveGetByWord)
-		admin.DELETE("/sensitive/deleteByWord", handlers.Other.SensitiveDeleteByWord)
-		admin.DELETE("/sensitive/batchDelete", handlers.Other.SensitiveBatchDelete)
-		admin.POST("/sensitive/add", handlers.Other.SensitiveAdd)
-		admin.POST("/sensitive/batchAdd", handlers.Other.SensitiveBatchAdd)
-		admin.GET("/sensitive/page", handlers.Other.SensitivePage)
-		admin.GET("/sensitive/search_like", handlers.Other.SensitiveSearchLike)
-		admin.PUT("/sensitive/update", handlers.Other.SensitiveUpdate)
+		admin.GET("/sensitive/getAllList", handlers.Sensitive.SensitiveGetAllList)
+		admin.GET("/sensitive/getByWord", handlers.Sensitive.SensitiveGetByWord)
+		admin.GET("/sensitive/getByWord/", handlers.Sensitive.SensitiveGetByWord)
+		admin.DELETE("/sensitive/deleteByWord", handlers.Sensitive.SensitiveDeleteByWord)
+		admin.DELETE("/sensitive/batchDelete", handlers.Sensitive.SensitiveBatchDelete)
+		admin.POST("/sensitive/add", handlers.Sensitive.SensitiveAdd)
+		admin.POST("/sensitive/batchAdd", handlers.Sensitive.SensitiveBatchAdd)
+		admin.GET("/sensitive/page", handlers.Sensitive.SensitivePage)
+		admin.GET("/sensitive/search_like", handlers.Sensitive.SensitiveSearchLike)
+		admin.PUT("/sensitive/update", handlers.Sensitive.SensitiveUpdate)
 
-		admin.PUT("/report_comment/:id", handlers.Other.ReportReview)
-		admin.GET("/report_comment/list", handlers.Other.ReportList)
+		admin.PUT("/report_comment/:id", handlers.Report.ReportReview)
+		admin.GET("/report_comment/list", handlers.Report.ReportList)
 
-		admin.POST("/support", handlers.Other.SupportAdd)
-		admin.PUT("/support", handlers.Other.SupportUpdate)
-		admin.DELETE("/support/:id", handlers.Other.SupportDelete)
-		admin.GET("/support/list", handlers.Other.SupportList)
+		admin.POST("/support", handlers.Support.SupportAdd)
+		admin.PUT("/support", handlers.Support.SupportUpdate)
+		admin.DELETE("/support/:id", handlers.Support.SupportDelete)
+		admin.GET("/support/list", handlers.Support.SupportList)
 
-		admin.POST("/merchant_theme", handlers.Other.MerchantAdd)
-		admin.DELETE("/merchant_theme/:id", handlers.Other.MerchantDelete)
-		admin.GET("/merchant_theme/get_all", handlers.Other.MerchantList)
+		admin.POST("/merchant_theme", handlers.Merchant.MerchantAdd)
+		admin.DELETE("/merchant_theme/:id", handlers.Merchant.MerchantDelete)
+		admin.GET("/merchant_theme/get_all", handlers.Merchant.MerchantList)
 
-		admin.POST("/task", handlers.Other.TaskAdd)
-		admin.DELETE("/task/:id", handlers.Other.TaskDelete)
-		admin.PUT("/task/:id", handlers.Other.TaskUpdate)
-		admin.GET("/task/:id", handlers.Other.TaskGet)
-		admin.GET("/task/list", handlers.Other.TaskList)
+		admin.POST("/task", handlers.Merchant.TaskAdd)
+		admin.DELETE("/task/:id", handlers.Merchant.TaskDelete)
+		admin.PUT("/task/:id", handlers.Merchant.TaskUpdate)
+		admin.GET("/task/:id", handlers.Merchant.TaskGet)
+		admin.GET("/task/list", handlers.Merchant.TaskList)
 
 		admin.DELETE("/event/:id", handlers.Event.Delete)
 		admin.PUT("/event/:id", handlers.Event.Update)

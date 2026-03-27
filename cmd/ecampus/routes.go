@@ -15,7 +15,11 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
 	"github.com/Milchstrassse/Ecampus-go/internal/level"
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
-	"github.com/Milchstrassse/Ecampus-go/internal/other"
+	"github.com/Milchstrassse/Ecampus-go/internal/other/ad"
+	"github.com/Milchstrassse/Ecampus-go/internal/other/notice"
+	"github.com/Milchstrassse/Ecampus-go/internal/other/report"
+	"github.com/Milchstrassse/Ecampus-go/internal/other/support"
+	"github.com/Milchstrassse/Ecampus-go/internal/other/vote"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
@@ -32,7 +36,11 @@ type UserHandlers struct {
 	Chat    *chat.Handler
 	Level   *level.Handler
 	School  *school.Handler
-	Other   *other.Handler
+	Ad      *ad.Handler
+	Notice  *notice.Handler
+	Vote    *vote.Handler
+	Report  *report.Handler
+	Support *support.Handler
 	Event   *event.Handler
 }
 
@@ -54,7 +62,7 @@ func registerUserRoutes(
 		pub.PUT("/api/user/pre_authentication", handlers.User.PreAuth)
 		pub.POST("/api/user/official/login", handlers.User.OfficialLogin)
 		pub.POST("/api/user/official/certification", handlers.User.OfficialCert)
-		pub.GET("/api/ad/list_level", handlers.Other.AdListByLevel)
+		pub.GET("/api/ad/list_level", handlers.Ad.AdListByLevel)
 
 		pub.GET("/file/:md5", handlers.File.Download)
 		pub.GET("/file", handlers.File.ListPublic)
@@ -140,16 +148,16 @@ func registerUserRoutes(
 		api.GET("/term/list", handlers.School.TermList)
 		api.GET("/term", handlers.School.CurrentTerm)
 
-		api.GET("/vote/list", handlers.Other.VoteList)
-		api.GET("/vote/draft/:info_id", handlers.Other.VoteDraft)
-		api.PUT("/vote/draft/:info_id", handlers.Other.VoteDraftAccept)
-		api.POST("/vote", handlers.Other.VoteCreate)
-		api.POST("/vote/:info_id", handlers.Other.VoteAddOption)
-		api.POST("/vote/vote/:info_id", handlers.Other.VoteDo)
-		api.POST("/report_comment", handlers.Other.ReportComment)
-		api.GET("/support/:key", handlers.Other.SupportByKey)
-		api.GET("/support/list", handlers.Other.SupportList)
-		api.GET("/notice/list", handlers.Other.NoticeList)
+		api.GET("/vote/list", handlers.Vote.VoteList)
+		api.GET("/vote/draft/:info_id", handlers.Vote.VoteDraft)
+		api.PUT("/vote/draft/:info_id", handlers.Vote.VoteDraftAccept)
+		api.POST("/vote", handlers.Vote.VoteCreate)
+		api.POST("/vote/:info_id", handlers.Vote.VoteAddOption)
+		api.POST("/vote/vote/:info_id", handlers.Vote.VoteDo)
+		api.POST("/report_comment", handlers.Report.ReportComment)
+		api.GET("/support/:key", handlers.Support.SupportByKey)
+		api.GET("/support/list", handlers.Support.SupportList)
+		api.GET("/notice/list", handlers.Notice.NoticeList)
 		api.POST("/theme/campus/init", handlers.Theme.InitCampusThemes)
 		api.GET("/theme/campus", handlers.Theme.GetCampusThemes)
 		api.POST("/wx/unlimited/wxa_code", handlers.User.UnlimitedWXACode)
