@@ -1,12 +1,17 @@
-version: "3.8"
+version: '3.8'
 
 services:
+  # ======================== Go App Services ========================
+
   ecampus:
+    container_name: "campus_ecampus"
+    image: ghcr.io/${GHCR_OWNER}/ecampus:latest
     build:
       context: ..
       dockerfile: deployments/ecampus/Dockerfile
+    restart: unless-stopped
     environment:
-      APP_PROFILE: dev
+      APP_PROFILE: ${APP_PROFILE:-prod}
     ports:
       - "8080:8080"
     depends_on:
@@ -14,56 +19,132 @@ services:
       - redis
       - mongo
       - rabbitmq
+    networks:
+      - campus
 
   ecampus-crm:
+    container_name: "campus_ecampus_crm"
+    image: ghcr.io/${GHCR_OWNER}/ecampus-crm:latest
     build:
       context: ..
       dockerfile: deployments/ecampus-crm/Dockerfile
+    restart: unless-stopped
     environment:
-      APP_PROFILE: dev
+      APP_PROFILE: ${APP_PROFILE:-prod}
     ports:
       - "8081:8081"
     depends_on:
       - mysql
       - redis
       - mongo
+    networks:
+      - campus
 
-  mysql:
-    image: mysql:8.0
-    command: --default-authentication-plugin=mysql_native_password
-    environment:
-      MYSQL_ROOT_PASSWORD: "password"
-      MYSQL_DATABASE: "campus"
-    ports:
-      - "9801:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
+  # ======================== Infrastructure ========================
 
   redis:
-    image: redis:7-alpine
-    command: redis-server --requirepass password
+    container_name: "campus_redis"
+    build: ./redis
+    restart: unless-stopped
+    volumes:
+      - /data/campus_redis:/data
     ports:
       - "9800:6379"
+    networks:
+      - campus
+
+  mysql:
+    container_name: "campus_mysql"
+    build: ./mysql
+    restart: unless-stopped
+    volumes:
+      - /data/campus_db:/var/lib/mysql
+    ports:
+      - "9801:3306"
+    networks:
+      - campus
+
+  phpmyadmin:
+    container_name: "campus_phpmyadmin"
+    links:
+      - mysql
+    build: ./phpmyadmin
+    restart: unless-stopped
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - PMA_ARBITRARY=1
+    ports:
+      - "9802:80"
+    depends_on:
+      - mysql
+    networks:
+      - campus
 
   mongo:
-    image: mongo:6
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: "admin"
-      MONGO_INITDB_ROOT_PASSWORD: "password"
+    container_name: "campus_mongodb"
+    build: ./mongo
+    restart: unless-stopped
     ports:
       - "9803:27017"
     volumes:
-      - mongo_data:/data/db
+      - /data/campus_mongo:/data/db
+    networks:
+      - campus
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=F6m@t3YhexitRu9k
+
+  mongo-express:
+    image: mongo-express
+    container_name: "campus_mongo-express"
+    restart: unless-stopped
+    networks:
+      - campus
+    ports:
+      - "9804:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=F6m%40t3YhexitRu9k
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_AUTH_DATABASE=admin
+      - ME_CONFIG_BASICAUTH_USERNAME=campus
+      - ME_CONFIG_BASICAUTH_PASSWORD=zjb2023!
+    depends_on:
+      - mongo
 
   rabbitmq:
-    image: rabbitmq:3-management
-    environment:
-      RABBITMQ_DEFAULT_USER: "campus"
-      RABBITMQ_DEFAULT_PASS: "password"
+    container_name: "campus_rabbit"
+    build: ./rabbitMQ
+    restart: unless-stopped
     ports:
       - "9072:5672"
       - "9073:15672"
+    environment:
+      TZ: Asia/Shanghai
+      RABBITMQ_DEFAULT_USER: campus
+      RABBITMQ_DEFAULT_PASS: 'RbbtMq98aA@45zB!'
+      RABBITMQ_CONFIG_FILE: /etc/rabbitmq/rabbitmq
+    volumes:
+      - /data/mq_data:/var/lib/rabbitmq
+    networks:
+      - campus
 
-volumes:
-  mysql_data:
-  mongo_data:
+  nginx:
+    build: ./nginx
+    container_name: 'nginx'
+    restart: unless-stopped
+    # 使用 host 网络模式（与 Java 保持一致）
+    network_mode: "host"
+    volumes:
+      - /data/nginx/logs:/var/log/nginx
+      - /data/nginx/html:/usr/share/nginx/html
+      - /data/nginx/ssl:/etc/nginx/ssl:ro
+      - /data/nginx/usr:/etc/nginx/usr
+      - /data/nginx/images:/usr/share/nginx/images
+    environment:
+      - TZ=Asia/Shanghai
+
+networks:
+  campus:
+    external: true

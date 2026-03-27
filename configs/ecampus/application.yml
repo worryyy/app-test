@@ -2,20 +2,20 @@ server:
   port: 8080
 
 mysql:
-  dsn: "root:password@tcp(127.0.0.1:9801)/campus?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai"
+  dsn: "root:Xy8@Kp3!Mv9#Jq@tcp(43.136.50.116:9801)/campus?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai"
   max_lifetime: 60000
 
 mongo:
-  uri: "mongodb://admin:password@127.0.0.1:9803/campus?authSource=admin"
+  uri: "mongodb://admin:F6m%40t3YhexitRu9k@43.136.50.116:9803/campus?authSource=admin"
   database: "campus"
 
 redis:
-  addr: "127.0.0.1:9800"
-  password: "password"
+  addr: "43.136.50.116:9800"
+  password: "B6yz7P@x9d&."
   db: 0
 
 rabbitmq:
-  url: "amqp://campus:password@127.0.0.1:9072/"
+  url: "amqp://campus:RbbtMq98aA%4045zB%21@43.136.50.116:9072/"
 
 jwt:
   secret: "@12asd."
@@ -24,19 +24,19 @@ jwt:
   issue: "campus"
 
 cos:
-  access_key_id: "replace-me"
-  access_key_secret: "replace-me"
+  access_key_id: "AKIDKo5ILBrMejdKn5C5lEUYP2WnsnZBZkAm"
+  access_key_secret: "b6TqBLJCxa6UpxscIsOmz2tb6OFwSuAE"
   bucket_name: "campus-1318456870"
   region: "ap-guangzhou"
   base_url: "https://campus-1318456870.cos.ap-guangzhou.myqcloud.com/"
-  base_cdn: "https://cdn.example.com/"
+  base_cdn: "https://cdn.fangfangfang.top/"
   compress: "webp"
   compress_bucket_name: "campus-compress-1318456870"
-  compress_base_cdn: "https://cdn-compress.example.com/"
+  compress_base_cdn: "https://cdn-compress.fangfangfang.top/"
 
 wx:
-  appid: "replace-me"
-  secret: "replace-me"
+  appid: "wx40b4d6894a6c31ed"
+  secret: "96f29f576e436575504e13e4f4dfa22d"
   subscribe_template_id: "replace-me"
 
 custom:
@@ -47,7 +47,7 @@ custom:
 
 jw:
   base_url: "https://www.fangfangfang.top/sztu_jw"
-  api_key: "replace-me"
+  api_key: "U2FsdGVkX18BNFq4BRJwIzXUPmKQ2Ngj"
 
 encryption:
   key: "W0F7PePvolUJHmZtkv1MusWpwhpVJIJI"

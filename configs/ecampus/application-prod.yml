@@ -1,0 +1,24 @@
+server:
+  port: 8080
+
+mysql:
+  dsn: "root:Xy8@Kp3!Mv9#Jq@tcp(campus_mysql:3306)/campus?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai"
+
+mongo:
+  uri: "mongodb://admin:F6m%40t3YhexitRu9k@campus_mongodb:27017/campus?authSource=admin"
+  database: "campus"
+
+redis:
+  addr: "campus_redis:6379"
+  password: "B6yz7P@x9d&."
+  db: 0
+
+rabbitmq:
+  url: "amqp://campus:RbbtMq98aA%4045zB%21@campus_rabbit:5672/"
+
+jw:
+  base_url: "https://www.fangfangfang.top/sztu_jw"
+
+logging:
+  level: "warn"
+  file_path: "logs/ecampus.log"

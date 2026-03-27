@@ -2,19 +2,19 @@ server:
   port: 8080
 
 mysql:
-  dsn: "root:password@tcp(mysql:3306)/campus?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai"
+  dsn: "root:Xy8@Kp3!Mv9#Jq@tcp(mysql:3306)/campus?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai"
 
 mongo:
-  uri: "mongodb://admin:password@mongo:27017/campus?authSource=admin"
+  uri: "mongodb://admin:F6m%40t3YhexitRu9k@mongo:27017/campus?authSource=admin"
   database: "campus"
 
 redis:
   addr: "redis:6379"
-  password: "password"
+  password: "B6yz7P@x9d&."
   db: 0
 
 rabbitmq:
-  url: "amqp://campus:password@rabbitmq:5672/"
+  url: "amqp://campus:RbbtMq98aA%4045zB%21@rabbitmq:5672/"
 
 logging:
   level: "info"

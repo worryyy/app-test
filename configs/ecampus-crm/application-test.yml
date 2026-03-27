@@ -1,0 +1,18 @@
+server:
+  port: 8081
+
+mysql:
+  dsn: "root:Xy8@Kp3!Mv9#Jq@tcp(campus_mysql:3306)/campus?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai"
+
+mongo:
+  uri: "mongodb://admin:F6m%40t3YhexitRu9k@campus_mongodb:27017/campus?authSource=admin"
+  database: "campus"
+
+redis:
+  addr: "campus_redis:6379"
+  password: "B6yz7P@x9d&."
+  db: 0
+
+logging:
+  level: "info"
+  file_path: "logs/ecampus-crm-test.log"
