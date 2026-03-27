@@ -5,7 +5,7 @@ services:
 
   ecampus:
     container_name: "campus_ecampus"
-    image: ghcr.io/${GHCR_OWNER}/ecampus:latest
+    image: ${DOCKERHUB_USER:-zehpyrx}/ecampus:latest
     build:
       context: ..
       dockerfile: deployments/ecampus/Dockerfile
@@ -24,7 +24,7 @@ services:
 
   ecampus-crm:
     container_name: "campus_ecampus_crm"
-    image: ghcr.io/${GHCR_OWNER}/ecampus-crm:latest
+    image: ${DOCKERHUB_USER:-zehpyrx}/ecampus-crm:latest
     build:
       context: ..
       dockerfile: deployments/ecampus-crm/Dockerfile
