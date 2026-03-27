@@ -73,8 +73,18 @@ jobs:
           envs: DOCKERHUB_USER,APP_PROFILE
           command_timeout: 5m
           script: |
-            docker pull $DOCKERHUB_USER/ecampus:latest
-            docker pull $DOCKERHUB_USER/ecampus-crm:latest
+            set -e
+            pull_with_retry() {
+              for i in 1 2 3 4 5; do
+                docker pull "$1" && return 0
+                echo "Retry $i: waiting 10s..."
+                sleep 10
+              done
+              echo "Failed to pull $1 after 5 attempts"
+              return 1
+            }
+            pull_with_retry $DOCKERHUB_USER/ecampus:latest
+            pull_with_retry $DOCKERHUB_USER/ecampus-crm:latest
             docker stop campus_ecampus campus_ecampus_crm 2>/dev/null || true
             docker rm campus_ecampus campus_ecampus_crm 2>/dev/null || true
             docker run -d --name campus_ecampus \
@@ -110,8 +120,18 @@ jobs:
           envs: DOCKERHUB_USER,APP_PROFILE
           command_timeout: 5m
           script: |
-            docker pull $DOCKERHUB_USER/ecampus:latest
-            docker pull $DOCKERHUB_USER/ecampus-crm:latest
+            set -e
+            pull_with_retry() {
+              for i in 1 2 3 4 5; do
+                docker pull "$1" && return 0
+                echo "Retry $i: waiting 10s..."
+                sleep 10
+              done
+              echo "Failed to pull $1 after 5 attempts"
+              return 1
+            }
+            pull_with_retry $DOCKERHUB_USER/ecampus:latest
+            pull_with_retry $DOCKERHUB_USER/ecampus-crm:latest
             docker stop campus_ecampus campus_ecampus_crm 2>/dev/null || true
             docker rm campus_ecampus campus_ecampus_crm 2>/dev/null || true
             docker run -d --name campus_ecampus \
