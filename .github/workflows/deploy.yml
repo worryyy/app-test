@@ -65,20 +65,30 @@ jobs:
         uses: appleboy/ssh-action@v1
         env:
           DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           APP_PROFILE: test
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: DOCKERHUB_USER,DOCKERHUB_TOKEN,APP_PROFILE
+          envs: DOCKERHUB_USER,APP_PROFILE
+          command_timeout: 5m
           script: |
-            cd /opt/ecampus && git pull
-            echo $DOCKERHUB_TOKEN | docker login -u $DOCKERHUB_USER --password-stdin
             docker pull $DOCKERHUB_USER/ecampus:latest
             docker pull $DOCKERHUB_USER/ecampus-crm:latest
-            cd deployments
-            docker compose up -d --no-build --no-deps ecampus ecampus-crm
+            docker stop campus_ecampus campus_ecampus_crm 2>/dev/null || true
+            docker rm campus_ecampus campus_ecampus_crm 2>/dev/null || true
+            docker run -d --name campus_ecampus \
+              --network campus \
+              -e APP_PROFILE=$APP_PROFILE \
+              -p 8080:8080 \
+              --restart unless-stopped \
+              $DOCKERHUB_USER/ecampus:latest
+            docker run -d --name campus_ecampus_crm \
+              --network campus \
+              -e APP_PROFILE=$APP_PROFILE \
+              -p 8081:8081 \
+              --restart unless-stopped \
+              $DOCKERHUB_USER/ecampus-crm:latest
 
   # ==================== Deploy to Production ====================
   deploy-prod:
@@ -92,17 +102,27 @@ jobs:
         uses: appleboy/ssh-action@v1
         env:
           DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           APP_PROFILE: prod
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: DOCKERHUB_USER,DOCKERHUB_TOKEN,APP_PROFILE
+          envs: DOCKERHUB_USER,APP_PROFILE
+          command_timeout: 5m
           script: |
-            cd /opt/ecampus && git pull
-            echo $DOCKERHUB_TOKEN | docker login -u $DOCKERHUB_USER --password-stdin
             docker pull $DOCKERHUB_USER/ecampus:latest
             docker pull $DOCKERHUB_USER/ecampus-crm:latest
-            cd deployments
-            docker compose up -d --no-build --no-deps ecampus ecampus-crm
+            docker stop campus_ecampus campus_ecampus_crm 2>/dev/null || true
+            docker rm campus_ecampus campus_ecampus_crm 2>/dev/null || true
+            docker run -d --name campus_ecampus \
+              --network campus \
+              -e APP_PROFILE=$APP_PROFILE \
+              -p 8080:8080 \
+              --restart unless-stopped \
+              $DOCKERHUB_USER/ecampus:latest
+            docker run -d --name campus_ecampus_crm \
+              --network campus \
+              -e APP_PROFILE=$APP_PROFILE \
+              -p 8081:8081 \
+              --restart unless-stopped \
+              $DOCKERHUB_USER/ecampus-crm:latest
