@@ -49,7 +49,7 @@ func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64)
 	if err := s.db.WithContext(ctx).
 		Model(&User{}).
 		Where("id = ?", anonymous.ID).
-		Update("lastSwitchId", anonymous.ID).Error; err != nil {
+		Update("last_switch_id", anonymous.ID).Error; err != nil {
 		return nil, fmt.Errorf("update anonymous last switch id: %w", err)
 	}
 
@@ -110,7 +110,7 @@ func (s *Service) ListIdentities(ctx context.Context, rootUserID int64) (*Identi
 
 	var users []User
 	if err := s.db.WithContext(ctx).
-		Where("rootUserId = ?", rootUserID).
+		Where("root_user_id = ?", rootUserID).
 		Order("id ASC").
 		Find(&users).Error; err != nil {
 		return nil, fmt.Errorf("list identities: %w", err)

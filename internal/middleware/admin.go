@@ -26,7 +26,7 @@ func AdminCheck(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		if err := db.Model(&user.Admin{}).Where("userId = ?", claims.UserID).Count(&count).Error; err != nil {
+		if err := db.Model(&user.Admin{}).Where("user_id = ?", claims.UserID).Count(&count).Error; err != nil {
 			result.Fail(c, result.CodeForbidden, "权限不足")
 			c.Abort()
 			return

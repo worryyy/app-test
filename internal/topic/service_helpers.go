@@ -20,8 +20,8 @@ type topicAuthor struct {
 	ID          int64  `gorm:"column:id"`
 	Nickname    string `gorm:"column:nickname"`
 	Avatar      string `gorm:"column:avatar"`
-	AccountType string `gorm:"column:accountType"`
-	RootUserID  int64  `gorm:"column:rootUserId"`
+	AccountType string `gorm:"column:account_type"`
+	RootUserID  int64  `gorm:"column:root_user_id"`
 }
 
 func (topicAuthor) TableName() string {
@@ -67,7 +67,7 @@ func (s *Service) resolveTopicAuthor(ctx context.Context, claims *jwtutil.Claims
 	if targetAccountType != "" && targetAccountType != claims.AccountType {
 		var alt topicAuthor
 		err := s.db.WithContext(ctx).
-			Where("rootUserId = ? AND accountType = ?", claims.RootUserID, targetAccountType).
+			Where("root_user_id = ? AND accountType = ?", claims.RootUserID, targetAccountType).
 			First(&alt).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, result.NewBizError(result.CodeFail, "匿名账号不存在")
@@ -156,7 +156,7 @@ func (s *Service) fillTopicFlags(
 	topics []Topic,
 	isLike bool,
 ) error {
-	cur, err := s.mongoDB.Collection(collName).Find(ctx, bson.M{"userId": userID})
+	cur, err := s.mongoDB.Collection(collName).Find(ctx, bson.M{"user_id": userID})
 	if err != nil {
 		return fmt.Errorf("load %s docs: %w", collName, err)
 	}

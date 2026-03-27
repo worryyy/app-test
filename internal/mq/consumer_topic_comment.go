@@ -17,7 +17,7 @@ import (
 type topicDoc struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty"`
 	ThemeID    string             `bson:"themeId"`
-	UserID     string             `bson:"userId"`
+	UserID     string             `bson:"user_id"`
 	Title      string             `bson:"title"`
 	Content    string             `bson:"content"`
 	Imgs       []string           `bson:"imgs"`
@@ -32,7 +32,7 @@ type themeDoc struct {
 }
 
 type commentUserDoc struct {
-	UserID string `json:"userId" bson:"userId"`
+	UserID string `json:"user_id" bson:"user_id"`
 }
 
 type commentDoc struct {

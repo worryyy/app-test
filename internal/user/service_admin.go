@@ -130,7 +130,7 @@ func (s *Service) loadLegacyAdmin(ctx context.Context, stuNum, rawPwd string) (*
 
 	var u User
 	err = s.db.WithContext(ctx).
-		Where("stuNum = ? AND stuPwd = ? AND power >= 8", stuNum, encPwd).
+		Where("stu_num = ? AND stuPwd = ? AND power >= 8", stuNum, encPwd).
 		First(&u).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil

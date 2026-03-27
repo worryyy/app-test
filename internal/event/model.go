@@ -7,7 +7,7 @@ type Event struct {
 	EventType    string    `gorm:"column:event_type" json:"eventType"`
 	EventInfo    string    `gorm:"column:event_info" json:"eventInfo"`
 	EventContent string    `gorm:"column:event_content" json:"eventContent"`
-	UserID       string    `gorm:"column:user_id" json:"userId"`
+	UserID       string    `gorm:"column:user_id" json:"user_id"`
 	TriggerTime  time.Time `gorm:"column:trigger_time" json:"triggerTime"`
 }
 

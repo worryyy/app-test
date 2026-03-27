@@ -9,13 +9,13 @@ import (
 
 type Ad struct {
 	ID        int64          `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	BannerURL string         `gorm:"column:bannerUrl" json:"bannerUrl"`
-	TopicID   string         `gorm:"column:topicId" json:"topicId"`
+	BannerURL string         `gorm:"column:banner_url" json:"bannerUrl"`
+	TopicID   string         `gorm:"column:topic_id" json:"topicId"`
 	Level     int            `gorm:"column:level" json:"level"`
-	IsOk      bool           `gorm:"column:isOk" json:"isOk"`
-	CreatedAt time.Time      `gorm:"column:createdAt;autoCreateTime" json:"createdAt"`
-	UpdatedAt time.Time      `gorm:"column:updatedAt;autoUpdateTime" json:"updatedAt"`
-	DeletedAt gorm.DeletedAt `gorm:"column:deletedAt" json:"-"`
+	IsOk      bool           `gorm:"column:is_ok" json:"is_ok"`
+	CreatedAt time.Time      `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"`
 }
 
 func (Ad) TableName() string {
@@ -25,12 +25,12 @@ func (Ad) TableName() string {
 type Notice struct {
 	ID        int64          `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	Content   string         `gorm:"column:content" json:"content"`
-	CreatedBy int64          `gorm:"column:createdBy" json:"createdBy"`
-	UpdatedBy int64          `gorm:"column:updatedBy" json:"updatedBy"`
-	DeletedBy int64          `gorm:"column:deletedBy" json:"deletedBy"`
-	CreatedAt time.Time      `gorm:"column:createdAt;autoCreateTime" json:"createdAt"`
-	UpdatedAt time.Time      `gorm:"column:updatedAt;autoUpdateTime" json:"updatedAt"`
-	DeletedAt gorm.DeletedAt `gorm:"column:deletedAt" json:"-"`
+	CreatedBy int64          `gorm:"column:created_by" json:"createdBy"`
+	UpdatedBy int64          `gorm:"column:updated_by" json:"updatedBy"`
+	DeletedBy int64          `gorm:"column:deleted_by" json:"deletedBy"`
+	CreatedAt time.Time      `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"`
 }
 
 func (Notice) TableName() string {
@@ -57,8 +57,8 @@ type VoteInfo struct {
 	Mode          int            `gorm:"column:mode" json:"mode"`
 	OptionType    int            `gorm:"column:option_type" json:"optionType"`
 	CreatedBy     int64          `gorm:"column:created_by" json:"createdBy"`
-	CreatedAt     time.Time      `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
-	UpdatedAt     time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
+	CreatedAt     time.Time      `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt     time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"column:deleted_at" json:"-"`
 }
 
@@ -72,9 +72,9 @@ type VoteOption struct {
 	VoteText   string         `gorm:"column:vote_text" json:"voteText"`
 	VoteImg    string         `gorm:"column:vote_img" json:"voteImg"`
 	CreatedBy  int64          `gorm:"column:created_by" json:"createdBy"`
-	IsOk       int            `gorm:"column:is_ok" json:"isOk"`
-	CreatedAt  time.Time      `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
-	UpdatedAt  time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
+	IsOk       int            `gorm:"column:is_ok" json:"is_ok"`
+	CreatedAt  time.Time      `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt  time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 	DeletedAt  gorm.DeletedAt `gorm:"column:deleted_at" json:"-"`
 }
 
@@ -99,8 +99,8 @@ type Task struct {
 	Detail    string         `gorm:"column:detail" json:"detail"`
 	Parent    int64          `gorm:"column:parent" json:"parent"`
 	Func      string         `gorm:"column:func" json:"func"`
-	CreatedAt time.Time      `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
-	UpdatedAt time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
+	CreatedAt time.Time      `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"`
 }
 

@@ -43,7 +43,7 @@ func (s *Service) ListNotices(ctx context.Context, page, size int) (*result.Page
 	}
 
 	var list []Notice
-	if err := s.db.WithContext(ctx).Offset((page - 1) * size).Limit(size).Order("createdAt DESC").Find(&list).Error; err != nil {
+	if err := s.db.WithContext(ctx).Offset((page - 1) * size).Limit(size).Order("created_at DESC").Find(&list).Error; err != nil {
 		return nil, fmt.Errorf("list notices: %w", err)
 	}
 	return result.NewPage(list, total, page, size), nil
@@ -59,10 +59,10 @@ func (s *Service) ListFrontendNotices(ctx context.Context, page, size int) ([]No
 
 	var notices []Notice
 	if err := s.db.WithContext(ctx).
-		Select("content", "updatedAt").
+		Select("content", "updated_at").
 		Offset((page - 1) * size).
 		Limit(size).
-		Order("updatedAt DESC").
+		Order("updated_at DESC").
 		Find(&notices).Error; err != nil {
 		return nil, fmt.Errorf("list frontend notices: %w", err)
 	}

@@ -42,7 +42,7 @@ func CertifiedUserCheck(db *gorm.DB) gin.HandlerFunc {
 
 		var current user.User
 		err := db.WithContext(c.Request.Context()).
-			Select("stuIsCheck").
+			Select("stu_is_check").
 			Where("id = ?", claims.UserID).
 			Take(&current).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {

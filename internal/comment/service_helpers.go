@@ -23,10 +23,10 @@ type userRecord struct {
 	ID          int64  `gorm:"column:id"`
 	Nickname    string `gorm:"column:nickname"`
 	Avatar      string `gorm:"column:avatar"`
-	AccountType string `gorm:"column:accountType"`
+	AccountType string `gorm:"column:account_type"`
 	Power       int    `gorm:"column:power"`
 	Gender      string `gorm:"column:gender"`
-	RootUserID  int64  `gorm:"column:rootUserId"`
+	RootUserID  int64  `gorm:"column:root_user_id"`
 	Signature   string `gorm:"column:signature"`
 }
 

@@ -38,7 +38,7 @@ func (s *Service) PreAuthentication(ctx context.Context, userID int64, nickname,
 	res := s.db.WithContext(ctx).
 		Model(&User{}).
 		Where("id = ? AND nickname = ?", userID, nickname).
-		Update("stuIsCheck", true)
+		Update("stu_is_check", true)
 	if res.Error != nil {
 		return fmt.Errorf("pre-authenticate user: %w", res.Error)
 	}
@@ -64,11 +64,11 @@ func (s *Service) Authenticate(
 	}
 
 	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).Updates(map[string]interface{}{
-		"stuIsCheck": true,
-		"stuNum":     req.SchoolID,
+		"stu_is_check": true,
+		"stu_num":     req.SchoolID,
 		"stuCla":     loginResp.Major,
 		"stuName":    loginResp.Name,
-		"stuPwd":     encPwd,
+		"stu_pwd":     encPwd,
 		"school":     req.School,
 	}).Error; err != nil {
 		return nil, fmt.Errorf("authenticate user: %w", err)
@@ -86,11 +86,11 @@ func (s *Service) ReAuthentication(
 
 func (s *Service) DelAuthentication(ctx context.Context, userID int64) error {
 	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).Updates(map[string]interface{}{
-		"stuNum":     "",
-		"stuPwd":     "",
+		"stu_num":     "",
+		"stu_pwd":     "",
 		"stuName":    "",
 		"stuCla":     "",
-		"stuIsCheck": false,
+		"stu_is_check": false,
 	}).Error; err != nil {
 		return fmt.Errorf("delete authentication: %w", err)
 	}
@@ -142,7 +142,7 @@ func (s *Service) OfficialLogin(ctx context.Context, loginAccount, loginPassword
 
 	var user User
 	err = s.db.WithContext(ctx).
-		Where("stuNum = ? AND stuPwd = ?", loginAccount, encPwd).
+		Where("stu_num = ? AND stuPwd = ?", loginAccount, encPwd).
 		First(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return "", "", nil, result.NewBizError(result.CodeFail, "登录账号或密码错误")
@@ -178,7 +178,7 @@ func (s *Service) SubmitOfficialCertification(ctx context.Context, req OfficialC
 	}
 
 	var existingUser User
-	err = s.db.WithContext(ctx).Where("stuNum = ?", req.LoginAccount).First(&existingUser).Error
+	err = s.db.WithContext(ctx).Where("stu_num = ?", req.LoginAccount).First(&existingUser).Error
 	if err == nil {
 		return nil, result.NewBizError(result.CodeFail, "该登录账号已被使用，请使用其他账号")
 	}

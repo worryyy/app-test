@@ -94,7 +94,7 @@ func (s *Service) GetByID(ctx context.Context, id int64) (*User, error) {
 
 func (s *Service) GetByOpenID(ctx context.Context, openID string) (*User, error) {
 	var u User
-	err := s.db.WithContext(ctx).Where("openId = ?", openID).First(&u).Error
+	err := s.db.WithContext(ctx).Where("open_id = ?", openID).First(&u).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
@@ -190,9 +190,9 @@ func (s *Service) WechatLogin(ctx context.Context, code string) (string, string,
 		u.RootUserID = u.ID
 		u.LastSwitchID = &u.ID
 		if err := s.db.WithContext(ctx).Model(u).Updates(map[string]interface{}{
-			"rootUserId":   u.ID,
-			"lastSwitchId": u.ID,
-			"accountType":  accountTypeBase,
+			"root_user_id":   u.ID,
+			"last_switch_id": u.ID,
+			"account_type":  accountTypeBase,
 		}).Error; err != nil {
 			return "", "", nil, nil, false, fmt.Errorf("update root user id: %w", err)
 		}

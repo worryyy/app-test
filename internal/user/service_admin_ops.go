@@ -47,7 +47,7 @@ func (s *Service) AddAdmin(ctx context.Context, userID int64, username, password
 	if count > 0 {
 		return result.NewBizError(result.CodeFail, "用户名重复")
 	}
-	if err := s.db.WithContext(ctx).Model(&Admin{}).Where("userId = ?", userID).Count(&count).Error; err != nil {
+	if err := s.db.WithContext(ctx).Model(&Admin{}).Where("user_id = ?", userID).Count(&count).Error; err != nil {
 		return fmt.Errorf("count admin by user id: %w", err)
 	}
 	if count > 0 {
@@ -88,7 +88,7 @@ func (s *Service) EditAdminUser(ctx context.Context, userID, operatorID int64, r
 
 	updates := map[string]interface{}{}
 	if req.StuNum != "" {
-		updates["stuNum"] = req.StuNum
+		updates["stu_num"] = req.StuNum
 	}
 	if req.StuCla != "" {
 		updates["stuCla"] = req.StuCla
@@ -97,7 +97,7 @@ func (s *Service) EditAdminUser(ctx context.Context, userID, operatorID int64, r
 		updates["stuName"] = req.StuName
 	}
 	if req.StuIsCheck != nil {
-		updates["stuIsCheck"] = *req.StuIsCheck
+		updates["stu_is_check"] = *req.StuIsCheck
 	}
 	if req.Power != nil {
 		updates["power"] = *req.Power
@@ -157,10 +157,10 @@ func (s *Service) ListUsers(ctx context.Context, page, size int, name string) (*
 
 func (s *Service) ClearAuthentication(ctx context.Context, userID int64) error {
 	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).Updates(map[string]interface{}{
-		"stuIsCheck": false,
+		"stu_is_check": false,
 		"stuName":    "",
 		"stuCla":     "",
-		"stuNum":     "",
+		"stu_num":     "",
 	}).Error; err != nil {
 		return fmt.Errorf("clear authentication: %w", err)
 	}
@@ -352,7 +352,7 @@ func (s *Service) ReviewCertification(ctx context.Context, reviewerID int64, req
 	switch req.Action {
 	case certificationStatusApproved:
 		var count int64
-		if err := s.db.WithContext(ctx).Model(&User{}).Where("stuNum = ?", cert.LoginAccount).Count(&count).Error; err != nil {
+		if err := s.db.WithContext(ctx).Model(&User{}).Where("stu_num = ?", cert.LoginAccount).Count(&count).Error; err != nil {
 			return fmt.Errorf("check official login account in users: %w", err)
 		}
 		if count > 0 {
@@ -387,7 +387,7 @@ func (s *Service) ReviewCertification(ctx context.Context, reviewerID int64, req
 				"status":     certificationStatusApproved,
 				"reviewedBy": reviewerID,
 				"reviewedAt": now,
-				"updatedAt":  now,
+				"updated_at":  now,
 			}},
 		).Err(); err != nil {
 			return fmt.Errorf("update certification approved status: %w", err)
@@ -405,7 +405,7 @@ func (s *Service) ReviewCertification(ctx context.Context, reviewerID int64, req
 				"rejectReason": req.RejectReason,
 				"reviewedBy":   reviewerID,
 				"reviewedAt":   now,
-				"updatedAt":    now,
+				"updated_at":    now,
 			}},
 		).Err(); err != nil {
 			return fmt.Errorf("update certification rejected status: %w", err)

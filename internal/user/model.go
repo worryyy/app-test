@@ -9,28 +9,28 @@ import (
 
 type User struct {
 	ID           int64          `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	OpenID       string         `gorm:"column:openId" json:"-"`
+	OpenID       string         `gorm:"column:open_id" json:"-"`
 	Nickname     string         `gorm:"column:nickname" json:"nickname"`
 	Avatar       string         `gorm:"column:avatar" json:"avatar"`
 	Power        int            `gorm:"column:power" json:"power"`
-	AccountType  string         `gorm:"column:accountType;default:base" json:"accountType"`
-	StuNum       string         `gorm:"column:stuNum" json:"stuNum"`
-	StuName      string         `gorm:"column:stuName" json:"stuName"`
-	StuPwd       string         `gorm:"column:stuPwd" json:"stuPwd"`
-	StuCla       string         `gorm:"column:stuCla" json:"stuCla"`
-	StuIsCheck   bool           `gorm:"column:stuIsCheck" json:"stuIsCheck"`
+	AccountType  string         `gorm:"column:account_type;default:base" json:"account_type"`
+	StuNum       string         `gorm:"column:stu_num" json:"stu_num"`
+	StuName      string         `gorm:"column:stu_name" json:"stuName"`
+	StuPwd       string         `gorm:"column:stu_pwd" json:"stu_pwd"`
+	StuCla       string         `gorm:"column:stu_cla" json:"stuCla"`
+	StuIsCheck   bool           `gorm:"column:stu_is_check" json:"stu_is_check"`
 	School       string         `gorm:"column:school" json:"school"`
 	Tag          string         `gorm:"column:tag;default:student" json:"tag"`
 	Gender       string         `gorm:"column:gender;default:保密" json:"gender"`
-	RootUserID   int64          `gorm:"column:rootUserId" json:"rootUserId"`
-	LastSwitchID *int64         `gorm:"column:lastSwitchId" json:"lastSwitchId"`
+	RootUserID   int64          `gorm:"column:root_user_id" json:"root_user_id"`
+	LastSwitchID *int64         `gorm:"column:last_switch_id" json:"last_switch_id"`
 	Signature    string         `gorm:"column:signature" json:"signature"`
-	CreatedAt    time.Time      `gorm:"column:createdAt;autoCreateTime" json:"-"`
-	CreatedBy    int64          `gorm:"column:createdBy" json:"-"`
-	UpdatedAt    time.Time      `gorm:"column:updatedAt;autoUpdateTime" json:"-"`
-	UpdatedBy    int64          `gorm:"column:updatedBy" json:"-"`
-	DeletedAt    gorm.DeletedAt `gorm:"column:deletedAt" json:"-"`
-	DeletedBy    int64          `gorm:"column:deletedBy" json:"-"`
+	CreatedAt    time.Time      `gorm:"column:created_at;autoCreateTime" json:"-"`
+	CreatedBy    int64          `gorm:"column:created_by" json:"-"`
+	UpdatedAt    time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"-"`
+	UpdatedBy    int64          `gorm:"column:updated_by" json:"-"`
+	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at" json:"-"`
+	DeletedBy    int64          `gorm:"column:deleted_by" json:"-"`
 }
 
 func (User) TableName() string {
@@ -39,7 +39,7 @@ func (User) TableName() string {
 
 type Admin struct {
 	ID       int64  `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	UserID   int64  `gorm:"column:userId;uniqueIndex" json:"userId"`
+	UserID   int64  `gorm:"column:user_id;uniqueIndex" json:"user_id"`
 	Username string `gorm:"column:username;uniqueIndex" json:"username"`
 	Password string `gorm:"column:password" json:"-"`
 	Power    int    `gorm:"column:power;default:2" json:"power"`
@@ -78,8 +78,8 @@ type OfficialCertification struct {
 	RejectReason      string             `bson:"rejectReason" json:"rejectReason"`
 	ReviewedBy        int64              `bson:"reviewedBy" json:"reviewedBy"`
 	ReviewedAt        *time.Time         `bson:"reviewedAt" json:"reviewedAt"`
-	CreatedAt         time.Time          `bson:"createdAt" json:"createdAt"`
-	UpdatedAt         time.Time          `bson:"updatedAt" json:"updatedAt"`
+	CreatedAt         time.Time          `bson:"created_at" json:"created_at"`
+	UpdatedAt         time.Time          `bson:"updated_at" json:"updated_at"`
 }
 
 type AdminLoginReq struct {

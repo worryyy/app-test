@@ -118,7 +118,7 @@ func (s *Service) resolveActiveIdentity(ctx context.Context, rootUser *User) (*U
 func (s *Service) getIdentityByType(ctx context.Context, rootUserID int64, accountType string) (*User, error) {
 	var user User
 	err := s.db.WithContext(ctx).
-		Where("rootUserId = ? AND accountType = ?", rootUserID, accountType).
+		Where("root_user_id = ? AND accountType = ?", rootUserID, accountType).
 		First(&user).Error
 	if err != nil {
 		if isRecordNotFound(err) {
@@ -141,7 +141,7 @@ func (s *Service) persistLastSwitch(ctx context.Context, rootUserID, targetUserI
 	if err := s.db.WithContext(ctx).
 		Model(&User{}).
 		Where("id = ?", rootUserID).
-		Update("lastSwitchId", targetUserID).Error; err != nil {
+		Update("last_switch_id", targetUserID).Error; err != nil {
 		return fmt.Errorf("update last switch id: %w", err)
 	}
 	return nil

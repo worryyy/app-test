@@ -3,8 +3,8 @@ package user
 import "time"
 
 type IdentityVO struct {
-	UserID      int64  `json:"userId"`
-	AccountType string `json:"accountType"`
+	UserID      int64  `json:"user_id"`
+	AccountType string `json:"account_type"`
 	Nickname    string `json:"nickname"`
 	Avatar      string `json:"avatar"`
 	Tag         string `json:"tag"`
@@ -39,7 +39,7 @@ type SwitchIdentityResp struct {
 }
 
 type IdentityListResp struct {
-	RootUserID   int64         `json:"rootUserId"`
+	RootUserID   int64         `json:"root_user_id"`
 	Identities   []*IdentityVO `json:"identities"`
 	HasAnonymous bool          `json:"hasAnonymous"`
 }
@@ -82,8 +82,8 @@ type OfficialCertificationListItem struct {
 	RejectReason      string     `json:"rejectReason"`
 	ReviewedBy        int64      `json:"reviewedBy"`
 	ReviewedAt        *time.Time `json:"reviewedAt"`
-	CreatedAt         time.Time  `json:"createdAt"`
-	UpdatedAt         time.Time  `json:"updatedAt"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 func buildIdentityVO(u *User) *IdentityVO {

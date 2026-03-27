@@ -107,7 +107,7 @@ func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAd
 
 	filter := bson.M{"_id": oid}
 	if !isAdmin {
-		filter["userId"] = userIDString(userID)
+		filter["user_id"] = userIDString(userID)
 	}
 	res, err := s.topicColl().UpdateOne(ctx, filter, bson.M{"$set": bson.M{"hasCheck": false}})
 	if err != nil {
@@ -181,7 +181,7 @@ func (s *Service) Update(ctx context.Context, topicID string, userID int64, req 
 	}
 	res, err := s.topicColl().UpdateOne(ctx, bson.M{
 		"_id":    oid,
-		"userId": userIDString(userID),
+		"user_id": userIDString(userID),
 	}, bson.M{"$set": update})
 	if err != nil {
 		return fmt.Errorf("update topic: %w", err)
@@ -200,7 +200,7 @@ func (s *Service) Update(ctx context.Context, topicID string, userID int64, req 
 }
 
 func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*result.CusPage[Topic], error) {
-	return s.listByFilter(ctx, bson.M{"userId": userIDString(userID), "hasCheck": true}, page, size, userIDString(userID), bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}})
+	return s.listByFilter(ctx, bson.M{"user_id": userIDString(userID), "hasCheck": true}, page, size, userIDString(userID), bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}})
 }
 
 func (s *Service) ListByTheme(ctx context.Context, userID int64, themeID string, page, size int) (*result.CusPage[Topic], error) {
@@ -208,7 +208,7 @@ func (s *Service) ListByTheme(ctx context.Context, userID int64, themeID string,
 		return nil, err
 	}
 	return s.listByFilter(ctx, bson.M{
-		"userId":   userIDString(userID),
+		"user_id":   userIDString(userID),
 		"themeId":  themeID,
 		"hasCheck": true,
 	}, page, size, userIDString(userID), bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}})
@@ -224,7 +224,7 @@ func (s *Service) ListTargetUserTopics(ctx context.Context, currentUserID, targe
 		return nil, fmt.Errorf("query target user: %w", err)
 	}
 	return s.listByFilter(ctx, bson.M{
-		"userId":   userIDString(targetUserID),
+		"user_id":   userIDString(targetUserID),
 		"hasCheck": true,
 	}, page, size, userIDString(currentUserID), bson.D{{Key: "_id", Value: -1}, {Key: "visitedNum", Value: -1}})
 }
@@ -259,7 +259,7 @@ func (s *Service) ListFollowTopics(ctx context.Context, currentUserID int64, pag
 	}
 
 	return s.listByFilter(ctx, bson.M{
-		"userId":   bson.M{"$in": ids},
+		"user_id":   bson.M{"$in": ids},
 		"hasCheck": true,
 	}, page, size, userIDString(currentUserID), bson.D{{Key: "_id", Value: -1}, {Key: "visitedNum", Value: -1}})
 }

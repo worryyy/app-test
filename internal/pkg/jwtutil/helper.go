@@ -25,11 +25,11 @@ var (
 )
 
 type Claims struct {
-	UserID      int64  `json:"userId"`
+	UserID      int64  `json:"user_id"`
 	OpenID      string `json:"openId"`
 	Power       int    `json:"power"`
-	AccountType string `json:"accountType"`
-	RootUserID  int64  `json:"rootUserId"`
+	AccountType string `json:"account_type"`
+	RootUserID  int64  `json:"root_user_id"`
 	jwt.RegisteredClaims
 }
 

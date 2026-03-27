@@ -111,7 +111,7 @@ func (c *Consumers) setCourseStatus(ctx context.Context, userID int64, term stri
 	}
 
 	tx := c.db.WithContext(ctx)
-	query := tx.Where("userId = ? AND term = ? AND week = ?", userID, term, week)
+	query := tx.Where("user_id = ? AND term = ? AND week = ?", userID, term, week)
 	assign := userCourseRow{Status: status, Course: course, UpdatedAt: time.Now()}
 	if err := query.Assign(assign).FirstOrCreate(&model).Error; err != nil {
 		c.logger.Warn("update course status failed", zap.Error(err), zap.Int64("userID", userID), zap.String("term", term), zap.Int("week", week))

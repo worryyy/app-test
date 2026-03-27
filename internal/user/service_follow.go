@@ -127,7 +127,7 @@ func (s *Service) GetStats(ctx context.Context, targetUserID int64) (*UserStatsV
 	}
 
 	cur, err := s.mongoDB.Collection("campus_topic").
-		Find(ctx, bson.M{"userId": strconv.FormatInt(targetUserID, 10)})
+		Find(ctx, bson.M{"user_id": strconv.FormatInt(targetUserID, 10)})
 	if err != nil {
 		return nil, fmt.Errorf("find user topics for likes: %w", err)
 	}

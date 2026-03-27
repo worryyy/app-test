@@ -4,7 +4,7 @@ import "time"
 
 type ExpDetail struct {
 	ID         int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	UserID     int64     `gorm:"column:user_id" json:"userId"`
+	UserID     int64     `gorm:"column:user_id" json:"user_id"`
 	GetExpDate time.Time `gorm:"column:get_exp_date" json:"getExpDate"`
 	GetExp     int       `gorm:"column:get_exp" json:"getExp"`
 }
@@ -14,12 +14,12 @@ func (ExpDetail) TableName() string {
 }
 
 type UserSignDetail struct {
-	UserID  int64 `json:"userId"`
+	UserID  int64 `json:"user_id"`
 	UserExp int   `json:"userExp"`
 	Signed  bool  `json:"signed"`
 }
 
 type UserExpVO struct {
-	UserID  int64 `json:"userId"`
+	UserID  int64 `json:"user_id"`
 	UserExp int   `json:"userExp"`
 }

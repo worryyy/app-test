@@ -115,7 +115,7 @@ func (s *Service) RequestGetCourse(ctx context.Context, userID int64, stuNum, st
 
 func (s *Service) GetCourseByWeeks(ctx context.Context, userID int64, term string, weeks []int) ([]UserCourse, error) {
 	var list []UserCourse
-	if err := s.db.WithContext(ctx).Where("userId = ? AND term = ? AND week IN ?", userID, term, weeks).Order("week ASC").Find(&list).Error; err != nil {
+	if err := s.db.WithContext(ctx).Where("user_id = ? AND term = ? AND week IN ?", userID, term, weeks).Order("week ASC").Find(&list).Error; err != nil {
 		return nil, fmt.Errorf("query user courses by weeks: %w", err)
 	}
 	return list, nil

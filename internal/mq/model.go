@@ -32,9 +32,9 @@ type AddTopicSearchMsg struct {
 }
 
 type CourseMsg struct {
-	UserID int64  `json:"userId"`
-	StuNum string `json:"stuNum"`
-	StuPwd string `json:"stuPwd"`
+	UserID int64  `json:"user_id"`
+	StuNum string `json:"stu_num"`
+	StuPwd string `json:"stu_pwd"`
 	Term   string `json:"term"`
 	Week   int    `json:"week"`
 }
@@ -50,21 +50,21 @@ type NotifyMsg struct {
 }
 
 type TopicUserUpdateMsg struct {
-	UserID      string `json:"userId"`
+	UserID      string `json:"user_id"`
 	NickName    string `json:"nickName"`
 	Avatar      string `json:"avatar"`
 	Gender      string `json:"gender"`
 	Signature   string `json:"signature"`
-	AccountType int    `json:"accountType"`
+	AccountType int    `json:"account_type"`
 }
 
 type CommentUserUpdateMsg struct {
-	UserID      string `json:"userId"`
+	UserID      string `json:"user_id"`
 	NickName    string `json:"nickName"`
 	Avatar      string `json:"avatar"`
 	Gender      string `json:"gender"`
 	Signature   string `json:"signature"`
-	AccountType int    `json:"accountType"`
+	AccountType int    `json:"account_type"`
 }
 
 type TopicDeleteMsg struct {

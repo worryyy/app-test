@@ -34,7 +34,7 @@ func (c *Consumers) handleTopicUpdate(ctx context.Context, data json.RawMessage)
 		update["signature"] = msg.Signature
 	}
 	if msg.AccountType > 0 {
-		update["accountType"] = accountTypeName(msg.AccountType)
+		update["account_type"] = accountTypeName(msg.AccountType)
 	}
 	if len(update) == 0 {
 		return nil
@@ -42,7 +42,7 @@ func (c *Consumers) handleTopicUpdate(ctx context.Context, data json.RawMessage)
 
 	if _, err := c.mongoDB.Collection("campus_topic").UpdateMany(
 		ctx,
-		bson.M{"userId": msg.UserID},
+		bson.M{"user_id": msg.UserID},
 		bson.M{"$set": update},
 	); err != nil {
 		return fmt.Errorf("update topic user profile: %w", err)

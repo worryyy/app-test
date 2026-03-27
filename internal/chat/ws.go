@@ -143,7 +143,7 @@ func (h *Handler) WS(c *gin.Context) {
 			continue
 		}
 		if stringField(messageTypeProbe, "type") == "auth" {
-			_ = session.WriteJSON(gin.H{"type": "auth_success", "userId": strconv.FormatInt(userID, 10)})
+			_ = session.WriteJSON(gin.H{"type": "auth_success", "user_id": strconv.FormatInt(userID, 10)})
 			continue
 		}
 
@@ -187,7 +187,7 @@ func (h *Handler) handleWSAuth(c *gin.Context, conn *websocket.Conn) (int64, err
 	if err != nil {
 		return 0, err
 	}
-	if err := conn.WriteJSON(gin.H{"type": "auth_success", "userId": strconv.FormatInt(claims.UserID, 10)}); err != nil {
+	if err := conn.WriteJSON(gin.H{"type": "auth_success", "user_id": strconv.FormatInt(claims.UserID, 10)}); err != nil {
 		return 0, err
 	}
 	return claims.UserID, nil

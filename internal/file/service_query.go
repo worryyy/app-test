@@ -59,7 +59,7 @@ func normalizeContentType(header *multipart.FileHeader) (string, error) {
 
 func (s *Service) findByUserAndMD5(ctx context.Context, userID, md5Value string) (*File, error) {
 	var current File
-	err := s.fileColl().FindOne(ctx, bson.M{"userId": userID, "md5": md5Value}).Decode(&current)
+	err := s.fileColl().FindOne(ctx, bson.M{"user_id": userID, "md5": md5Value}).Decode(&current)
 	if err == mongo.ErrNoDocuments {
 		return nil, nil
 	}
