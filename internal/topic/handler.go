@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 
@@ -112,7 +113,7 @@ func (h *Handler) TargetUserTopics(c *gin.Context) {
 	page, size := pageSize(c)
 	targetUserID, err := strconv.ParseInt(firstNonEmpty(c.Query("target_user_id"), c.Query("targetUserId")), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	data, err := h.svc.ListTargetUserTopics(c.Request.Context(), middleware.GetUserID(c), targetUserID, page, size)
@@ -135,6 +136,10 @@ func (h *Handler) FollowTopics(c *gin.Context) {
 
 func (h *Handler) Like(c *gin.Context) {
 	if err := h.svc.LikeTopic(c.Request.Context(), middleware.GetClaims(c), c.Param("topic_id")); err != nil {
+		if errors.Is(err, ErrTopicAlreadyLiked) {
+			result.SuccessMsg(c, "已经点赞过了", nil)
+			return
+		}
 		result.HandleError(c, err)
 		return
 	}

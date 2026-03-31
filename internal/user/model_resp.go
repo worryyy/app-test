@@ -2,49 +2,49 @@ package user
 
 import "time"
 
-type IdentityVO struct {
-	UserID      int64  `json:"user_id"`
-	AccountType string `json:"account_type"`
+type Identity struct {
+	UserID      int64  `json:"userId"`
+	AccountType string `json:"accountType"`
 	Nickname    string `json:"nickname"`
 	Avatar      string `json:"avatar"`
 	Tag         string `json:"tag"`
 }
 
 type LoginResp struct {
-	Token           string      `json:"token"`
-	RefreshToken    string      `json:"refresh_token"`
-	User            *User       `json:"user,omitempty"`
-	IsNew           bool        `json:"is_new"`
-	CurrentIdentity *IdentityVO `json:"currentIdentity,omitempty"`
-	RootUserID      int64       `json:"rootUserId,omitempty"`
+	Token           string    `json:"token"`
+	RefreshToken    string    `json:"refresh_token"`
+	User            *User     `json:"user"`
+	IsNew           bool      `json:"is_new"`
+	CurrentIdentity *Identity `json:"currentIdentity"`
+	RootUserID      int64     `json:"rootUserId"`
 }
 
 type AdminLoginResp struct {
 	Token        string `json:"token"`
 	RefreshToken string `json:"refresh_token"`
-	User         *User  `json:"user,omitempty"`
+	User         *User  `json:"user"`
 }
 
 type RefreshTokenResp struct {
-	Token           string      `json:"token"`
-	RefreshToken    string      `json:"refresh_token"`
-	CurrentIdentity *IdentityVO `json:"currentIdentity,omitempty"`
+	Token           string    `json:"token"`
+	RefreshToken    string    `json:"refresh_token"`
+	CurrentIdentity *Identity `json:"currentIdentity"`
 }
 
 type SwitchIdentityResp struct {
-	Token           string      `json:"token"`
-	RefreshToken    string      `json:"refreshToken"`
-	CurrentIdentity *IdentityVO `json:"currentIdentity,omitempty"`
-	RootUserID      int64       `json:"rootUserId,omitempty"`
+	Token           string    `json:"token"`
+	RefreshToken    string    `json:"refreshToken"`
+	CurrentIdentity *Identity `json:"currentIdentity"`
+	RootUserID      int64     `json:"rootUserId"`
 }
 
 type IdentityListResp struct {
-	RootUserID   int64         `json:"root_user_id"`
-	Identities   []*IdentityVO `json:"identities"`
-	HasAnonymous bool          `json:"hasAnonymous"`
+	RootUserID   int64       `json:"rootUserId"`
+	Identities   []*Identity `json:"identities"`
+	HasAnonymous bool        `json:"hasAnonymous"`
 }
 
-type UserProfileVO struct {
+type UserProfile struct {
 	Avatar    string `json:"avatar"`
 	Nickname  string `json:"nickname"`
 	Gender    string `json:"gender"`
@@ -52,13 +52,13 @@ type UserProfileVO struct {
 	Signature string `json:"signature"`
 }
 
-type UserStatsVO struct {
+type UserStats struct {
 	FollowerCount  int64 `json:"followerCount"`
 	FollowingCount int64 `json:"followingCount"`
 	LikeCount      int64 `json:"likeCount"`
 }
 
-type FollowVO struct {
+type FollowItem struct {
 	Avatar      string    `json:"avatar"`
 	Nickname    string    `json:"nickname"`
 	FollowerID  int64     `json:"follower_id"`
@@ -82,15 +82,15 @@ type OfficialCertificationListItem struct {
 	RejectReason      string     `json:"rejectReason"`
 	ReviewedBy        int64      `json:"reviewedBy"`
 	ReviewedAt        *time.Time `json:"reviewedAt"`
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	CreatedAt         time.Time  `json:"createdAt"`
+	UpdatedAt         time.Time  `json:"updatedAt"`
 }
 
-func buildIdentityVO(u *User) *IdentityVO {
+func buildIdentity(u *User) *Identity {
 	if u == nil {
 		return nil
 	}
-	return &IdentityVO{
+	return &Identity{
 		UserID:      u.ID,
 		AccountType: u.AccountType,
 		Nickname:    u.Nickname,

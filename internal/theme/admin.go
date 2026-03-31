@@ -81,7 +81,7 @@ func (h *AdminHandler) DeleteCampusTheme(c *gin.Context) {
 		return
 	}
 	if !deleted {
-		result.Fail(c, result.CodeFail, "")
+		result.Fail(c, result.CodeFail, "失败")
 		return
 	}
 	result.Success(c, "删除成功")

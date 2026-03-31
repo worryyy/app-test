@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -52,22 +53,30 @@ func (s *Service) AddEvent(ctx context.Context, e *Event, userID int64) error {
 }
 
 func (s *Service) DeleteEvent(ctx context.Context, id int64) error {
-	if err := s.db.WithContext(ctx).Where("event_id = ?", id).Delete(&Event{}).Error; err != nil {
-		return fmt.Errorf("delete event: %w", err)
+	res := s.db.WithContext(ctx).Where("event_id = ?", id).Delete(&Event{})
+	if res.Error != nil {
+		return fmt.Errorf("delete event: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return result.NewBizError(result.CodeFail, "失败")
 	}
 	return nil
 }
 
-func (s *Service) UpdateEvent(ctx context.Context, id int64, e *EventUpdateReq) error {
-	if err := s.db.WithContext(ctx).Model(&Event{}).Where("event_id = ?", id).Updates(e).Error; err != nil {
-		return fmt.Errorf("update event: %w", err)
+func (s *Service) UpdateEvent(ctx context.Context, id int64, e *EventUpdateReq) (bool, error) {
+	res := s.db.WithContext(ctx).Model(&Event{}).Where("event_id = ?", id).Updates(e)
+	if res.Error != nil {
+		return false, fmt.Errorf("update event: %w", res.Error)
 	}
-	return nil
+	return res.RowsAffected > 0, nil
 }
 
 func (s *Service) GetEvent(ctx context.Context, id int64) (*Event, error) {
 	var e Event
 	if err := s.db.WithContext(ctx).Where("event_id = ?", id).First(&e).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("get event: %w", err)
 	}
 	return &e, nil

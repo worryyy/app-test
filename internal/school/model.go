@@ -8,12 +8,12 @@ import (
 
 type UserCourse struct {
 	ID        int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	UserID    int64     `gorm:"column:user_id" json:"user_id"`
+	UserID    int64     `gorm:"column:user_id" json:"userId"`
 	Status    int       `gorm:"column:status" json:"status"`
 	Term      string    `gorm:"column:term" json:"term"`
 	Week      int       `gorm:"column:week" json:"week"`
 	Course    string    `gorm:"column:course;type:text" json:"course"`
-	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at;autoUpdateTime" json:"-"`
 }
 
 func (UserCourse) TableName() string {
@@ -21,7 +21,7 @@ func (UserCourse) TableName() string {
 }
 
 type CourseColor struct {
-	UserID     int64     `gorm:"column:user_id;primaryKey" json:"user_id"`
+	UserID     int64     `gorm:"column:user_id;primaryKey" json:"userId"`
 	CourseName string    `gorm:"column:course_name;primaryKey" json:"courseName"`
 	Color      string    `gorm:"column:color" json:"color"`
 	UpdatedAt  time.Time `gorm:"column:updated_at;autoUpdateTime" json:"-"`
@@ -43,7 +43,7 @@ type CurTerm struct {
 	Term string             `bson:"term" json:"term"`
 }
 
-type CurDateAndTermVO struct {
+type CurDateAndTerm struct {
 	CurDate    string `json:"curDate"`
 	CurTerm    string `json:"curTerm"`
 	StartDate  string `json:"startDate"`
@@ -57,7 +57,7 @@ type Course struct {
 	Val      []byte             `bson:"val" json:"val"`
 }
 
-type weekCourseVO struct {
+type weekCourse struct {
 	CourseList []innerCourse `json:"courseList"`
 }
 

@@ -20,7 +20,7 @@ func NewAdminHandler(svc *Service) *AdminHandler {
 func (h *AdminHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if id < 1 {
@@ -37,7 +37,7 @@ func (h *AdminHandler) Delete(c *gin.Context) {
 func (h *AdminHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if id < 1 {
@@ -48,17 +48,18 @@ func (h *AdminHandler) Update(c *gin.Context) {
 	if !result.BindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.UpdateEvent(c.Request.Context(), id, &req); err != nil {
+	ok, err := h.svc.UpdateEvent(c.Request.Context(), id, &req)
+	if err != nil {
 		result.HandleError(c, err)
 		return
 	}
-	result.Data(c, true)
+	result.Data(c, ok)
 }
 
 func (h *AdminHandler) Get(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if id < 1 {
@@ -80,7 +81,7 @@ func (h *AdminHandler) List(c *gin.Context) {
 		time.Local,
 	)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 

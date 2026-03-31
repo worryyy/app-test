@@ -118,7 +118,7 @@ func (s *Service) resolveActiveIdentity(ctx context.Context, rootUser *User) (*U
 func (s *Service) getIdentityByType(ctx context.Context, rootUserID int64, accountType string) (*User, error) {
 	var user User
 	err := s.db.WithContext(ctx).
-		Where("root_user_id = ? AND accountType = ?", rootUserID, accountType).
+		Where(colRootUserID+" = ? AND "+colAccountType+" = ?", rootUserID, accountType).
 		First(&user).Error
 	if err != nil {
 		if isRecordNotFound(err) {

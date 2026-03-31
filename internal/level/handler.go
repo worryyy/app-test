@@ -77,9 +77,9 @@ func (h *Handler) UserExp(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	out := make([]UserExpVO, 0, len(data))
+	out := make([]UserExpItem, 0, len(data))
 	for _, id := range ids {
-		out = append(out, UserExpVO{UserID: id, UserExp: data[id]})
+		out = append(out, UserExpItem{UserID: id, UserExp: data[id]})
 	}
 	result.Success(c, out)
 }

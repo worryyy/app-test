@@ -41,7 +41,7 @@ func (h *Handler) ListPublic(c *gin.Context) {
 func (h *Handler) Upload(c *gin.Context) {
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	userID := strconv.FormatInt(middleware.GetUserID(c), 10)

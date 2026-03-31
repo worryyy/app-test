@@ -17,8 +17,8 @@ type VoteInfo struct {
 	Mode          int            `gorm:"column:mode" json:"mode"`
 	OptionType    int            `gorm:"column:option_type" json:"optionType"`
 	CreatedBy     int64          `gorm:"column:created_by" json:"createdBy"`
-	CreatedAt     time.Time      `gorm:"column:created_at;autoCreateTime" json:"created_at"`
-	UpdatedAt     time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	CreatedAt     time.Time      `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
+	UpdatedAt     time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
 	DeletedAt     gorm.DeletedAt `gorm:"column:deleted_at" json:"-"`
 }
 
@@ -32,9 +32,9 @@ type VoteOption struct {
 	VoteText   string         `gorm:"column:vote_text" json:"voteText"`
 	VoteImg    string         `gorm:"column:vote_img" json:"voteImg"`
 	CreatedBy  int64          `gorm:"column:created_by" json:"createdBy"`
-	IsOk       int            `gorm:"column:is_ok" json:"is_ok"`
-	CreatedAt  time.Time      `gorm:"column:created_at;autoCreateTime" json:"created_at"`
-	UpdatedAt  time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	IsOk       int            `gorm:"column:is_ok" json:"isOk"`
+	CreatedAt  time.Time      `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
+	UpdatedAt  time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
 	DeletedAt  gorm.DeletedAt `gorm:"column:deleted_at" json:"-"`
 }
 

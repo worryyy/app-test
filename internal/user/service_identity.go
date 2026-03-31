@@ -8,7 +8,7 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
-func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64) (*IdentityVO, error) {
+func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64) (*Identity, error) {
 	rootUser, err := s.GetByID(ctx, rootUserID)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64)
 		return nil, fmt.Errorf("update anonymous last switch id: %w", err)
 	}
 
-	return buildIdentityVO(anonymous), nil
+	return buildIdentity(anonymous), nil
 }
 
 func (s *Service) UpdateAnonymousNickname(ctx context.Context, rootUserID int64, nickname string) error {
@@ -116,11 +116,11 @@ func (s *Service) ListIdentities(ctx context.Context, rootUserID int64) (*Identi
 		return nil, fmt.Errorf("list identities: %w", err)
 	}
 
-	identities := make([]*IdentityVO, 0, len(users))
+	identities := make([]*Identity, 0, len(users))
 	hasAnonymous := false
 	for i := range users {
 		s.ensureUserDefaults(&users[i])
-		identities = append(identities, buildIdentityVO(&users[i]))
+		identities = append(identities, buildIdentity(&users[i]))
 		if users[i].AccountType == accountTypeAnonymous {
 			hasAnonymous = true
 		}

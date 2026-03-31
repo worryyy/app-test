@@ -32,7 +32,7 @@ func (h *AdminHandler) NoticeAdd(c *gin.Context) {
 func (h *AdminHandler) NoticeDelete(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if id < 1 {
@@ -43,13 +43,13 @@ func (h *AdminHandler) NoticeDelete(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.SuccessMsg(c, "删除成功", nil)
 }
 
 func (h *AdminHandler) NoticeUpdate(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if id < 1 {
@@ -64,13 +64,13 @@ func (h *AdminHandler) NoticeUpdate(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.SuccessMsg(c, "更新成功", nil)
 }
 
 func (h *AdminHandler) NoticeGet(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if id < 1 {
@@ -82,7 +82,7 @@ func (h *AdminHandler) NoticeGet(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *AdminHandler) NoticeList(c *gin.Context) {
@@ -92,5 +92,5 @@ func (h *AdminHandler) NoticeList(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }

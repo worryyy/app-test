@@ -12,8 +12,8 @@ type Conversation struct {
 	LastMessageContent  string    `gorm:"column:last_message_content" json:"lastMessageContent"`
 	LastMessageSenderID string    `gorm:"column:last_message_sender_id" json:"lastMessageSenderId"`
 	LastMessageSentAt   time.Time `gorm:"column:last_message_sent_at" json:"lastMessageSentAt"`
-	CreatedAt           time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
-	UpdatedAt           time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	CreatedAt           time.Time `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
+	UpdatedAt           time.Time `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
 }
 
 func (Conversation) TableName() string {
@@ -22,10 +22,10 @@ func (Conversation) TableName() string {
 
 type ConversationMember struct {
 	ConversationID    string    `gorm:"column:conversation_id;primaryKey" json:"conversationId"`
-	UserID            string    `gorm:"column:user_id;primaryKey" json:"user_id"`
+	UserID            string    `gorm:"column:user_id;primaryKey" json:"userId"`
 	LastReadMessageID *int64    `gorm:"column:last_read_message_id" json:"lastReadMessageId"`
 	UnreadCount       int       `gorm:"column:unread_count" json:"unreadCount"`
-	CreatedAt         time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	CreatedAt         time.Time `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
 }
 
 func (ConversationMember) TableName() string {
@@ -61,7 +61,7 @@ type ConversationUnreadCount struct {
 type ConversationProfile struct {
 	Avatar    string `json:"avatar"`
 	Nickname  string `json:"nickname"`
-	UserID    string `json:"user_id"`
+	UserID    string `json:"userId"`
 	Gender    string `json:"gender"`
 	StuCla    string `json:"stuCla"`
 	Signature string `json:"signature"`

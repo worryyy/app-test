@@ -71,7 +71,7 @@ func (s *Service) ListByTopic(ctx context.Context, topicID, rootID string, viewe
 	return result.NewCusPage(comments, total, page, size), nil
 }
 
-func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*result.CusPage[MyCommentVO], error) {
+func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*result.CusPage[MyCommentItem], error) {
 	page, size = s.normalizePage(page, size)
 	filter := bson.M{"user.userId": userIDString(userID), "hasCheck": bson.M{"$ne": false}}
 	total, err := s.commentColl().CountDocuments(ctx, filter)
@@ -102,7 +102,7 @@ func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*
 		return nil, err
 	}
 
-	items := make([]MyCommentVO, 0, len(comments))
+	items := make([]MyCommentItem, 0, len(comments))
 	for _, comment := range comments {
 		_, ok := liked[comment.ID.Hex()]
 		comment.HasLike = ok
@@ -115,7 +115,7 @@ func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*
 			return nil, result.NewBizError(result.CodeFail, fmt.Sprintf("%s 帖子不存在", comment.TopicID))
 		}
 
-		items = append(items, MyCommentVO{
+		items = append(items, MyCommentItem{
 			Comment: comment,
 			Topic:   *topic,
 		})

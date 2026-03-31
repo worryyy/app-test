@@ -33,7 +33,7 @@ func (h *Handler) VoteList(c *gin.Context) {
 func (h *Handler) VoteDraft(c *gin.Context) {
 	infoID, err := strconv.ParseInt(c.Param("info_id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	page, size := pagination.PageSize(c)
@@ -49,7 +49,7 @@ func (h *Handler) VoteDraft(c *gin.Context) {
 func (h *Handler) VoteDraftAccept(c *gin.Context) {
 	infoID, err := strconv.ParseInt(c.Param("info_id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	optionIDs, ok := bindVoteOptionIDs(c)
@@ -78,7 +78,7 @@ func (h *Handler) VoteCreate(c *gin.Context) {
 func (h *Handler) VoteAddOption(c *gin.Context) {
 	infoID, err := strconv.ParseInt(c.Param("info_id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	var req VoteOption
@@ -95,7 +95,7 @@ func (h *Handler) VoteAddOption(c *gin.Context) {
 func (h *Handler) VoteDo(c *gin.Context) {
 	infoID, err := strconv.ParseInt(c.Param("info_id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	optionIDs, ok := bindVoteOptionIDs(c)

@@ -2,6 +2,7 @@ package topic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
+
+var ErrTopicAlreadyLiked = errors.New("topic already liked")
 
 func (s *Service) LikeTopic(ctx context.Context, claims *jwtutil.Claims, topicID string) error {
 	if claims == nil {
@@ -33,7 +36,7 @@ func (s *Service) LikeTopic(ctx context.Context, claims *jwtutil.Claims, topicID
 	update := bson.M{
 		"$setOnInsert": bson.M{
 			"user_id":      currentUserID,
-			"themeName":   topic.ThemeID,
+			"themeName":    topic.ThemeID,
 			"account_type": claims.AccountType,
 		},
 		"$addToSet": bson.M{"topicIds": topicID},
@@ -41,6 +44,9 @@ func (s *Service) LikeTopic(ctx context.Context, claims *jwtutil.Claims, topicID
 	res, err := s.mongoDB.Collection("campus_topic_like").UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
 	if err != nil {
 		return fmt.Errorf("like topic: %w", err)
+	}
+	if res.ModifiedCount == 0 && res.UpsertedCount == 0 {
+		return ErrTopicAlreadyLiked
 	}
 	if res.ModifiedCount > 0 || res.UpsertedCount > 0 {
 		if _, err := s.topicColl().UpdateByID(ctx, topic.ID, bson.M{"$inc": bson.M{"likeNum": 1}}); err != nil {
@@ -88,7 +94,7 @@ func (s *Service) CollectTopic(ctx context.Context, claims *jwtutil.Claims, topi
 	update := bson.M{
 		"$setOnInsert": bson.M{
 			"user_id":      currentUserID,
-			"themeName":   topic.ThemeID,
+			"themeName":    topic.ThemeID,
 			"account_type": claims.AccountType,
 		},
 		"$addToSet": bson.M{"topicIds": topicID},

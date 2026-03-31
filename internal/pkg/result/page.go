@@ -8,11 +8,16 @@ func EnsureSlice[T any](s []T) []T {
 }
 
 type PageResult[T any] struct {
-	Records []T   `json:"records"`
-	Total   int64 `json:"total"`
-	Current int   `json:"current"`
-	Size    int   `json:"size"`
-	Pages   int   `json:"pages"`
+	Records          []T   `json:"records"`
+	Total            int64 `json:"total"`
+	Current          int   `json:"current"`
+	Size             int   `json:"size"`
+	Pages            int   `json:"pages"`
+	Orders           []any `json:"orders"`
+	OptimizeCountSql bool  `json:"optimizeCountSql"`
+	SearchCount      bool  `json:"searchCount"`
+	CountID          any   `json:"countId"`
+	MaxLimit         any   `json:"maxLimit"`
 }
 
 func NewPage[T any](records []T, total int64, current, size int) *PageResult[T] {
@@ -26,11 +31,16 @@ func NewPage[T any](records []T, total int64, current, size int) *PageResult[T] 
 	}
 
 	return &PageResult[T]{
-		Records: EnsureSlice(records),
-		Total:   total,
-		Current: current,
-		Size:    size,
-		Pages:   pages,
+		Records:          EnsureSlice(records),
+		Total:            total,
+		Current:          current,
+		Size:             size,
+		Pages:            pages,
+		Orders:           []any{},
+		OptimizeCountSql: true,
+		SearchCount:      true,
+		CountID:          nil,
+		MaxLimit:         nil,
 	}
 }
 

@@ -70,7 +70,7 @@ func (s *Service) TermList(ctx context.Context) ([]Term, error) {
 	return list, nil
 }
 
-func (s *Service) CurrentTerm(ctx context.Context) (*CurDateAndTermVO, error) {
+func (s *Service) CurrentTerm(ctx context.Context) (*CurDateAndTerm, error) {
 	var cur CurTerm
 	err := s.mongoDB.Collection("campus_cur_term").FindOne(ctx, bson.M{}).Decode(&cur)
 	if err == mongo.ErrNoDocuments {
@@ -88,7 +88,7 @@ func (s *Service) CurrentTerm(ctx context.Context) (*CurDateAndTermVO, error) {
 		return nil, fmt.Errorf("find term detail: %w", err)
 	}
 
-	return &CurDateAndTermVO{
+	return &CurDateAndTerm{
 		CurDate:    time.Now().Format("2006-01-02"),
 		CurTerm:    cur.Term,
 		StartDate:  term.StartDate,

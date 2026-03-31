@@ -89,7 +89,7 @@ func (s *Service) IsFollowing(ctx context.Context, followerID, targetUserID int6
 	return count > 0, nil
 }
 
-func (s *Service) GetUserProfile(ctx context.Context, targetUserID int64) (*UserProfileVO, error) {
+func (s *Service) GetUserProfile(ctx context.Context, targetUserID int64) (*UserProfile, error) {
 	user, err := s.GetByID(ctx, targetUserID)
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func (s *Service) GetUserProfile(ctx context.Context, targetUserID int64) (*User
 	if user == nil {
 		return nil, result.NewBizError(result.CodeNotExisted, "用户不存在")
 	}
-	return &UserProfileVO{
+	return &UserProfile{
 		Avatar:    user.Avatar,
 		Nickname:  user.Nickname,
 		Gender:    user.Gender,
@@ -106,7 +106,7 @@ func (s *Service) GetUserProfile(ctx context.Context, targetUserID int64) (*User
 	}, nil
 }
 
-func (s *Service) GetStats(ctx context.Context, targetUserID int64) (*UserStatsVO, error) {
+func (s *Service) GetStats(ctx context.Context, targetUserID int64) (*UserStats, error) {
 	user, err := s.GetByID(ctx, targetUserID)
 	if err != nil {
 		return nil, err
@@ -143,14 +143,14 @@ func (s *Service) GetStats(ctx context.Context, targetUserID int64) (*UserStatsV
 		likeCount += item.LikeNum
 	}
 
-	return &UserStatsVO{
+	return &UserStats{
 		FollowerCount:  followerCount,
 		FollowingCount: followingCount,
 		LikeCount:      likeCount,
 	}, nil
 }
 
-func (s *Service) ListFollowers(ctx context.Context, targetUserID int64, page, size int) (*result.CusPage[FollowVO], error) {
+func (s *Service) ListFollowers(ctx context.Context, targetUserID int64, page, size int) (*result.CusPage[FollowItem], error) {
 	targetUser, err := s.GetByID(ctx, targetUserID)
 	if err != nil {
 		return nil, err
@@ -161,7 +161,7 @@ func (s *Service) ListFollowers(ctx context.Context, targetUserID int64, page, s
 	return s.listFollowVO(ctx, bson.M{"followingId": strconv.FormatInt(targetUserID, 10)}, true, targetUserID, page, size)
 }
 
-func (s *Service) ListFollowings(ctx context.Context, targetUserID int64, page, size int) (*result.CusPage[FollowVO], error) {
+func (s *Service) ListFollowings(ctx context.Context, targetUserID int64, page, size int) (*result.CusPage[FollowItem], error) {
 	targetUser, err := s.GetByID(ctx, targetUserID)
 	if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func (s *Service) listFollowVO(
 	isFollowers bool,
 	targetUserID int64,
 	page, size int,
-) (*result.CusPage[FollowVO], error) {
+) (*result.CusPage[FollowItem], error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -207,7 +207,7 @@ func (s *Service) listFollowVO(
 		return nil, fmt.Errorf("decode follow users: %w", err)
 	}
 	if len(docs) == 0 {
-		return result.NewCusPage([]FollowVO{}, total, page, size), nil
+		return result.NewCusPage([]FollowItem{}, total, page, size), nil
 	}
 
 	ids := make([]int64, 0, len(docs))
@@ -231,7 +231,7 @@ func (s *Service) listFollowVO(
 		return nil, err
 	}
 
-	items := make([]FollowVO, 0, len(docs))
+	items := make([]FollowItem, 0, len(docs))
 	for _, doc := range docs {
 		var (
 			counterpartID int64
@@ -249,7 +249,7 @@ func (s *Service) listFollowVO(
 		if !ok {
 			continue
 		}
-		item := FollowVO{
+		item := FollowItem{
 			Avatar:      user.Avatar,
 			Nickname:    user.Nickname,
 			FollowerID:  counterpartFollowerID(isFollowers, counterpartID, targetUserID),

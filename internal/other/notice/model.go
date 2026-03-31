@@ -12,8 +12,8 @@ type Notice struct {
 	CreatedBy int64          `gorm:"column:created_by" json:"createdBy"`
 	UpdatedBy int64          `gorm:"column:updated_by" json:"updatedBy"`
 	DeletedBy int64          `gorm:"column:deleted_by" json:"deletedBy"`
-	CreatedAt time.Time      `gorm:"column:created_at;autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	CreatedAt time.Time      `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
+	UpdatedAt time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"-"`
 }
 

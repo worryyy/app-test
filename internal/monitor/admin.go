@@ -18,7 +18,7 @@ func (h *AdminHandler) CacheNames(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }
 
 func (h *AdminHandler) CacheStats(c *gin.Context) {
@@ -27,5 +27,5 @@ func (h *AdminHandler) CacheStats(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, data)
+	result.Data(c, data)
 }

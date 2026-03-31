@@ -35,7 +35,7 @@ func (h *Handler) Login(c *gin.Context) {
 		RefreshToken:    refreshToken,
 		User:            user,
 		IsNew:           isNew,
-		CurrentIdentity: buildIdentityVO(activeIdentity),
+		CurrentIdentity: buildIdentity(activeIdentity),
 		RootUserID:      rootUserID(user),
 	})
 }
@@ -54,7 +54,7 @@ func (h *Handler) RefreshToken(c *gin.Context) {
 	result.Success(c, &RefreshTokenResp{
 		Token:           token,
 		RefreshToken:    refreshToken,
-		CurrentIdentity: buildIdentityVO(user),
+		CurrentIdentity: buildIdentity(user),
 	})
 }
 

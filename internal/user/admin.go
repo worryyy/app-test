@@ -70,7 +70,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.SuccessMsg(c, "删除成功", nil)
 }
 
 func (h *AdminHandler) EditUser(c *gin.Context) {
@@ -165,7 +165,7 @@ func (h *AdminHandler) AddBlackList(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.SuccessMsg(c, "黑名单更新成功", nil)
 }
 
 func (h *AdminHandler) DelBlackList(c *gin.Context) {
@@ -178,7 +178,7 @@ func (h *AdminHandler) DelBlackList(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.SuccessMsg(c, "黑名单更新成功", nil)
 }
 
 func (h *AdminHandler) BlackList(c *gin.Context) {

@@ -2,7 +2,9 @@ package notice
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 
@@ -19,21 +21,47 @@ func NewService(db *gorm.DB) *Service {
 
 func (s *Service) CreateNotice(ctx context.Context, n *Notice) error {
 	if err := s.db.WithContext(ctx).Create(n).Error; err != nil {
-		return fmt.Errorf("create notice: %w", err)
+		return result.NewBizError(result.CodeFail, "添加失败")
 	}
 	return nil
 }
 
 func (s *Service) DeleteNotice(ctx context.Context, id int64) error {
-	if err := s.db.WithContext(ctx).Delete(&Notice{}, id).Error; err != nil {
-		return fmt.Errorf("delete notice: %w", err)
+	var n Notice
+	if err := s.db.WithContext(ctx).First(&n, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return result.NewBizError(result.CodeFail, fmt.Sprintf("id:%d不存在", id))
+		}
+		return fmt.Errorf("query notice before delete: %w", err)
+	}
+	res := s.db.WithContext(ctx).Delete(&Notice{}, id)
+	if res.Error != nil {
+		return fmt.Errorf("delete notice: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return result.NewBizError(result.CodeFail, "删除失败")
 	}
 	return nil
 }
 
 func (s *Service) UpdateNotice(ctx context.Context, id int64, n *Notice) error {
-	if err := s.db.WithContext(ctx).Model(&Notice{}).Where("id = ?", id).Updates(n).Error; err != nil {
-		return fmt.Errorf("update notice: %w", err)
+	var existed Notice
+	if err := s.db.WithContext(ctx).First(&existed, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return result.NewBizError(result.CodeFail, "不存在")
+		}
+		return fmt.Errorf("query notice before update: %w", err)
+	}
+	if n == nil || strings.TrimSpace(n.Content) == "" {
+		return result.NewBizError(result.CodeFail, "content 不能为空")
+	}
+
+	res := s.db.WithContext(ctx).Model(&Notice{}).Where("id = ?", id).Updates(n)
+	if res.Error != nil {
+		return fmt.Errorf("update notice: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return result.NewBizError(result.CodeFail, "更新失败")
 	}
 	return nil
 }
@@ -41,6 +69,9 @@ func (s *Service) UpdateNotice(ctx context.Context, id int64, n *Notice) error {
 func (s *Service) GetNotice(ctx context.Context, id int64) (*Notice, error) {
 	var n Notice
 	if err := s.db.WithContext(ctx).First(&n, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("get notice: %w", err)
 	}
 	return &n, nil
@@ -59,7 +90,7 @@ func (s *Service) ListNotices(ctx context.Context, page, size int) (*result.Page
 	return result.NewPage(list, total, page, size), nil
 }
 
-func (s *Service) ListFrontendNotices(ctx context.Context, page, size int) ([]NoticeVO, error) {
+func (s *Service) ListFrontendNotices(ctx context.Context, page, size int) ([]NoticeItem, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -77,9 +108,9 @@ func (s *Service) ListFrontendNotices(ctx context.Context, page, size int) ([]No
 		return nil, fmt.Errorf("list frontend notices: %w", err)
 	}
 
-	vos := make([]NoticeVO, 0, len(notices))
+	vos := make([]NoticeItem, 0, len(notices))
 	for _, item := range notices {
-		vos = append(vos, NoticeVO{
+		vos = append(vos, NoticeItem{
 			Content:   item.Content,
 			UpdatedAt: item.UpdatedAt,
 		})

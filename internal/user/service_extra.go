@@ -65,11 +65,11 @@ func (s *Service) Authenticate(
 
 	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).Updates(map[string]interface{}{
 		"stu_is_check": true,
-		"stu_num":     req.SchoolID,
-		"stuCla":     loginResp.Major,
-		"stuName":    loginResp.Name,
-		"stu_pwd":     encPwd,
-		"school":     req.School,
+		"stu_num":      req.SchoolID,
+		"stuCla":       loginResp.Major,
+		"stuName":      loginResp.Name,
+		"stu_pwd":      encPwd,
+		"school":       req.School,
 	}).Error; err != nil {
 		return nil, fmt.Errorf("authenticate user: %w", err)
 	}
@@ -86,10 +86,10 @@ func (s *Service) ReAuthentication(
 
 func (s *Service) DelAuthentication(ctx context.Context, userID int64) error {
 	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).Updates(map[string]interface{}{
-		"stu_num":     "",
-		"stu_pwd":     "",
-		"stuName":    "",
-		"stuCla":     "",
+		"stu_num":      "",
+		"stu_pwd":      "",
+		"stuName":      "",
+		"stuCla":       "",
 		"stu_is_check": false,
 	}).Error; err != nil {
 		return fmt.Errorf("delete authentication: %w", err)
@@ -142,7 +142,7 @@ func (s *Service) OfficialLogin(ctx context.Context, loginAccount, loginPassword
 
 	var user User
 	err = s.db.WithContext(ctx).
-		Where("stu_num = ? AND stuPwd = ?", loginAccount, encPwd).
+		Where(colStuNum+" = ? AND "+colStuPwd+" = ?", loginAccount, encPwd).
 		First(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return "", "", nil, result.NewBizError(result.CodeFail, "登录账号或密码错误")

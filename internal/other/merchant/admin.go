@@ -65,7 +65,7 @@ func (h *AdminHandler) TaskAdd(c *gin.Context) {
 func (h *AdminHandler) TaskDelete(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if id < 1 {
@@ -76,13 +76,13 @@ func (h *AdminHandler) TaskDelete(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.SuccessMsg(c, "删除成功", nil)
 }
 
 func (h *AdminHandler) TaskUpdate(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if id < 1 {
@@ -97,13 +97,13 @@ func (h *AdminHandler) TaskUpdate(c *gin.Context) {
 		result.HandleError(c, err)
 		return
 	}
-	result.Success(c, nil)
+	result.SuccessMsg(c, "更新成功", nil)
 }
 
 func (h *AdminHandler) TaskGet(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	if id < 1 {

@@ -115,7 +115,7 @@ func (h *Handler) DeleteConversation(c *gin.Context) {
 func (h *Handler) OfflineMessages(c *gin.Context) {
 	lastMessageID, err := strconv.ParseInt(c.Param("last_message_id"), 10, 64)
 	if err != nil {
-		result.Fail(c, result.CodeParamError, "参数错误")
+		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 		return
 	}
 	data, err := h.svc.GetOfflineMessages(c.Request.Context(), middleware.GetUserID(c), lastMessageID)
@@ -132,7 +132,7 @@ func (h *Handler) HistoryMessages(c *gin.Context) {
 	if rawOldest := c.Query("oldest_message_id"); rawOldest != "" {
 		parsed, err := strconv.ParseInt(rawOldest, 10, 64)
 		if err != nil {
-			result.Fail(c, result.CodeParamError, "参数错误")
+			result.Fail(c, result.CodeParamError, result.ErrParam.Error())
 			return
 		}
 		oldestMessageID = &parsed

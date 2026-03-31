@@ -67,7 +67,7 @@ func (s *Service) resolveTopicAuthor(ctx context.Context, claims *jwtutil.Claims
 	if targetAccountType != "" && targetAccountType != claims.AccountType {
 		var alt topicAuthor
 		err := s.db.WithContext(ctx).
-			Where("root_user_id = ? AND accountType = ?", claims.RootUserID, targetAccountType).
+			Where(colTopicRootUserID+" = ? AND "+colTopicAccountType+" = ?", claims.RootUserID, targetAccountType).
 			First(&alt).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, result.NewBizError(result.CodeFail, "匿名账号不存在")
@@ -79,7 +79,7 @@ func (s *Service) resolveTopicAuthor(ctx context.Context, claims *jwtutil.Claims
 	}
 
 	var author topicAuthor
-	err := s.db.WithContext(ctx).Where("id = ?", targetUserID).First(&author).Error
+	err := s.db.WithContext(ctx).Where(colTopicUserID+" = ?", targetUserID).First(&author).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, result.NewBizError(result.CodeNotExisted, "用户不存在")
 	}

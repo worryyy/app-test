@@ -2,7 +2,7 @@ package notice
 
 import "time"
 
-type NoticeVO struct {
+type NoticeItem struct {
 	Content   string    `json:"content"`
-	UpdatedAt time.Time `json:"updated_at"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }

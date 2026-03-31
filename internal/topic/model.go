@@ -9,7 +9,7 @@ import (
 type Topic struct {
 	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	ThemeID       string             `bson:"themeId" json:"themeId"`
-	UserID        string             `bson:"user_id" json:"user_id"`
+	UserID        string             `bson:"user_id" json:"userId"`
 	Title         string             `bson:"title" json:"title"`
 	Content       string             `bson:"content" json:"content"`
 	Imgs          []string           `bson:"imgs" json:"imgs"`
@@ -19,7 +19,7 @@ type Topic struct {
 	CommentNum    int64              `bson:"commentNum" json:"commentNum"`
 	CollectionNum int64              `bson:"collectionNum" json:"collectionNum"`
 	Ext           interface{}        `bson:"ext,omitempty" json:"ext"`
-	AccountType   string             `bson:"account_type" json:"account_type"`
+	AccountType   string             `bson:"account_type" json:"accountType"`
 	NickName      string             `bson:"nickName" json:"nickName"`
 	Avatar        string             `bson:"avatar" json:"avatar"`
 	CreatedTime   *time.Time         `bson:"-" json:"createdTime"`
@@ -37,17 +37,17 @@ type TopicSearch struct {
 
 type TopicLike struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID      string             `bson:"user_id" json:"user_id"`
+	UserID      string             `bson:"user_id" json:"userId"`
 	ThemeName   string             `bson:"themeName" json:"themeName"`
-	AccountType string             `bson:"account_type" json:"account_type"`
+	AccountType string             `bson:"account_type" json:"accountType"`
 	TopicIDs    []string           `bson:"topicIds" json:"topicIds"`
 }
 
 type TopicCollection struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID      string             `bson:"user_id" json:"user_id"`
+	UserID      string             `bson:"user_id" json:"userId"`
 	ThemeName   string             `bson:"themeName" json:"themeName"`
-	AccountType string             `bson:"account_type" json:"account_type"`
+	AccountType string             `bson:"account_type" json:"accountType"`
 	TopicIDs    []string           `bson:"topicIds" json:"topicIds"`
 }
 

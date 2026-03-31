@@ -33,7 +33,7 @@ func (s *Service) SetCourseColor(ctx context.Context, userID int64, colors []str
 		return result.NewBizError(result.CodeFail, "失败")
 	}
 
-	var week weekCourseVO
+	var week weekCourse
 	if err := json.Unmarshal([]byte(course.Course), &week); err != nil {
 		return fmt.Errorf("unmarshal current week course: %w", err)
 	}

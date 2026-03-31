@@ -2,6 +2,7 @@ package merchant
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -110,14 +111,26 @@ func (s *Service) CreateTask(ctx context.Context, name string) error {
 		UpdatedAt: time.Now(),
 	}
 	if err := s.db.WithContext(ctx).Create(&t).Error; err != nil {
-		return fmt.Errorf("create task: %w", err)
+		return result.NewBizError(result.CodeFail, "添加失败")
 	}
 	return nil
 }
 
 func (s *Service) DeleteTask(ctx context.Context, id int64) error {
-	if err := s.db.WithContext(ctx).Delete(&Task{}, id).Error; err != nil {
-		return fmt.Errorf("delete task: %w", err)
+	var task Task
+	if err := s.db.WithContext(ctx).First(&task, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return result.NewBizError(result.CodeFail, fmt.Sprintf("id:%d不存在", id))
+		}
+		return fmt.Errorf("query task before delete: %w", err)
+	}
+
+	res := s.db.WithContext(ctx).Delete(&Task{}, id)
+	if res.Error != nil {
+		return fmt.Errorf("delete task: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return result.NewBizError(result.CodeFail, "删除失败")
 	}
 	return nil
 }
@@ -125,6 +138,9 @@ func (s *Service) DeleteTask(ctx context.Context, id int64) error {
 func (s *Service) UpdateTask(ctx context.Context, id int64, name string) error {
 	task, err := s.GetTask(ctx, id)
 	if err != nil {
+		return err
+	}
+	if task == nil {
 		return result.NewBizError(result.CodeFail, "不存在")
 	}
 
@@ -139,8 +155,12 @@ func (s *Service) UpdateTask(ctx context.Context, id int64, name string) error {
 		task.Func = name
 	}
 	task.UpdatedAt = time.Now()
-	if err := s.db.WithContext(ctx).Model(&Task{}).Where("id = ?", id).Updates(task).Error; err != nil {
-		return fmt.Errorf("update task: %w", err)
+	res := s.db.WithContext(ctx).Model(&Task{}).Where("id = ?", id).Updates(task)
+	if res.Error != nil {
+		return fmt.Errorf("update task: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return result.NewBizError(result.CodeFail, "更新失败")
 	}
 	return nil
 }
@@ -148,6 +168,9 @@ func (s *Service) UpdateTask(ctx context.Context, id int64, name string) error {
 func (s *Service) GetTask(ctx context.Context, id int64) (*Task, error) {
 	var t Task
 	if err := s.db.WithContext(ctx).First(&t, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("get task: %w", err)
 	}
 	return &t, nil

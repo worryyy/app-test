@@ -32,39 +32,39 @@ type AddTopicSearchMsg struct {
 }
 
 type CourseMsg struct {
-	UserID int64  `json:"user_id"`
-	StuNum string `json:"stu_num"`
-	StuPwd string `json:"stu_pwd"`
+	UserID int64  `json:"userId"`
+	StuNum string `json:"stuNum"`
+	StuPwd string `json:"stuPwd"`
 	Term   string `json:"term"`
 	Week   int    `json:"week"`
 }
 
 type NotifyMsg struct {
 	TargetUserID string    `json:"targetUserId"`
-	SenderUserID string    `json:"senderUserId,omitempty"`
+	SenderUserID string    `json:"senderUserId"`
 	Type         string    `json:"type"`
 	Content      string    `json:"content"`
-	TopicID      string    `json:"topicId,omitempty"`
-	CommentID    string    `json:"commentId,omitempty"`
-	CreatedTime  time.Time `json:"createdTime,omitempty"`
+	TopicID      string    `json:"topicId"`
+	CommentID    string    `json:"commentId"`
+	CreatedTime  time.Time `json:"createdTime"`
 }
 
 type TopicUserUpdateMsg struct {
-	UserID      string `json:"user_id"`
+	UserID      string `json:"userId"`
 	NickName    string `json:"nickName"`
 	Avatar      string `json:"avatar"`
 	Gender      string `json:"gender"`
 	Signature   string `json:"signature"`
-	AccountType int    `json:"account_type"`
+	AccountType int    `json:"accountType"`
 }
 
 type CommentUserUpdateMsg struct {
-	UserID      string `json:"user_id"`
+	UserID      string `json:"userId"`
 	NickName    string `json:"nickName"`
 	Avatar      string `json:"avatar"`
 	Gender      string `json:"gender"`
 	Signature   string `json:"signature"`
-	AccountType int    `json:"account_type"`
+	AccountType int    `json:"accountType"`
 }
 
 type TopicDeleteMsg struct {
@@ -79,5 +79,5 @@ type CommentDeleteMsg struct {
 type DieMsg struct {
 	Queue   string      `json:"queue"`
 	Payload interface{} `json:"payload"`
-	Reason  string      `json:"reason,omitempty"`
+	Reason  string      `json:"reason"`
 }
