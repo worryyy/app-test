@@ -11,6 +11,8 @@ coverage.out
 /logs/
 /tmp/
 /dist/
+.omc/
+.superset/
 
 /ecampus
 /ecampus-crm
