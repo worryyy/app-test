@@ -32,11 +32,12 @@ func (s *Service) LikeTopic(ctx context.Context, claims *jwtutil.Claims, topicID
 	}
 
 	currentUserID := userIDString(claims.UserID)
-	filter := bson.M{"userId": currentUserID, "themeName": topic.ThemeID}
+	themeName := s.resolveThemeName(ctx, topic.ThemeID)
+	filter := bson.M{"userId": currentUserID, "themeName": themeName}
 	update := bson.M{
 		"$setOnInsert": bson.M{
 			"userId":      currentUserID,
-			"themeName":    topic.ThemeID,
+			"themeName":    themeName,
 			"accountType": claims.AccountType,
 		},
 		"$addToSet": bson.M{"topicIds": topicID},
@@ -90,11 +91,22 @@ func (s *Service) CollectTopic(ctx context.Context, claims *jwtutil.Claims, topi
 	}
 
 	currentUserID := userIDString(claims.UserID)
-	filter := bson.M{"userId": currentUserID, "themeName": topic.ThemeID}
+	themeName := s.resolveThemeName(ctx, topic.ThemeID)
+
+	// Enforce 500-item collection limit (matches Java TopicCollectionImpl)
+	collCount, err := s.countCollectionItems(ctx, currentUserID)
+	if err != nil {
+		return fmt.Errorf("count collections: %w", err)
+	}
+	if collCount >= 500 {
+		return result.NewBizError(result.CodeFail, "收藏数量已达上限")
+	}
+
+	filter := bson.M{"userId": currentUserID, "themeName": themeName}
 	update := bson.M{
 		"$setOnInsert": bson.M{
 			"userId":      currentUserID,
-			"themeName":    topic.ThemeID,
+			"themeName":    themeName,
 			"accountType": claims.AccountType,
 		},
 		"$addToSet": bson.M{"topicIds": topicID},
@@ -245,6 +257,24 @@ func (s *Service) sendTopicNotify(ctx context.Context, targetUserID, senderUserI
 	if err != nil {
 		s.logger.Warn("send topic notify failed", zap.Error(err), zap.String("topicID", topicID), zap.String("type", notifyType))
 	}
+}
+
+func (s *Service) countCollectionItems(ctx context.Context, userID string) (int64, error) {
+	cur, err := s.mongoDB.Collection("campus_topic_collection").Find(ctx, bson.M{"userId": userID})
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = cur.Close(ctx) }()
+
+	var total int64
+	var docs []topicStateDoc
+	if err := cur.All(ctx, &docs); err != nil {
+		return 0, err
+	}
+	for _, doc := range docs {
+		total += int64(len(doc.TopicIDs))
+	}
+	return total, nil
 }
 
 func mustObjectID(id string) primitive.ObjectID {

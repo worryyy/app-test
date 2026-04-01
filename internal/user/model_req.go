@@ -25,15 +25,15 @@ type OfficialLoginReq struct {
 }
 
 type OfficialCertReq struct {
-	AvatarURL         string `json:"avatarUrl"`
-	FullName          string `json:"fullName" binding:"required"`
-	ShortName         string `json:"shortName" binding:"required"`
-	Nature            string `json:"nature"`
-	Introduction      string `json:"introduction"`
-	ResponsiblePerson string `json:"responsiblePerson" binding:"required"`
-	WechatAccount     string `json:"wechatAccount"`
-	LoginAccount      string `json:"loginAccount" binding:"required"`
-	LoginPassword     string `json:"loginPassword" binding:"required"`
+	AvatarURL         string `json:"avatarUrl" binding:"omitempty,max=255"`
+	FullName          string `json:"fullName" binding:"required,max=100"`
+	ShortName         string `json:"shortName" binding:"required,max=50"`
+	Nature            string `json:"nature" binding:"omitempty,max=50"`
+	Introduction      string `json:"introduction" binding:"omitempty,max=500"`
+	ResponsiblePerson string `json:"responsiblePerson" binding:"required,max=50"`
+	WechatAccount     string `json:"wechatAccount" binding:"omitempty,max=50"`
+	LoginAccount      string `json:"loginAccount" binding:"required,max=50"`
+	LoginPassword     string `json:"loginPassword" binding:"required,max=50"`
 }
 
 type IdentitySwitchReq struct {
@@ -41,34 +41,34 @@ type IdentitySwitchReq struct {
 }
 
 type UpdateAnonymousNicknameReq struct {
-	Nickname string `json:"nickname" binding:"required"`
+	Nickname string `json:"nickname" binding:"required,max=50"`
 }
 
 type UserCourseReq struct {
 	SchoolID  string `json:"schoolId" binding:"required"`
 	Password  string `json:"password" binding:"required"`
-	Week      int    `json:"week"`
-	Term      string `json:"term" binding:"required"`
-	StartDate string `json:"startDate" binding:"required"`
+	Week      int    `json:"week" binding:"min=0,max=30"`
+	Term      string `json:"term" binding:"required,checkform=^\\d{4}-\\d{4}-\\d{1}$"`
+	StartDate string `json:"startDate" binding:"required,checkform=^\\d{4}-\\d{2}-\\d{2}$"`
 }
 
 type ExamReq struct {
 	SchoolID string `json:"schoolId" binding:"required"`
 	Password string `json:"password" binding:"required"`
-	XNXQID   string `json:"xnxqid" binding:"required"`
+	XNXQID   string `json:"xnxqid" binding:"required,checkform=^\\d{4}-\\d{4}-\\d{1}$"`
 }
 
 type ExamScoreReq struct {
 	SchoolID string `json:"schoolId" binding:"required"`
 	Password string `json:"password" binding:"required"`
-	SS       string `json:"ss"`
+	SS       string `json:"ss" binding:"omitempty,checkform=^\\d{4}-\\d{4}-\\d{1}$"`
 }
 
 type UserEditReq struct {
-	Nickname  string `json:"nickname"`
-	Avatar    string `json:"avatar"`
+	Nickname  string `json:"nickname" binding:"omitempty,max=50"`
+	Avatar    string `json:"avatar" binding:"omitempty,max=255"`
 	Gender    string `json:"gender"`
-	Signature string `json:"signature"`
+	Signature string `json:"signature" binding:"omitempty,max=50"`
 }
 
 type AddAdminReq struct {

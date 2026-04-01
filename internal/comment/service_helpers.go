@@ -176,7 +176,6 @@ func buildCommentUser(user *userRecord) CommentUser {
 		UserID:      strconv.FormatInt(user.ID, 10),
 		Avatar:      user.Avatar,
 		NickName:    user.Nickname,
-		Gender:      user.Gender,
 		AccountType: user.AccountType,
 		Signature:   user.Signature,
 	}

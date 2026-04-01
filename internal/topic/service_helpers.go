@@ -53,6 +53,15 @@ func (s *Service) ensureThemeExists(ctx context.Context, themeID string) error {
 	return fmt.Errorf("check theme exists: %w", err)
 }
 
+func (s *Service) resolveThemeName(ctx context.Context, themeID string) string {
+	var doc campusThemeID
+	err := s.mongoDB.Collection("campus_theme_id").FindOne(ctx, bson.M{"themeId": themeID}).Decode(&doc)
+	if err != nil {
+		return themeID
+	}
+	return doc.Name
+}
+
 func (s *Service) resolveTopicAuthor(ctx context.Context, claims *jwtutil.Claims, accountType string) (*topicAuthor, error) {
 	if claims == nil {
 		return nil, result.ErrParam

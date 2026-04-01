@@ -27,6 +27,7 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/other/vote"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/snowflake"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
@@ -121,6 +122,8 @@ func run() error {
 	voteH := vote.NewHandler(voteSvc)
 	reportH := report.NewHandler(reportSvc)
 	supportH := support.NewHandler(supportSvc)
+
+	result.RegisterCustomValidators()
 
 	engine := gin.New()
 	engine.Use(gin.Recovery())

@@ -28,7 +28,6 @@ type CommentUser struct {
 	UserID      string `bson:"userId" json:"userId"`
 	Avatar      string `bson:"avatar" json:"avatar"`
 	NickName    string `bson:"nickName" json:"nickName"`
-	Gender      string `bson:"gender" json:"gender"`
 	AccountType string `bson:"accountType" json:"accountType"`
 	Signature   string `bson:"signature" json:"signature"`
 }
