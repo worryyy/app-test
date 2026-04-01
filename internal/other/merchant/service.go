@@ -44,6 +44,15 @@ func (s *Service) defaultPageSize() int {
 }
 
 func (s *Service) AddMerchantTheme(ctx context.Context, themeID string) (string, error) {
+	// Validate theme exists in campus_theme_id collection (matches Java's themeService.existed)
+	count, err := s.mongoDB.Collection("campus_theme_id").CountDocuments(ctx, bson.M{"themeId": themeID})
+	if err != nil {
+		return "", fmt.Errorf("check theme existence: %w", err)
+	}
+	if count == 0 {
+		return "", result.NewBizError(result.CodeFail, "主题不存在")
+	}
+
 	existing, err := s.getMerchantThemeByThemeID(ctx, themeID)
 	if err != nil {
 		return "", err

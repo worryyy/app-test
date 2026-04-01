@@ -78,8 +78,8 @@ type OfficialCertification struct {
 	RejectReason      string             `bson:"rejectReason" json:"rejectReason"`
 	ReviewedBy        int64              `bson:"reviewedBy" json:"reviewedBy"`
 	ReviewedAt        *time.Time         `bson:"reviewedAt" json:"reviewedAt"`
-	CreatedAt         time.Time          `bson:"created_at" json:"createdAt"`
-	UpdatedAt         time.Time          `bson:"updated_at" json:"updatedAt"`
+	CreatedAt         time.Time          `bson:"createdAt" json:"createdAt"`
+	UpdatedAt         time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
 type AdminLoginReq struct {

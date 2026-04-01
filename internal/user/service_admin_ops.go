@@ -25,6 +25,15 @@ func (s *Service) CreateUser(ctx context.Context, u *User) error {
 	if u == nil {
 		return result.ErrParam
 	}
+	if u.OpenID != "" {
+		var count int64
+		if err := s.db.WithContext(ctx).Model(&User{}).Where("open_id = ?", u.OpenID).Count(&count).Error; err != nil {
+			return fmt.Errorf("count user by open_id: %w", err)
+		}
+		if count > 0 {
+			return result.NewBizError(result.CodeFail, "openId:"+u.OpenID+"已存在")
+		}
+	}
 	if err := s.db.WithContext(ctx).Create(u).Error; err != nil {
 		return fmt.Errorf("create user: %w", err)
 	}
@@ -91,10 +100,10 @@ func (s *Service) EditAdminUser(ctx context.Context, userID, operatorID int64, r
 		updates["stu_num"] = req.StuNum
 	}
 	if req.StuCla != "" {
-		updates["stuCla"] = req.StuCla
+		updates["stu_cla"] = req.StuCla
 	}
 	if req.StuName != "" {
-		updates["stuName"] = req.StuName
+		updates["stu_name"] = req.StuName
 	}
 	if req.StuIsCheck != nil {
 		updates["stu_is_check"] = *req.StuIsCheck
@@ -106,7 +115,7 @@ func (s *Service) EditAdminUser(ctx context.Context, userID, operatorID int64, r
 		updates["nickname"] = req.Nickname
 	}
 	if operatorID > 0 {
-		updates["updatedBy"] = operatorID
+		updates["updated_by"] = operatorID
 	}
 	if len(updates) == 0 {
 		return result.NewBizError(result.CodeFail, "更新失败")
@@ -158,9 +167,9 @@ func (s *Service) ListUsers(ctx context.Context, page, size int, name string) (*
 func (s *Service) ClearAuthentication(ctx context.Context, userID int64) error {
 	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).Updates(map[string]interface{}{
 		"stu_is_check": false,
-		"stuName":    "",
-		"stuCla":     "",
-		"stu_num":     "",
+		"stu_name":     "",
+		"stu_cla":      "",
+		"stu_num":      "",
 	}).Error; err != nil {
 		return fmt.Errorf("clear authentication: %w", err)
 	}
@@ -387,7 +396,7 @@ func (s *Service) ReviewCertification(ctx context.Context, reviewerID int64, req
 				"status":     certificationStatusApproved,
 				"reviewedBy": reviewerID,
 				"reviewedAt": now,
-				"updated_at":  now,
+				"updatedAt":  now,
 			}},
 		).Err(); err != nil {
 			return fmt.Errorf("update certification approved status: %w", err)
@@ -405,7 +414,7 @@ func (s *Service) ReviewCertification(ctx context.Context, reviewerID int64, req
 				"rejectReason": req.RejectReason,
 				"reviewedBy":   reviewerID,
 				"reviewedAt":   now,
-				"updated_at":    now,
+				"updatedAt":    now,
 			}},
 		).Err(); err != nil {
 			return fmt.Errorf("update certification rejected status: %w", err)

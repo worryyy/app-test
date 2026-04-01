@@ -72,24 +72,24 @@ type UserEditReq struct {
 }
 
 type AddAdminReq struct {
-	UserID   int64  `json:"user_id" binding:"required"`
+	UserID   int64  `json:"userId" binding:"required"`
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 	Power    *int   `json:"power"`
 }
 
 type UserIDReq struct {
-	UserID int64 `json:"user_id" binding:"required"`
+	UserID int64 `json:"userId" binding:"required"`
 }
 
 type AdminEditUserReq struct {
 	Nickname   string `json:"nickname"`
 	Avatar     string `json:"avatar"`
 	Power      *int   `json:"power"`
-	StuNum     string `json:"stu_num"`
+	StuNum     string `json:"stuNum"`
 	StuName    string `json:"stuName"`
 	StuCla     string `json:"stuCla"`
-	StuIsCheck *bool  `json:"stu_is_check"`
+	StuIsCheck *bool  `json:"stuIsCheck"`
 }
 
 type CertReviewReq struct {

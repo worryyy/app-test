@@ -123,7 +123,7 @@ func (s *Service) ListAdByLevel(ctx context.Context, size int) ([]Ad, error) {
 	}
 	var list []Ad
 	if err := s.db.WithContext(ctx).
-		Where("is_ok = ?", true).
+		Where("is_ok > 0").
 		Order("level DESC, id DESC").
 		Limit(size).
 		Find(&list).Error; err != nil {
