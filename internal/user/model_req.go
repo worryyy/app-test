@@ -19,22 +19,6 @@ type CheckLoginReq struct {
 	Password string `json:"password" binding:"required"`
 }
 
-type OfficialLoginReq struct {
-	LoginAccount  string `json:"loginAccount" binding:"required"`
-	LoginPassword string `json:"loginPassword" binding:"required"`
-}
-
-type OfficialCertReq struct {
-	AvatarURL         string `json:"avatarUrl" binding:"omitempty,max=255"`
-	FullName          string `json:"fullName" binding:"required,max=100"`
-	ShortName         string `json:"shortName" binding:"required,max=50"`
-	Nature            string `json:"nature" binding:"omitempty,max=50"`
-	Introduction      string `json:"introduction" binding:"omitempty,max=500"`
-	ResponsiblePerson string `json:"responsiblePerson" binding:"required,max=50"`
-	WechatAccount     string `json:"wechatAccount" binding:"omitempty,max=50"`
-	LoginAccount      string `json:"loginAccount" binding:"required,max=50"`
-	LoginPassword     string `json:"loginPassword" binding:"required,max=50"`
-}
 
 type IdentitySwitchReq struct {
 	AccountType string `json:"account_type" binding:"required"`

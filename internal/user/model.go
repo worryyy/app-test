@@ -49,37 +49,11 @@ func (Admin) TableName() string {
 	return "admin"
 }
 
-type Follow struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	FollowerID  int64              `bson:"followerId" json:"followerId"`
-	FollowingID int64              `bson:"followingId" json:"followingId"`
-	FollowAt    time.Time          `bson:"followAt" json:"followAt"`
-}
-
 type UserBlacklist struct {
 	ID             string    `bson:"_id,omitempty" json:"id"`
 	BlockedUserIDs []string  `bson:"blocked_user_ids" json:"blockedUserIds"`
 	CreatedTime    time.Time `bson:"created_time" json:"createdTime"`
 	UpdatedTime    time.Time `bson:"updated_time" json:"updatedTime"`
-}
-
-type OfficialCertification struct {
-	ID                primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	AvatarURL         string             `bson:"avatarUrl" json:"avatarUrl"`
-	FullName          string             `bson:"fullName" json:"fullName"`
-	ShortName         string             `bson:"shortName" json:"shortName"`
-	Nature            string             `bson:"nature" json:"nature"`
-	Introduction      string             `bson:"introduction" json:"introduction"`
-	ResponsiblePerson string             `bson:"responsiblePerson" json:"responsiblePerson"`
-	WechatAccount     string             `bson:"wechatAccount" json:"wechatAccount"`
-	LoginAccount      string             `bson:"loginAccount" json:"loginAccount"`
-	LoginPassword     string             `bson:"loginPassword" json:"loginPassword"`
-	Status            string             `bson:"status" json:"status"`
-	RejectReason      string             `bson:"rejectReason" json:"rejectReason"`
-	ReviewedBy        int64              `bson:"reviewedBy" json:"reviewedBy"`
-	ReviewedAt        *time.Time         `bson:"reviewedAt" json:"reviewedAt"`
-	CreatedAt         time.Time          `bson:"createdAt" json:"createdAt"`
-	UpdatedAt         time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
 type AdminLoginReq struct {
