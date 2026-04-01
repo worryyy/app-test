@@ -1,6 +1,7 @@
 package file
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -22,6 +23,10 @@ func (h *Handler) Download(c *gin.Context) {
 	showOrigin, _ := strconv.Atoi(c.DefaultQuery("show_origin", "0"))
 	url, err := h.svc.GetDownloadURL(c.Request.Context(), c.Param("md5"), showOrigin > 0)
 	if err != nil {
+		if errors.Is(err, result.ErrNotExisted) {
+			c.Status(http.StatusNotFound)
+			return
+		}
 		result.HandleError(c, err)
 		return
 	}

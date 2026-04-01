@@ -24,9 +24,12 @@ func (s *Service) GetByMD5(ctx context.Context, md5Value string) (*File, error) 
 }
 
 func (s *Service) GetDownloadURL(ctx context.Context, md5Value string, showOrigin bool) (string, error) {
-	_, err := s.GetByMD5(ctx, md5Value)
+	f, err := s.GetByMD5(ctx, md5Value)
 	if err != nil {
 		return "", err
+	}
+	if f == nil {
+		return "", result.ErrNotExisted
 	}
 	if !showOrigin {
 		return s.compressFileURL(md5Value), nil
