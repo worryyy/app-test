@@ -156,7 +156,7 @@ func (s *Service) fillTopicFlags(
 	topics []Topic,
 	isLike bool,
 ) error {
-	cur, err := s.mongoDB.Collection(collName).Find(ctx, bson.M{"user_id": userID})
+	cur, err := s.mongoDB.Collection(collName).Find(ctx, bson.M{"userId": userID})
 	if err != nil {
 		return fmt.Errorf("load %s docs: %w", collName, err)
 	}

@@ -17,7 +17,7 @@ import (
 type topicDoc struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty"`
 	ThemeID    string             `bson:"themeId"`
-	UserID     string             `bson:"user_id"`
+	UserID     string             `bson:"userId"`
 	Title      string             `bson:"title"`
 	Content    string             `bson:"content"`
 	Imgs       []string           `bson:"imgs"`

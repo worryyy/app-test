@@ -51,8 +51,8 @@ func (Admin) TableName() string {
 
 type Follow struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	FollowerID  string             `bson:"followerId" json:"followerId"`
-	FollowingID string             `bson:"followingId" json:"followingId"`
+	FollowerID  int64              `bson:"followerId" json:"followerId"`
+	FollowingID int64              `bson:"followingId" json:"followingId"`
 	FollowAt    time.Time          `bson:"followAt" json:"followAt"`
 }
 

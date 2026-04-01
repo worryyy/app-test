@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -181,7 +182,7 @@ func (s *Service) Update(ctx context.Context, topicID string, userID int64, req 
 	}
 	res, err := s.topicColl().UpdateOne(ctx, bson.M{
 		"_id":    oid,
-		"user_id": userIDString(userID),
+		"userId": userIDString(userID),
 	}, bson.M{"$set": update})
 	if err != nil {
 		return fmt.Errorf("update topic: %w", err)
@@ -200,7 +201,7 @@ func (s *Service) Update(ctx context.Context, topicID string, userID int64, req 
 }
 
 func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*result.CusPage[Topic], error) {
-	return s.listByFilter(ctx, bson.M{"user_id": userIDString(userID), "hasCheck": true}, page, size, userIDString(userID), bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}})
+	return s.listByFilter(ctx, bson.M{"userId": userIDString(userID), "hasCheck": true}, page, size, userIDString(userID), bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}})
 }
 
 func (s *Service) ListByTheme(ctx context.Context, userID int64, themeID string, page, size int) (*result.CusPage[Topic], error) {
@@ -208,7 +209,7 @@ func (s *Service) ListByTheme(ctx context.Context, userID int64, themeID string,
 		return nil, err
 	}
 	return s.listByFilter(ctx, bson.M{
-		"user_id":   userIDString(userID),
+		"userId":   userIDString(userID),
 		"themeId":  themeID,
 		"hasCheck": true,
 	}, page, size, userIDString(userID), bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}})
@@ -224,13 +225,13 @@ func (s *Service) ListTargetUserTopics(ctx context.Context, currentUserID, targe
 		return nil, fmt.Errorf("query target user: %w", err)
 	}
 	return s.listByFilter(ctx, bson.M{
-		"user_id":   userIDString(targetUserID),
+		"userId":   userIDString(targetUserID),
 		"hasCheck": true,
 	}, page, size, userIDString(currentUserID), bson.D{{Key: "_id", Value: -1}, {Key: "visitedNum", Value: -1}})
 }
 
 func (s *Service) ListFollowTopics(ctx context.Context, currentUserID int64, page, size int) (*result.CusPage[Topic], error) {
-	followCur, err := s.mongoDB.Collection("campus_follow").Find(ctx, bson.M{"followerId": userIDString(currentUserID)})
+	followCur, err := s.mongoDB.Collection("campus_follow").Find(ctx, bson.M{"followerId": currentUserID})
 	if err != nil {
 		return nil, fmt.Errorf("find followings: %w", err)
 	}
@@ -241,7 +242,7 @@ func (s *Service) ListFollowTopics(ctx context.Context, currentUserID int64, pag
 	}()
 
 	type followDoc struct {
-		FollowingID string `bson:"followingId"`
+		FollowingID int64 `bson:"followingId"`
 	}
 	var followings []followDoc
 	if err := followCur.All(ctx, &followings); err != nil {
@@ -250,8 +251,8 @@ func (s *Service) ListFollowTopics(ctx context.Context, currentUserID int64, pag
 
 	ids := make([]string, 0, len(followings))
 	for _, follow := range followings {
-		if follow.FollowingID != "" {
-			ids = append(ids, follow.FollowingID)
+		if follow.FollowingID != 0 {
+			ids = append(ids, strconv.FormatInt(follow.FollowingID, 10))
 		}
 	}
 	if len(ids) == 0 {
@@ -259,7 +260,7 @@ func (s *Service) ListFollowTopics(ctx context.Context, currentUserID int64, pag
 	}
 
 	return s.listByFilter(ctx, bson.M{
-		"user_id":   bson.M{"$in": ids},
+		"userId":   bson.M{"$in": ids},
 		"hasCheck": true,
 	}, page, size, userIDString(currentUserID), bson.D{{Key: "_id", Value: -1}, {Key: "visitedNum", Value: -1}})
 }

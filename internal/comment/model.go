@@ -25,11 +25,11 @@ type Comment struct {
 }
 
 type CommentUser struct {
-	UserID      string `bson:"user_id" json:"userId"`
+	UserID      string `bson:"userId" json:"userId"`
 	Avatar      string `bson:"avatar" json:"avatar"`
 	NickName    string `bson:"nickName" json:"nickName"`
 	Gender      string `bson:"gender" json:"gender"`
-	AccountType string `bson:"account_type" json:"accountType"`
+	AccountType string `bson:"accountType" json:"accountType"`
 	Signature   string `bson:"signature" json:"signature"`
 }
 
@@ -42,10 +42,10 @@ type CommentLike struct {
 type CommentTopic struct {
 	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	ThemeID       string             `bson:"themeId" json:"themeId"`
-	UserID        string             `bson:"user_id" json:"userId"`
+	UserID        string             `bson:"userId" json:"userId"`
 	Avatar        string             `bson:"avatar" json:"avatar"`
 	NickName      string             `bson:"nickName" json:"nickName"`
-	AccountType   string             `bson:"account_type" json:"accountType"`
+	AccountType   string             `bson:"accountType" json:"accountType"`
 	Title         string             `bson:"title" json:"title"`
 	Content       string             `bson:"content" json:"content"`
 	Imgs          []string           `bson:"imgs" json:"imgs"`

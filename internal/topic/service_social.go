@@ -32,12 +32,12 @@ func (s *Service) LikeTopic(ctx context.Context, claims *jwtutil.Claims, topicID
 	}
 
 	currentUserID := userIDString(claims.UserID)
-	filter := bson.M{"user_id": currentUserID, "themeName": topic.ThemeID}
+	filter := bson.M{"userId": currentUserID, "themeName": topic.ThemeID}
 	update := bson.M{
 		"$setOnInsert": bson.M{
-			"user_id":      currentUserID,
+			"userId":      currentUserID,
 			"themeName":    topic.ThemeID,
-			"account_type": claims.AccountType,
+			"accountType": claims.AccountType,
 		},
 		"$addToSet": bson.M{"topicIds": topicID},
 	}
@@ -58,7 +58,7 @@ func (s *Service) LikeTopic(ctx context.Context, claims *jwtutil.Claims, topicID
 }
 
 func (s *Service) UnlikeTopic(ctx context.Context, userID int64, topicID string) error {
-	filter := bson.M{"user_id": userIDString(userID)}
+	filter := bson.M{"userId": userIDString(userID)}
 	update := bson.M{"$pull": bson.M{"topicIds": topicID}}
 	res, err := s.mongoDB.Collection("campus_topic_like").UpdateMany(ctx, filter, update)
 	if err != nil {
@@ -90,12 +90,12 @@ func (s *Service) CollectTopic(ctx context.Context, claims *jwtutil.Claims, topi
 	}
 
 	currentUserID := userIDString(claims.UserID)
-	filter := bson.M{"user_id": currentUserID, "themeName": topic.ThemeID}
+	filter := bson.M{"userId": currentUserID, "themeName": topic.ThemeID}
 	update := bson.M{
 		"$setOnInsert": bson.M{
-			"user_id":      currentUserID,
+			"userId":      currentUserID,
 			"themeName":    topic.ThemeID,
-			"account_type": claims.AccountType,
+			"accountType": claims.AccountType,
 		},
 		"$addToSet": bson.M{"topicIds": topicID},
 	}
@@ -113,7 +113,7 @@ func (s *Service) CollectTopic(ctx context.Context, claims *jwtutil.Claims, topi
 }
 
 func (s *Service) UncollectTopic(ctx context.Context, userID int64, topicID string) error {
-	filter := bson.M{"user_id": userIDString(userID)}
+	filter := bson.M{"userId": userIDString(userID)}
 	update := bson.M{"$pull": bson.M{"topicIds": topicID}}
 	res, err := s.mongoDB.Collection("campus_topic_collection").UpdateMany(ctx, filter, update)
 	if err != nil {
@@ -139,7 +139,7 @@ func (s *Service) listTopicsFromArrayDocs(ctx context.Context, collName string, 
 		size = 15
 	}
 
-	cur, err := s.mongoDB.Collection(collName).Find(ctx, bson.M{"user_id": userIDString(userID)})
+	cur, err := s.mongoDB.Collection(collName).Find(ctx, bson.M{"userId": userIDString(userID)})
 	if err != nil {
 		return nil, fmt.Errorf("find %s docs: %w", collName, err)
 	}
