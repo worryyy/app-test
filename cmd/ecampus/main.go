@@ -15,16 +15,8 @@ import (
 
 	"github.com/Milchstrassse/Ecampus-go/internal/chat"
 	"github.com/Milchstrassse/Ecampus-go/internal/comment"
-	"github.com/Milchstrassse/Ecampus-go/internal/cron"
-	"github.com/Milchstrassse/Ecampus-go/internal/event"
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
-	"github.com/Milchstrassse/Ecampus-go/internal/level"
 	"github.com/Milchstrassse/Ecampus-go/internal/mq"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/ad"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/notice"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/report"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/support"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/vote"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
@@ -99,14 +91,8 @@ func run() error {
 	themeSvc := theme.NewService(db, mongoDB, rds, cfg, logger)
 	fileSvc := file.NewService(db, mongoDB, rds, cfg, logger)
 	chatSvc := chat.NewService(db, mongoDB, rds, cfg, logger)
-	levelSvc := level.NewService(db, mongoDB, rds, cfg, logger)
 	schoolSvc := school.NewService(db, mongoDB, rds, cfg, logger, producer)
-	eventSvc := event.NewService(db, mongoDB, rds, cfg, logger)
-	adSvc := ad.NewService(db, cfg)
-	noticeSvc := notice.NewService(db)
-	voteSvc := vote.NewService(db, cfg)
-	reportSvc := report.NewService(mongoDB)
-	supportSvc := support.NewService(mongoDB, logger)
+
 
 	userH := user.NewHandler(userSvc)
 	topicH := topic.NewHandler(topicSvc)
@@ -114,14 +100,7 @@ func run() error {
 	themeH := theme.NewHandler(themeSvc)
 	fileH := file.NewHandler(fileSvc)
 	chatH := chat.NewHandler(chatSvc, userSvc, jwtHelper, rds)
-	levelH := level.NewHandler(levelSvc)
 	schoolH := school.NewHandler(schoolSvc)
-	eventH := event.NewHandler(eventSvc)
-	adH := ad.NewHandler(adSvc)
-	noticeH := notice.NewHandler(noticeSvc)
-	voteH := vote.NewHandler(voteSvc)
-	reportH := report.NewHandler(reportSvc)
-	supportH := support.NewHandler(supportSvc)
 
 	result.RegisterCustomValidators()
 
@@ -134,21 +113,9 @@ func run() error {
 		Theme:   themeH,
 		File:    fileH,
 		Chat:    chatH,
-		Level:   levelH,
 		School:  schoolH,
-		Ad:      adH,
-		Notice:  noticeH,
-		Vote:    voteH,
-		Report:  reportH,
-		Support: supportH,
-		Event:   eventH,
 	})
 
-	scheduler := cron.NewScheduler(db, mongoDB, rds, logger)
-	if err := scheduler.Start(); err != nil {
-		return err
-	}
-	defer scheduler.Stop()
 
 	consumers, err := mq.NewConsumers(amqpConn, rds, mongoDB, db, cfg, logger, producer)
 	if err != nil {

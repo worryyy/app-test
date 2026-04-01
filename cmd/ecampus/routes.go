@@ -11,15 +11,8 @@ import (
 
 	"github.com/Milchstrassse/Ecampus-go/internal/chat"
 	"github.com/Milchstrassse/Ecampus-go/internal/comment"
-	"github.com/Milchstrassse/Ecampus-go/internal/event"
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
-	"github.com/Milchstrassse/Ecampus-go/internal/level"
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/ad"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/notice"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/report"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/support"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/vote"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
@@ -34,14 +27,7 @@ type UserHandlers struct {
 	Theme   *theme.Handler
 	File    *file.Handler
 	Chat    *chat.Handler
-	Level   *level.Handler
 	School  *school.Handler
-	Ad      *ad.Handler
-	Notice  *notice.Handler
-	Vote    *vote.Handler
-	Report  *report.Handler
-	Support *support.Handler
-	Event   *event.Handler
 }
 
 func registerUserRoutes(
@@ -55,14 +41,10 @@ func registerUserRoutes(
 	engine.Use(middleware.CORS())
 
 	pub := engine.Group("")
-	pub.Use(middleware.ControllerTimeTrack(rds, logger))
 	{
 		pub.POST("/api/user/login", handlers.User.Login)
 		pub.POST("/api/user/refresh", handlers.User.RefreshToken)
 		pub.PUT("/api/user/pre_authentication", handlers.User.PreAuth)
-		pub.POST("/api/user/official/login", handlers.User.OfficialLogin)
-		pub.POST("/api/user/official/certification", handlers.User.OfficialCert)
-		pub.GET("/api/ad/list_level", handlers.Ad.AdListByLevel)
 
 		pub.GET("/file/:md5", handlers.File.Download)
 		pub.GET("/file", handlers.File.ListPublic)
@@ -73,7 +55,6 @@ func registerUserRoutes(
 		middleware.JWTAuth(jwtHelper, rds),
 		middleware.BlackListCheck(rds),
 		middleware.RequestLog(logger),
-		middleware.ControllerTimeTrack(rds, logger),
 		middleware.CertifiedUserCheck(db),
 	)
 	{
@@ -92,12 +73,6 @@ func registerUserRoutes(
 		api.PUT("/user/identity/anonymous/nickname", handlers.User.UpdateAnonymousNickname)
 		api.GET("/user/identity/list", handlers.User.ListIdentity)
 		api.POST("/user/identity/switch", handlers.User.SwitchIdentity)
-		api.POST("/user/follow", handlers.User.Follow)
-		api.DELETE("/user/follow", handlers.User.Unfollow)
-		api.GET("/user/followers", handlers.User.Followers)
-		api.GET("/user/followings", handlers.User.Followings)
-		api.GET("/user/stats", handlers.User.Stats)
-		api.GET("/user/is_following", handlers.User.IsFollowing)
 
 		api.POST("/topic", handlers.Topic.Create)
 		api.DELETE("/topic/:id", handlers.Topic.Delete)
@@ -138,36 +113,18 @@ func registerUserRoutes(
 		api.GET("/notify/:type/haveUnread", handlers.Chat.NotifyHaveUnread)
 		api.GET("/notify/:type", handlers.Chat.NotifyLatest)
 
-		api.GET("/getUserSignDetail", handlers.Level.GetUserSignDetail)
-		api.GET("/testAop", handlers.Level.TestAOP)
-		api.POST("/sign_in", handlers.Level.SignIn)
-		api.POST("/exp+3/:id", handlers.Level.ExpPlus3)
-		api.GET("/UserExp", handlers.Level.UserExp)
 
 		api.POST("/course_color", handlers.School.CourseColor)
 		api.GET("/term/list", handlers.School.TermList)
 		api.GET("/term", handlers.School.CurrentTerm)
 
-		api.GET("/vote/list", handlers.Vote.VoteList)
-		api.GET("/vote/draft/:info_id", handlers.Vote.VoteDraft)
-		api.PUT("/vote/draft/:info_id", handlers.Vote.VoteDraftAccept)
-		api.POST("/vote", handlers.Vote.VoteCreate)
-		api.POST("/vote/:info_id", handlers.Vote.VoteAddOption)
-		api.POST("/vote/vote/:info_id", handlers.Vote.VoteDo)
-		api.POST("/report_comment", handlers.Report.ReportComment)
-		api.GET("/support/:key", handlers.Support.SupportByKey)
-		api.GET("/support/list", handlers.Support.SupportList)
-		api.GET("/notice/list", handlers.Notice.NoticeList)
 		api.POST("/theme/campus/init", handlers.Theme.InitCampusThemes)
 		api.GET("/theme/campus", handlers.Theme.GetCampusThemes)
 		api.POST("/wx/unlimited/wxa_code", handlers.User.UnlimitedWXACode)
-
-		api.POST("/event", handlers.Event.Add)
-		api.POST("/event/", handlers.Event.Add)
 	}
 
 	fileAuth := engine.Group("/file")
-	fileAuth.Use(middleware.JWTAuth(jwtHelper, rds), middleware.ControllerTimeTrack(rds, logger))
+	fileAuth.Use(middleware.JWTAuth(jwtHelper, rds))
 	{
 		fileAuth.POST("/upload", handlers.File.Upload)
 		fileAuth.DELETE("/del/:md5", handlers.File.Delete)
