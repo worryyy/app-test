@@ -76,7 +76,7 @@ func (s *Service) IsFollowing(ctx context.Context, followerID, targetUserID int6
 		return false, err
 	}
 	if targetUser == nil {
-		return false, result.NewBizError(result.CodeFail, "目标用户不存在")
+		return false, result.NewBizError(result.CodeNotExisted, "目标用户不存在")
 	}
 
 	count, err := s.mongoDB.Collection("campus_follow").CountDocuments(ctx, bson.M{

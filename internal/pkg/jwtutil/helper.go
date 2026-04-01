@@ -26,7 +26,7 @@ var (
 
 type Claims struct {
 	UserID      int64  `json:"user_id"`
-	OpenID      string `json:"openId"`
+	OpenID      string `json:"open_id"`
 	Power       int    `json:"power"`
 	AccountType string `json:"account_type"`
 	RootUserID  int64  `json:"root_user_id"`

@@ -34,24 +34,24 @@ type JWLoginData struct {
 }
 
 type JWLoginReq struct {
-	SchoolID string `json:"schoolId"`
+	SchoolID string `json:"school_id"`
 	Password string `json:"password"`
 }
 
 type JWGetCourseReq struct {
 	Term     string `json:"term"`
-	SchoolID string `json:"schoolId"`
+	SchoolID string `json:"school_id"`
 	Password string `json:"password"`
 }
 
 type JWGetExamReq struct {
-	SchoolID string `json:"schoolId"`
+	SchoolID string `json:"school_id"`
 	Password string `json:"password"`
 	XNXQID   string `json:"xnxqid"`
 }
 
 type JWGetExamScoreReq struct {
-	SchoolID string `json:"schoolId"`
+	SchoolID string `json:"school_id"`
 	Password string `json:"password"`
 	SS       string `json:"ss"`
 }

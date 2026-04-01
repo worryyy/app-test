@@ -51,8 +51,9 @@ const (
 	CodeAuthNotExisted  = 10005
 	CodeRTKNotExisted   = 10006
 	CodeRTKUsed         = 10007
-	CodeRTKError        = 10008
-	CodeFollowSelf      = 1001
+	CodeRTKError           = 10008
+	CodeTokenChangeError   = 10009
+	CodeFollowSelf         = 1001
 	CodeFollowRepeat    = 1002
 	CodeFollowNotFollow = 1003
 )
@@ -65,13 +66,17 @@ var (
 	ErrForbidden       = errors.New("权限不足")
 	ErrFileLimited     = errors.New("File size exceeds the limit.")
 	ErrBodyIsNull      = errors.New("请求体不能为空")
-	ErrTokenError      = errors.New("token error")
+	ErrTokenError      = errors.New("生成 token 出现错误")
 	ErrTokenNotExisted = errors.New("token 不存在,或已过期")
 	ErrTokenInvalid    = errors.New("token invalid")
 	ErrAuthNotExisted  = errors.New("authorization 找不到")
 	ErrRTKNotExisted   = errors.New("refresh_token 不存在, 或已过期")
 	ErrRTKUsed         = errors.New("refresh_token 已被使用")
-	ErrRTKError        = errors.New("续费失败")
+	ErrRTKError           = errors.New("续费失败")
+	ErrTokenChangeError   = errors.New("token 状态更新失败")
+	ErrFollowSelf         = errors.New("用户不可关注自己")
+	ErrFollowRepeat       = errors.New("不可重复关注")
+	ErrFollowNotFollow    = errors.New("不可对未关注用户取关")
 )
 
 func Success(c *gin.Context, data interface{}) {
@@ -88,6 +93,27 @@ func FailWithStatus(c *gin.Context, status int, code int, msg string) {
 
 func Data(c *gin.Context, data interface{}) {
 	Write(c, http.StatusOK, true, CodeData, "", data)
+}
+
+// SuccessData mirrors Java's R.success().data(x) pattern.
+// When data is nil, it returns {success:false, code:200, msg:"不存在", data:null}
+// matching the Java Result.data(null) chaining behavior.
+func SuccessData(c *gin.Context, data interface{}) {
+	if data == nil || isNilInterface(data) {
+		Write(c, http.StatusOK, false, CodeSuccess, "不存在", nil)
+		return
+	}
+	Write(c, http.StatusOK, true, CodeSuccess, "成功", data)
+}
+
+func isNilInterface(v interface{}) bool {
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Interface:
+		return rv.IsNil()
+	default:
+		return false
+	}
 }
 
 func SuccessMsg(c *gin.Context, msg string, data interface{}) {
@@ -231,6 +257,14 @@ func HandleError(c *gin.Context, err error) {
 		Fail(c, CodeRTKUsed, ErrRTKUsed.Error())
 	case errors.Is(err, ErrRTKError):
 		Fail(c, CodeRTKError, ErrRTKError.Error())
+	case errors.Is(err, ErrTokenChangeError):
+		Fail(c, CodeTokenChangeError, ErrTokenChangeError.Error())
+	case errors.Is(err, ErrFollowSelf):
+		Fail(c, CodeFollowSelf, ErrFollowSelf.Error())
+	case errors.Is(err, ErrFollowRepeat):
+		Fail(c, CodeFollowRepeat, ErrFollowRepeat.Error())
+	case errors.Is(err, ErrFollowNotFollow):
+		Fail(c, CodeFollowNotFollow, ErrFollowNotFollow.Error())
 	default:
 		Fail(c, CodeUnknownError, "系统错误")
 	}
