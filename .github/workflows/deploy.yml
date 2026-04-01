@@ -90,6 +90,7 @@ jobs:
               -p 8081:8081 \
               --restart unless-stopped \
               $DOCKERHUB_USER/ecampus-crm:latest
+            docker image prune -f
 
   # ==================== Deploy to Production ====================
   deploy-prod:
@@ -128,3 +129,4 @@ jobs:
               -p 8081:8081 \
               --restart unless-stopped \
               $DOCKERHUB_USER/ecampus-crm:latest
+            docker image prune -f
