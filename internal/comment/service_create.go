@@ -40,7 +40,6 @@ func (s *Service) AddComment(ctx context.Context, topicID string, currentUserID 
 		IsAuthor:    topic.UserID == strconv.FormatInt(currentUserID, 10),
 		LikeNum:     0,
 		CommentNum:  0,
-		HasCheck:    false,
 	}
 
 	if parentCmtID != DefaultRootCommentID {

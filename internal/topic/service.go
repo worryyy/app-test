@@ -60,10 +60,15 @@ func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *Creat
 		return nil, err
 	}
 
+	title := req.Title
+	if title == "" {
+		title = " "
+	}
+
 	topic := &Topic{
 		ThemeID:       req.ThemeID,
 		UserID:        userIDString(author.ID),
-		Title:         req.Title,
+		Title:         title,
 		Content:       req.Content,
 		Imgs:          result.EnsureSlice(req.Imgs),
 		HasCheck:      false,
@@ -108,7 +113,7 @@ func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAd
 
 	filter := bson.M{"_id": oid}
 	if !isAdmin {
-		filter["user_id"] = userIDString(userID)
+		filter["userId"] = userIDString(userID)
 	}
 	res, err := s.topicColl().UpdateOne(ctx, filter, bson.M{"$set": bson.M{"hasCheck": false}})
 	if err != nil {
@@ -130,7 +135,7 @@ func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAd
 }
 
 func (s *Service) GetByID(ctx context.Context, topicID string, queryUserID string) (*Topic, error) {
-	topic, err := s.getTopicByID(ctx, topicID, true)
+	topic, err := s.getTopicByID(ctx, topicID, false)
 	if err != nil {
 		return nil, err
 	}

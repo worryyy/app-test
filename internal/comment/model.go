@@ -20,7 +20,7 @@ type Comment struct {
 	IsAuthor    bool               `bson:"isAuthor" json:"isAuthor"`
 	LikeNum     int64              `bson:"likeNum" json:"likeNum"`
 	CommentNum  int64              `bson:"commentNum" json:"commentNum"`
-	HasCheck    bool               `bson:"hasCheck" json:"hasCheck"`
+	HasCheck    bool               `bson:"hasCheck,omitempty" json:"hasCheck"`
 	HasLike     bool               `bson:"-" json:"hasLike"`
 }
 
