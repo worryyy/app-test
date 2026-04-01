@@ -9,16 +9,8 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/comment"
-	"github.com/Milchstrassse/Ecampus-go/internal/event"
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
-	"github.com/Milchstrassse/Ecampus-go/internal/monitor"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/ad"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/merchant"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/notice"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/report"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/sensitive"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/support"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
@@ -33,14 +25,6 @@ type AdminHandlers struct {
 	Theme     *theme.AdminHandler
 	File      *file.AdminHandler
 	School    *school.AdminHandler
-	Ad        *ad.AdminHandler
-	Notice    *notice.AdminHandler
-	Sensitive *sensitive.AdminHandler
-	Report    *report.AdminHandler
-	Support   *support.AdminHandler
-	Merchant  *merchant.AdminHandler
-	Event     *event.AdminHandler
-	Monitor   *monitor.AdminHandler
 }
 
 func registerAdminRoutes(
@@ -96,54 +80,6 @@ func registerAdminRoutes(
 		admin.DELETE("/term/:id", handlers.School.DeleteTerm)
 		admin.POST("/term/cur", handlers.School.SetCurrentTerm)
 
-		admin.POST("/notice", handlers.Notice.NoticeAdd)
-		admin.DELETE("/notice/:id", handlers.Notice.NoticeDelete)
-		admin.PUT("/notice/:id", handlers.Notice.NoticeUpdate)
-		admin.GET("/notice/:id", handlers.Notice.NoticeGet)
-		admin.GET("/notice/list", handlers.Notice.NoticeList)
-
-		admin.POST("/ad", handlers.Ad.AdAdd)
-		admin.DELETE("/ad/:id", handlers.Ad.AdDelete)
-		admin.PUT("/ad/:id", handlers.Ad.AdUpdate)
-		admin.GET("/ad/:id", handlers.Ad.AdGet)
-		admin.GET("/ad/list", handlers.Ad.AdList)
-
-		admin.GET("/sensitive/getAllList", handlers.Sensitive.SensitiveGetAllList)
-		admin.GET("/sensitive/getByWord", handlers.Sensitive.SensitiveGetByWord)
-		admin.GET("/sensitive/getByWord/", handlers.Sensitive.SensitiveGetByWord)
-		admin.DELETE("/sensitive/deleteByWord", handlers.Sensitive.SensitiveDeleteByWord)
-		admin.DELETE("/sensitive/batchDelete", handlers.Sensitive.SensitiveBatchDelete)
-		admin.POST("/sensitive/add", handlers.Sensitive.SensitiveAdd)
-		admin.POST("/sensitive/batchAdd", handlers.Sensitive.SensitiveBatchAdd)
-		admin.GET("/sensitive/page", handlers.Sensitive.SensitivePage)
-		admin.GET("/sensitive/search_like", handlers.Sensitive.SensitiveSearchLike)
-		admin.PUT("/sensitive/update", handlers.Sensitive.SensitiveUpdate)
-
-		admin.PUT("/report_comment/:id", handlers.Report.ReportReview)
-		admin.GET("/report_comment/list", handlers.Report.ReportList)
-
-		admin.POST("/support", handlers.Support.SupportAdd)
-		admin.PUT("/support", handlers.Support.SupportUpdate)
-		admin.DELETE("/support/:id", handlers.Support.SupportDelete)
-		admin.GET("/support/list", handlers.Support.SupportList)
-
-		admin.POST("/merchant_theme", handlers.Merchant.MerchantAdd)
-		admin.DELETE("/merchant_theme/:id", handlers.Merchant.MerchantDelete)
-		admin.GET("/merchant_theme/get_all", handlers.Merchant.MerchantList)
-
-		admin.POST("/task", handlers.Merchant.TaskAdd)
-		admin.DELETE("/task/:id", handlers.Merchant.TaskDelete)
-		admin.PUT("/task/:id", handlers.Merchant.TaskUpdate)
-		admin.GET("/task/:id", handlers.Merchant.TaskGet)
-		admin.GET("/task/list", handlers.Merchant.TaskList)
-
-		admin.DELETE("/event/:id", handlers.Event.Delete)
-		admin.PUT("/event/:id", handlers.Event.Update)
-		admin.GET("/event/:id", handlers.Event.Get)
-		admin.GET("/event/list", handlers.Event.List)
-
-		admin.GET("/local_cache/all_key", handlers.Monitor.CacheNames)
-		admin.GET("/local_cache/stats", handlers.Monitor.CacheStats)
 	}
 
 	engine.GET("/health", func(c *gin.Context) {

@@ -14,15 +14,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/comment"
-	"github.com/Milchstrassse/Ecampus-go/internal/event"
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
-	"github.com/Milchstrassse/Ecampus-go/internal/monitor"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/ad"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/merchant"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/notice"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/report"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/sensitive"
-	"github.com/Milchstrassse/Ecampus-go/internal/other/support"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/snowflake"
@@ -75,14 +67,6 @@ func run() error {
 	themeSvc := theme.NewService(db, mongoDB, rds, cfg, logger)
 	fileSvc := file.NewService(db, mongoDB, rds, cfg, logger)
 	schoolSvc := school.NewService(db, mongoDB, rds, cfg, logger, nil)
-	eventSvc := event.NewService(db, mongoDB, rds, cfg, logger)
-	monitorSvc := monitor.NewService(db, mongoDB, rds, cfg, logger)
-	adSvc := ad.NewService(db, cfg)
-	noticeSvc := notice.NewService(db)
-	sensitiveSvc := sensitive.NewService(db)
-	reportSvc := report.NewService(mongoDB)
-	supportSvc := support.NewService(mongoDB, logger)
-	merchantSvc := merchant.NewService(db, mongoDB, cfg, logger)
 
 	engine := gin.New()
 	engine.Use(gin.Recovery())
@@ -93,14 +77,6 @@ func run() error {
 		Theme:     theme.NewAdminHandler(themeSvc),
 		File:      file.NewAdminHandler(fileSvc),
 		School:    school.NewAdminHandler(schoolSvc),
-		Ad:        ad.NewAdminHandler(adSvc),
-		Notice:    notice.NewAdminHandler(noticeSvc),
-		Sensitive: sensitive.NewAdminHandler(sensitiveSvc),
-		Report:    report.NewAdminHandler(reportSvc),
-		Support:   support.NewAdminHandler(supportSvc),
-		Merchant:  merchant.NewAdminHandler(merchantSvc),
-		Event:     event.NewAdminHandler(eventSvc),
-		Monitor:   monitor.NewAdminHandler(monitorSvc),
 	})
 
 	server := &http.Server{
