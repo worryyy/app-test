@@ -105,6 +105,24 @@ func (s *Service) GetByOpenID(ctx context.Context, openID string) (*User, error)
 	return &u, nil
 }
 
+func (s *Service) GetUserProfile(ctx context.Context, targetUserID int64) (*UserProfile, error) {
+	user, err := s.GetByID(ctx, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, result.ErrNotExisted
+	}
+
+	return &UserProfile{
+		Avatar:    user.Avatar,
+		Nickname:  user.Nickname,
+		Gender:    user.Gender,
+		StuCla:    user.StuCla,
+		Signature: user.Signature,
+	}, nil
+}
+
 func (s *Service) Edit(ctx context.Context, userID int64, req UserEditReq) (*User, error) {
 	updates := map[string]interface{}{}
 	if req.Nickname != "" {

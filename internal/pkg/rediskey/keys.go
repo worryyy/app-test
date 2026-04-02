@@ -71,10 +71,9 @@ func SuggestRank(setName string) string {
 }
 
 const (
-	SuggestTopicListKey  = "campus:suggest_topic_list"
-	UserCoursePrefix     = "campus:userCourse:"
-	ControllerTimePrefix = "campus:controllerTime:"
-	EventKey             = "campus:event:EVENT_KEY"
+	SuggestTopicListKey = "campus:suggest_topic_list"
+	UserCoursePrefix    = "campus:userCourse:"
+	EventKey            = "campus:event:EVENT_KEY"
 )
 
 func UserCourse(userID int64, term string, week int) string {

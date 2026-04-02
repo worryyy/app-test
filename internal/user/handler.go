@@ -71,39 +71,7 @@ func (h *Handler) PreAuth(c *gin.Context) {
 	result.SuccessMsg(c, "预认证成功", nil)
 }
 
-func (h *Handler) OfficialLogin(c *gin.Context) {
-	var req OfficialLoginReq
-	if !result.BindJSON(c, &req) {
-		return
-	}
 
-	token, refreshToken, user, err := h.svc.OfficialLogin(c.Request.Context(), req.LoginAccount, req.LoginPassword)
-	if err != nil {
-		result.HandleError(c, err)
-		return
-	}
-
-	result.SuccessMsg(c, "登录成功", &LoginResp{
-		Token:        token,
-		RefreshToken: refreshToken,
-		User:         user,
-		IsNew:        false,
-	})
-}
-
-func (h *Handler) OfficialCert(c *gin.Context) {
-	var req OfficialCertReq
-	if !result.BindJSON(c, &req) {
-		return
-	}
-
-	data, err := h.svc.SubmitOfficialCertification(c.Request.Context(), req)
-	if err != nil {
-		result.HandleError(c, err)
-		return
-	}
-	result.SuccessMsg(c, "认证申请提交成功，请等待审核", data)
-}
 
 func (h *Handler) RandomNickname(c *gin.Context) {
 	name, err := h.svc.RandomNickname(c.Query("type"))

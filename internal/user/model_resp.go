@@ -1,6 +1,5 @@
 package user
 
-import "time"
 
 type Identity struct {
 	UserID      int64  `json:"userId"`

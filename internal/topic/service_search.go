@@ -13,7 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 
-	cronjob "github.com/Milchstrassse/Ecampus-go/internal/cron"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
@@ -171,11 +170,3 @@ func (s *Service) GetSuggestList(ctx context.Context, userID string, page, size 
 	return vo, nil
 }
 
-func (s *Service) RefreshSuggest(ctx context.Context) (int64, error) {
-	job := cronjob.NewSuggestJob(s.mongoDB, s.redis, s.logger)
-	count, err := job.Generate(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
-}

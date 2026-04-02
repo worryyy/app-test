@@ -7,11 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
-
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"gorm.io/gorm"
-
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/encrypt"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )

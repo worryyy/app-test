@@ -17,9 +17,6 @@ const (
 	anonymousNicknameUpdateHourLimit = 72
 	defaultAdminSecondaryPassword    = "pyhtip-nyxqen-6rigvE"
 
-	certificationStatusPending  = "PENDING"
-	certificationStatusApproved = "APPROVED"
-	certificationStatusRejected = "REJECTED"
 )
 
 func (s *Service) sanitizeUser(user *User) *User {
@@ -51,6 +48,13 @@ func (s *Service) sanitizeUserByID(ctx context.Context, userID int64) (*User, er
 		return nil, err
 	}
 	return s.sanitizeUser(user), nil
+}
+
+func (s *Service) defaultPageSize() int {
+	if s.cfg != nil && s.cfg.Custom.PageSize > 0 {
+		return s.cfg.Custom.PageSize
+	}
+	return 15
 }
 
 func (s *Service) ensureUserDefaults(user *User) {

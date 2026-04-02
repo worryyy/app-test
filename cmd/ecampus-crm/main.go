@@ -20,7 +20,6 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/snowflake"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
-	"github.com/Milchstrassse/Ecampus-go/internal/topic"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
 )
 
@@ -62,7 +61,6 @@ func run() error {
 
 	jwtHelper := jwtutil.NewHelper(cfg.JWT, rds)
 	userSvc := user.NewService(db, mongoDB, rds, cfg, logger)
-	topicSvc := topic.NewService(db, mongoDB, rds, cfg, logger, nil)
 	commentSvc := comment.NewService(db, mongoDB, rds, cfg, logger, nil)
 	themeSvc := theme.NewService(db, mongoDB, rds, cfg, logger)
 	fileSvc := file.NewService(db, mongoDB, rds, cfg, logger)
@@ -72,7 +70,6 @@ func run() error {
 	engine.Use(gin.Recovery())
 	registerAdminRoutes(engine, logger, db, jwtHelper, rds, AdminHandlers{
 		User:      user.NewAdminHandler(userSvc),
-		Topic:     topic.NewAdminHandler(topicSvc),
 		Comment:   comment.NewAdminHandler(commentSvc),
 		Theme:     theme.NewAdminHandler(themeSvc),
 		File:      file.NewAdminHandler(fileSvc),
