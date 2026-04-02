@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
+	responses "github.com/Milchstrassse/Ecampus-go/internal/pkg/response"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
@@ -99,11 +100,7 @@ func (h *Handler) Edit(c *gin.Context) {
 	}
 
 	updatedUser, err := h.svc.Edit(c.Request.Context(), currentUserID(c), req)
-	if err != nil {
-		result.HandleError(c, err)
-		return
-	}
-	result.Success(c, updatedUser)
+	responses.Success.RespData(c, updatedUser)
 }
 
 func (h *Handler) Authenticate(c *gin.Context) {
