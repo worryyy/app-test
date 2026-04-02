@@ -22,27 +22,6 @@ func New(code int, message string, httpStatus int) Response {
 	}
 }
 
-func (r Response) WithCode(code int) Response {
-	r.Code = code
-	return r
-}
-
-func (r Response) WithMessage(message string) Response {
-	r.Message = message
-	return r
-}
-
-func (r Response) WithHTTPStatus(status int) Response {
-	r.HTTPStatus = status
-	return r
-}
-
-func (r Response) WithCodeMessage(code int, message string) Response {
-	r.Code = code
-	r.Message = message
-	return r
-}
-
 func (r Response) Resp(ctx *gin.Context) {
 	ctx.JSON(r.httpStatus(), r.build(ctx, r.Message, nil))
 }
