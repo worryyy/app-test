@@ -2,7 +2,8 @@ package school
 
 import "github.com/gin-gonic/gin"
 
-import "github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+import 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+
 
 type AdminHandler struct {
 	svc *Service

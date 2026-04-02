@@ -2,7 +2,8 @@ package theme
 
 import "github.com/gin-gonic/gin"
 
-import "github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+import 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+
 
 type Handler struct {
 	svc *Service

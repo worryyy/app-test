@@ -8,8 +8,8 @@ import (
 
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 )
 
 type Handler struct {
@@ -33,10 +33,8 @@ func NewHandler(svc *Service, userSvc *user.Service, jwtHelper *jwtutil.Helper, 
 func (h *Handler) Conversations(c *gin.Context) {
 	data, err := h.svc.ListConversations(c.Request.Context(), middleware.GetUserID(c))
 	if err != nil {
-		result.HandleError(c, err)
-		return
+		responses.Success.RespData(c,data);
 	}
-	result.Success(c, data)
 }
 
 func (h *Handler) ConversationEnter(c *gin.Context) {
@@ -44,11 +42,7 @@ func (h *Handler) ConversationEnter(c *gin.Context) {
 		ConversationID: c.Query("conversation_id"),
 		LastMessageID:  c.Query("last_message_id"),
 	}
-	if err := h.svc.EnterConversation(c.Request.Context(), middleware.GetUserID(c), req.ConversationID, req.LastMessageID); err != nil {
-		result.HandleError(c, err)
-		return
-	}
-	result.Success(c, nil)
+	data, err := h.svc.EnterConversation(c.Request.Context(), middleware.GetUserID(c), req)
 }
 
 func (h *Handler) ConversationUnreadCount(c *gin.Context) {

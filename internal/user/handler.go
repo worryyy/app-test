@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
-	responses "github.com/Milchstrassse/Ecampus-go/internal/pkg/response"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+
 )
 
 type Handler struct {
@@ -100,7 +100,7 @@ func (h *Handler) Edit(c *gin.Context) {
 	}
 
 	updatedUser, err := h.svc.Edit(c.Request.Context(), currentUserID(c), req)
-	responses.Success.RespData(c, updatedUser)
+	responses.Success.RespMessageData(c, "修改成功", h.svc.sanitizeUser(updatedUser))
 }
 
 func (h *Handler) Authenticate(c *gin.Context) {

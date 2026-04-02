@@ -19,7 +19,8 @@ import (
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/cosutil"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+
 )
 
 const defaultMaxUploadMB = 10

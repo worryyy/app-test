@@ -10,7 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
 func PageSize(c *gin.Context) (int, int) {

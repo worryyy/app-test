@@ -10,8 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
 const (

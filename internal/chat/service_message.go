@@ -12,8 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/gorm"
-
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/snowflake"
 )
 

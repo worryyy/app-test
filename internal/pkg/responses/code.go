@@ -1,4 +1,4 @@
-package response
+package responses
 
 const (
 	CodeSuccess     = 0

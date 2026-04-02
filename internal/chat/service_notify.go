@@ -8,8 +8,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
 func (s *Service) ListNotifications(

@@ -11,7 +11,9 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+
+	
 )
 
 const maxPageSize = 100
