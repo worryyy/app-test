@@ -46,6 +46,11 @@ func (r Response) build(ctx *gin.Context, message string, data any) Response {
 	return resp
 }
 
+func (r Response) withMessage(message string) Response {
+	r.Message = message
+	return r
+}
+
 func (r Response) httpStatus() int {
 	if r.HTTPStatus == 0 {
 		return 200

@@ -85,12 +85,8 @@ func (h *Handler) RandomNickname(c *gin.Context) {
 
 func (h *Handler) GetCurrent(c *gin.Context) {
 	userID := currentUserID(c)
-	user, err := h.svc.GetByID(c.Request.Context(), userID)
-	if err != nil {
-		result.HandleError(c, err)
-		return
-	}
-	result.Data(c, h.svc.sanitizeUser(user))
+	user := h.svc.GetByID(c.Request.Context(), userID)
+	responses.Success.RespData(c,user);
 }
 
 func (h *Handler) Edit(c *gin.Context) {
@@ -100,7 +96,8 @@ func (h *Handler) Edit(c *gin.Context) {
 	}
 
 	updatedUser, err := h.svc.Edit(c.Request.Context(), currentUserID(c), req)
-	responses.Success.RespMessageData(c, "修改成功", h.svc.sanitizeUser(updatedUser))
+	res := h.svc.sanitizeUser(updatedUser)
+
 }
 
 func (h *Handler) Authenticate(c *gin.Context) {

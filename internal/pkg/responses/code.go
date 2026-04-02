@@ -1,9 +1,11 @@
 package responses
 
+import "github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+
 const (
-	CodeSuccess     = 0
-	CodeParamErr    = 40001
-	CodeBizErr      = 40002
-	CodeNotFound    = 40004
-	CodeInternalErr = 50000
+	CodeSuccess     = bizerr.CodeSuccess
+	CodeParamErr    = bizerr.CodeParamErr
+	CodeBizErr      = bizerr.CodeBizErr
+	CodeNotFound    = bizerr.CodeNotFound
+	CodeInternalErr = bizerr.CodeInternalErr
 )

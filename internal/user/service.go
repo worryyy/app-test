@@ -79,17 +79,17 @@ func (s *Service) SetProducer(producer *mq.Producer) {
 	s.producer = producer
 }
 
-func (s *Service) GetByID(ctx context.Context, id int64) (*User, error) {
+func (s *Service) GetByID(ctx context.Context, id int64) (*User) {
 	var u User
 	err := s.db.WithContext(ctx).Where("id = ?", id).First(&u).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
+		return nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("get user by id %d: %w", id, err)
+		return nil
 	}
 	s.ensureUserDefaults(&u)
-	return &u, nil
+	return &u
 }
 
 func (s *Service) GetByOpenID(ctx context.Context, openID string) (*User, error) {
