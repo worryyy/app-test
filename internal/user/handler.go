@@ -2,13 +2,12 @@ package user
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
-
 )
 
 type Handler struct {
@@ -21,17 +20,17 @@ func NewHandler(svc *Service) *Handler {
 
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginReq
-	if !result.BindJSON(c, &req) {
+	if !bindJSON(c, &req) {
 		return
 	}
 
 	token, refreshToken, user, activeIdentity, isNew, err := h.svc.WechatLogin(c.Request.Context(), req.Code)
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
 
-	result.Success(c, &LoginResp{
+	responses.Success.RespData(c, &LoginResp{
 		Token:           token,
 		RefreshToken:    refreshToken,
 		User:            user,
@@ -43,16 +42,17 @@ func (h *Handler) Login(c *gin.Context) {
 
 func (h *Handler) RefreshToken(c *gin.Context) {
 	var req RefreshTokenReq
-	if !result.BindJSON(c, &req) {
-		return
-	}
-	token, refreshToken, user, err := h.svc.RefreshToken(c.Request.Context(), req.RefreshToken)
-	if err != nil {
-		result.HandleError(c, err)
+	if !bindJSON(c, &req) {
 		return
 	}
 
-	result.Success(c, &RefreshTokenResp{
+	token, refreshToken, user, err := h.svc.RefreshToken(c.Request.Context(), req.RefreshToken)
+	if err != nil {
+		responses.Fail(c, err)
+		return
+	}
+
+	responses.Success.RespData(c, &RefreshTokenResp{
 		Token:           token,
 		RefreshToken:    refreshToken,
 		CurrentIdentity: buildIdentity(user),
@@ -60,223 +60,183 @@ func (h *Handler) RefreshToken(c *gin.Context) {
 }
 
 func (h *Handler) PreAuth(c *gin.Context) {
-	userID, err := strconv.ParseInt(c.Query("user_id"), 10, 64)
-	if err != nil {
-		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
+	userID, ok := queryPositiveInt64(c, "user_id")
+	if !ok {
 		return
 	}
+
 	if err := h.svc.PreAuthentication(c.Request.Context(), userID, c.Query("nick_name"), c.Query("pwd")); err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	result.SuccessMsg(c, "预认证成功", nil)
+	responses.Success.RespMessage(c, "预认证成功")
 }
-
-
 
 func (h *Handler) RandomNickname(c *gin.Context) {
 	name, err := h.svc.RandomNickname(c.Query("type"))
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	result.Data(c, name)
+	responses.Success.RespData(c, name)
 }
 
 func (h *Handler) GetCurrent(c *gin.Context) {
-	userID := currentUserID(c)
-	user := h.svc.GetByID(c.Request.Context(), userID)
-	responses.Success.RespData(c,user);
+	user, ok := h.currentUser(c)
+	if !ok {
+		return
+	}
+	responses.Success.RespData(c, h.svc.sanitizeUser(user))
 }
 
 func (h *Handler) Edit(c *gin.Context) {
 	var req UserEditReq
-	if !result.BindJSON(c, &req) {
+	if !bindJSON(c, &req) {
 		return
 	}
 
 	updatedUser, err := h.svc.Edit(c.Request.Context(), currentUserID(c), req)
-	res := h.svc.sanitizeUser(updatedUser)
-
+	if err != nil {
+		responses.Fail(c, err)
+		return
+	}
+	responses.Success.RespData(c, updatedUser)
 }
 
 func (h *Handler) Authenticate(c *gin.Context) {
 	var req AuthenticationReq
-	if !result.BindJSON(c, &req) {
+	if !bindJSON(c, &req) {
 		return
 	}
 
-	currentUser, err := h.svc.GetByID(c.Request.Context(), currentUserID(c))
-	if err != nil {
-		result.HandleError(c, err)
+	currentUser, ok := h.currentUser(c)
+	if !ok {
 		return
 	}
-	if currentUser != nil && currentUser.StuIsCheck {
-		result.Fail(c, result.CodeFail, "当前用户已认证, 如需更换请重新认证")
+	if currentUser.StuIsCheck {
+		responses.Fail(c, bizerr.Biz("当前用户已认证, 如需更换请重新认证"))
 		return
 	}
 
-	loginResp, err := h.svc.Authenticate(c.Request.Context(), currentUserID(c), req)
+	loginResp, err := h.svc.Authenticate(c.Request.Context(), currentUser.ID, req)
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	result.SuccessMsg(c, "认证成功", loginResp)
+	responses.Success.RespMessageData(c, "认证成功", loginResp)
 }
 
 func (h *Handler) ReAuthenticate(c *gin.Context) {
 	var req AuthenticationReq
-	if !result.BindJSON(c, &req) {
+	if !bindJSON(c, &req) {
 		return
 	}
 
-	currentUser, err := h.svc.GetByID(c.Request.Context(), currentUserID(c))
-	if err != nil {
-		result.HandleError(c, err)
+	currentUser, ok := h.currentUser(c)
+	if !ok {
 		return
 	}
-	if currentUser == nil || !currentUser.StuIsCheck {
-		result.Fail(c, result.CodeFail, "当前用户未认证，请先认证")
+	if !currentUser.StuIsCheck {
+		responses.Fail(c, bizerr.Biz("当前用户未认证，请先认证"))
 		return
 	}
 
-	loginResp, err := h.svc.ReAuthentication(c.Request.Context(), currentUserID(c), req)
+	loginResp, err := h.svc.ReAuthentication(c.Request.Context(), currentUser.ID, req)
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	result.SuccessMsg(c, "认证成功", loginResp)
+	responses.Success.RespMessageData(c, "认证成功", loginResp)
 }
 
 func (h *Handler) DelAuthentication(c *gin.Context) {
 	if err := h.svc.DelAuthentication(c.Request.Context(), currentUserID(c)); err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	result.Success(c, nil)
+	responses.Success.Resp(c)
 }
 
 func (h *Handler) CheckLogin(c *gin.Context) {
 	var req CheckLoginReq
-	if !result.BindJSON(c, &req) {
+	if !bindJSON(c, &req) {
 		return
 	}
-
-	currentUser, err := h.svc.GetByID(c.Request.Context(), currentUserID(c))
-	if err != nil {
-		result.HandleError(c, err)
-		return
-	}
-	if currentUser != nil && !currentUser.StuIsCheck {
-		result.Fail(c, result.CodeFail, "请先进行校园认证")
+	if _, ok := h.requireCertifiedUser(c); !ok {
 		return
 	}
 
 	loginResp, err := h.svc.CheckLogin(c.Request.Context(), req)
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	result.SuccessMsg(c, "认证成功", loginResp)
+	responses.Success.RespMessageData(c, "认证成功", loginResp)
 }
 
 func (h *Handler) GetCourseByWeeks(c *gin.Context) {
 	var req UserCourseReq
-	if !result.BindJSON(c, &req) {
+	if !bindJSON(c, &req) {
 		return
 	}
-
-	currentUser, err := h.svc.GetByID(c.Request.Context(), currentUserID(c))
-	if err != nil {
-		result.HandleError(c, err)
-		return
-	}
-	if currentUser != nil && !currentUser.StuIsCheck {
-		result.Fail(c, result.CodeFail, "请先进行校园认证")
+	if _, ok := h.requireCertifiedUser(c); !ok {
 		return
 	}
 
 	resp, err := h.svc.GetCourseByWeeks(c.Request.Context(), req)
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	if resp == nil {
-		result.Fail(c, result.CodeFail, "获取失败")
-		return
-	}
-	result.Write(c, http.StatusOK, true, resp.Code, resp.Message, resp.Data)
+	writeJWCommonResponse(c, resp)
 }
 
 func (h *Handler) GetExam(c *gin.Context) {
 	var req ExamReq
-	if !result.BindJSON(c, &req) {
+	if !bindJSON(c, &req) {
 		return
 	}
-
-	currentUser, err := h.svc.GetByID(c.Request.Context(), currentUserID(c))
-	if err != nil {
-		result.HandleError(c, err)
-		return
-	}
-	if currentUser != nil && !currentUser.StuIsCheck {
-		result.Fail(c, result.CodeFail, "请先进行校园认证")
+	if _, ok := h.requireCertifiedUser(c); !ok {
 		return
 	}
 
 	resp, err := h.svc.GetExam(c.Request.Context(), req)
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	if resp == nil {
-		result.Fail(c, result.CodeFail, "获取失败")
-		return
-	}
-	result.Write(c, http.StatusOK, true, resp.Code, resp.Message, resp.Data)
+	writeJWCommonResponse(c, resp)
 }
 
 func (h *Handler) GetExamScore(c *gin.Context) {
 	var req ExamScoreReq
-	if !result.BindJSON(c, &req) {
+	if !bindJSON(c, &req) {
 		return
 	}
-
-	currentUser, err := h.svc.GetByID(c.Request.Context(), currentUserID(c))
-	if err != nil {
-		result.HandleError(c, err)
-		return
-	}
-	if currentUser != nil && !currentUser.StuIsCheck {
-		result.Fail(c, result.CodeFail, "请先进行校园认证")
+	if _, ok := h.requireCertifiedUser(c); !ok {
 		return
 	}
 
 	resp, err := h.svc.GetExamScore(c.Request.Context(), req)
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	if resp == nil {
-		result.Fail(c, result.CodeFail, "获取失败")
-		return
-	}
-	result.Write(c, http.StatusOK, true, resp.Code, resp.Message, resp.Data)
+	writeJWCommonResponse(c, resp)
 }
 
 func (h *Handler) GetUserProfile(c *gin.Context) {
-	targetUserID, err := strconv.ParseInt(c.Query("target_user_id"), 10, 64)
-	if err != nil {
-		result.Fail(c, result.CodeParamError, result.ErrParam.Error())
+	targetUserID, ok := queryPositiveInt64(c, "target_user_id")
+	if !ok {
 		return
 	}
 
-	profile, svcErr := h.svc.GetUserProfile(c.Request.Context(), targetUserID)
-	if svcErr != nil {
-		result.HandleError(c, svcErr)
+	profile, err := h.svc.GetUserProfile(c.Request.Context(), targetUserID)
+	if err != nil {
+		responses.Fail(c, err)
 		return
 	}
-	result.Success(c, profile)
+	responses.Success.RespData(c, profile)
 }
 
 func (h *Handler) UnlimitedWXACode(c *gin.Context) {
@@ -284,12 +244,13 @@ func (h *Handler) UnlimitedWXACode(c *gin.Context) {
 		Scene string `json:"scene" binding:"required"`
 		Page  string `json:"page"`
 	}
-	if !result.BindJSON(c, &req) {
+	if !bindJSON(c, &req) {
 		return
 	}
+
 	data, err := h.svc.GenerateUnlimitedWXACode(c.Request.Context(), req.Scene, req.Page)
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
 	c.String(http.StatusOK, data)
@@ -319,6 +280,7 @@ func currentClaims(c *gin.Context) *jwtutil.Claims {
 	if !ok || v == nil {
 		return nil
 	}
+
 	claims, ok := v.(*jwtutil.Claims)
 	if !ok {
 		return nil

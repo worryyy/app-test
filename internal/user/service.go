@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"strconv"
 	"strings"
 	"time"
 
@@ -17,32 +16,30 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/mq"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/wxutil"
 )
 
 var (
-	ErrUserNotFound   = errors.New("user not found")
-	ErrRTKNotExisted  = result.ErrRTKNotExisted
-	ErrRTKUsed        = result.ErrRTKUsed
-	ErrFollowSelf     = errors.New("不能关注自己")
-	ErrIdentityDenied = errors.New("身份切换无权限")
+	ErrUserNotFound   = bizerr.NotFound("用户不存在")
+	ErrRTKNotExisted  = bizerr.NotFound("refresh_token 不存在, 或已过期")
+	ErrRTKUsed        = bizerr.Biz("refresh_token 已使用")
+	ErrFollowSelf     = bizerr.Biz("不能关注自己")
+	ErrIdentityDenied = bizerr.Biz("身份切换无权限")
 )
 
 type Service struct {
-	db        *gorm.DB
-	mongoDB   *mongo.Database
+	repo      *Repository
 	redis     *redis.Client
 	cfg       *config.Config
 	logger    *zap.Logger
 	jwtHelper *jwtutil.Helper
 	wxClient  *wxutil.Client
 	jwClient  *JWClient
-	producer  *mq.Producer
+	producer  EventProducer
 }
 
 func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *config.Config, logger *zap.Logger) *Service {
@@ -51,11 +48,10 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 	}
 
 	s := &Service{
-		db:      db,
-		mongoDB: mongoDB,
-		redis:   rds,
-		cfg:     cfg,
-		logger:  logger,
+		repo:   NewRepository(db, mongoDB),
+		redis:  rds,
+		cfg:    cfg,
+		logger: logger,
 	}
 
 	if cfg != nil {
@@ -75,34 +71,26 @@ func (s *Service) SetWXClient(client *wxutil.Client) {
 	s.wxClient = client
 }
 
-func (s *Service) SetProducer(producer *mq.Producer) {
+func (s *Service) SetProducer(producer EventProducer) {
 	s.producer = producer
 }
 
-func (s *Service) GetByID(ctx context.Context, id int64) (*User) {
-	var u User
-	err := s.db.WithContext(ctx).Where("id = ?", id).First(&u).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil
-	}
+func (s *Service) GetByID(ctx context.Context, id int64) (*User, error) {
+	user, err := s.repo.FindUserByID(ctx, id)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	s.ensureUserDefaults(&u)
-	return &u
+	s.ensureUserDefaults(user)
+	return user, nil
 }
 
 func (s *Service) GetByOpenID(ctx context.Context, openID string) (*User, error) {
-	var u User
-	err := s.db.WithContext(ctx).Where("open_id = ?", openID).First(&u).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
+	user, err := s.repo.FindUserByOpenID(ctx, openID)
 	if err != nil {
-		return nil, fmt.Errorf("get user by openid %s: %w", openID, err)
+		return nil, err
 	}
-	s.ensureUserDefaults(&u)
-	return &u, nil
+	s.ensureUserDefaults(user)
+	return user, nil
 }
 
 func (s *Service) GetUserProfile(ctx context.Context, targetUserID int64) (*UserProfile, error) {
@@ -111,7 +99,7 @@ func (s *Service) GetUserProfile(ctx context.Context, targetUserID int64) (*User
 		return nil, err
 	}
 	if user == nil {
-		return nil, result.ErrNotExisted
+		return nil, ErrUserNotFound
 	}
 
 	return &UserProfile{
@@ -124,25 +112,12 @@ func (s *Service) GetUserProfile(ctx context.Context, targetUserID int64) (*User
 }
 
 func (s *Service) Edit(ctx context.Context, userID int64, req UserEditReq) (*User, error) {
-	updates := map[string]interface{}{}
-	if req.Nickname != "" {
-		updates["nickname"] = req.Nickname
-	}
-	if req.Avatar != "" {
-		updates["avatar"] = req.Avatar
-	}
-	if req.Gender != "" {
-		updates["gender"] = req.Gender
-	}
-	if req.Signature != "" {
-		updates["signature"] = req.Signature
-	}
-	if len(updates) == 0 {
+	if req.Nickname == "" && req.Avatar == "" && req.Gender == "" && req.Signature == "" {
 		return s.sanitizeUserByID(ctx, userID)
 	}
 
-	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
-		return nil, fmt.Errorf("edit user %d: %w", userID, err)
+	if err := s.repo.UpdateUserProfile(ctx, userID, req); err != nil {
+		return nil, err
 	}
 
 	user, err := s.GetByID(ctx, userID)
@@ -154,19 +129,18 @@ func (s *Service) Edit(ctx context.Context, userID int64, req UserEditReq) (*Use
 	}
 
 	if s.producer != nil {
-		msg := mq.TopicUserUpdateMsg{
-			UserID:      strconv.FormatInt(userID, 10),
+		msg := TopicUserUpdateMsg{
+			UserID:      fmt.Sprintf("%d", userID),
 			NickName:    req.Nickname,
 			Avatar:      req.Avatar,
 			Gender:      req.Gender,
 			Signature:   req.Signature,
 			AccountType: mapAccountType(user.AccountType),
 		}
-		if err := s.producer.SendUpdateTopicUser(ctx, msg); err != nil {
+		if err := s.producer.SendTopicUserUpdate(ctx, msg); err != nil {
 			s.logger.Warn("send topic user update mq failed", zap.Error(err), zap.Int64("userID", userID))
 		}
-		commentMsg := mq.CommentUserUpdateMsg(msg)
-		if err := s.producer.SendUpdateCommentUser(ctx, commentMsg); err != nil {
+		if err := s.producer.SendCommentUserUpdate(ctx, CommentUserUpdateMsg(msg)); err != nil {
 			s.logger.Warn("send comment user update mq failed", zap.Error(err), zap.Int64("userID", userID))
 		}
 	}
@@ -177,20 +151,21 @@ func (s *Service) WechatLogin(ctx context.Context, code string) (string, string,
 	if s.wxClient == nil || s.jwtHelper == nil {
 		return "", "", nil, nil, false, errors.New("user service dependencies not initialized")
 	}
+
 	resp, err := s.wxClient.Jscode2Session(ctx, code)
 	if err != nil {
 		return "", "", nil, nil, false, fmt.Errorf("wx jscode2session: %w", err)
 	}
 
-	u, err := s.GetByOpenID(ctx, resp.OpenID)
+	user, err := s.GetByOpenID(ctx, resp.OpenID)
 	if err != nil {
 		return "", "", nil, nil, false, err
 	}
 
 	isNew := false
-	if u == nil {
+	if user == nil {
 		isNew = true
-		u = &User{
+		user = &User{
 			OpenID:      resp.OpenID,
 			Nickname:    randomHumorousID(),
 			Avatar:      s.pickDefaultAvatar(),
@@ -202,21 +177,19 @@ func (s *Service) WechatLogin(ctx context.Context, code string) (string, string,
 			UpdatedBy:   0,
 		}
 
-		if err := s.db.WithContext(ctx).Create(u).Error; err != nil {
-			return "", "", nil, nil, false, fmt.Errorf("create user: %w", err)
+		if err := s.repo.CreateUser(ctx, user); err != nil {
+			return "", "", nil, nil, false, err
 		}
-		u.RootUserID = u.ID
-		u.LastSwitchID = &u.ID
-		if err := s.db.WithContext(ctx).Model(u).Updates(map[string]interface{}{
-			"root_user_id":   u.ID,
-			"last_switch_id": u.ID,
-			"account_type":  accountTypeBase,
-		}).Error; err != nil {
-			return "", "", nil, nil, false, fmt.Errorf("update root user id: %w", err)
+		if err := s.repo.InitializeRootIdentity(ctx, user.ID); err != nil {
+			return "", "", nil, nil, false, err
 		}
+
+		lastSwitchID := user.ID
+		user.RootUserID = user.ID
+		user.LastSwitchID = &lastSwitchID
 	}
 
-	rootUser, err := s.getRootUser(ctx, u)
+	rootUser, err := s.getRootUser(ctx, user)
 	if err != nil {
 		return "", "", nil, nil, false, err
 	}
@@ -245,13 +218,16 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (string
 		return "", "", nil, errors.New("jwt helper not initialized")
 	}
 	if s.redis == nil {
-		return "", "", nil, fmt.Errorf("refresh token store not initialized")
+		return "", "", nil, errors.New("refresh token store not initialized")
 	}
 
 	refreshKey := rediskey.RefreshToken(sha1Hex(refreshToken))
 	status, err := s.redis.Get(ctx, refreshKey).Result()
+	if errors.Is(err, redis.Nil) {
+		return "", "", nil, ErrRTKNotExisted
+	}
 	if err != nil {
-		return "", "", nil, fmt.Errorf("refresh token: %w", ErrRTKNotExisted)
+		return "", "", nil, fmt.Errorf("get refresh token status: %w", err)
 	}
 	if status == rediskey.TokenStatusUsed {
 		return "", "", nil, ErrRTKUsed
@@ -262,7 +238,7 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (string
 		refreshTTL = time.Duration(s.cfg.JWT.RefreshTokenMinutes) * time.Minute
 	}
 	if err := s.redis.Set(ctx, refreshKey, rediskey.TokenStatusUsed, refreshTTL).Err(); err != nil {
-		return "", "", nil, fmt.Errorf("mark refresh token used: %w", result.ErrRTKError)
+		return "", "", nil, fmt.Errorf("mark refresh token used: %w", err)
 	}
 
 	claims, err := s.jwtHelper.Parse(refreshToken)
@@ -270,40 +246,43 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (string
 		return "", "", nil, fmt.Errorf("parse refresh token: %w", err)
 	}
 
-	u, err := s.GetByID(ctx, claims.UserID)
+	user, err := s.GetByID(ctx, claims.UserID)
 	if err != nil {
 		return "", "", nil, err
 	}
-	if u == nil {
+	if user == nil {
 		return "", "", nil, ErrUserNotFound
 	}
-	rootUser, err := s.getRootUser(ctx, u)
+
+	rootUser, err := s.getRootUser(ctx, user)
 	if err != nil {
 		return "", "", nil, err
 	}
 
-	token, newRefreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildTokenUser(u, rootUser))
+	token, newRefreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildTokenUser(user, rootUser))
 	if err != nil {
 		return "", "", nil, err
 	}
-	return token, newRefreshToken, s.sanitizeUser(u), nil
+	return token, newRefreshToken, s.sanitizeUser(user), nil
 }
 
 func (s *Service) pickDefaultAvatar() string {
 	if s.cfg == nil {
 		return ""
 	}
+
 	avatars := strings.Split(s.cfg.Custom.DefaultAvatar, ",")
 	clean := make([]string, 0, len(avatars))
-	for _, a := range avatars {
-		a = strings.TrimSpace(a)
-		if a != "" {
-			clean = append(clean, a)
+	for _, avatar := range avatars {
+		avatar = strings.TrimSpace(avatar)
+		if avatar != "" {
+			clean = append(clean, avatar)
 		}
 	}
 	if len(clean) == 0 {
 		return ""
 	}
+
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return clean[r.Intn(len(clean))]
 }
@@ -324,12 +303,12 @@ func mapAccountType(accountType string) int {
 	}
 }
 
-func rootUserID(u *User) int64 {
-	if u == nil {
+func rootUserID(user *User) int64 {
+	if user == nil {
 		return 0
 	}
-	if u.RootUserID > 0 {
-		return u.RootUserID
+	if user.RootUserID > 0 {
+		return user.RootUserID
 	}
-	return u.ID
+	return user.ID
 }

@@ -7,38 +7,36 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/encrypt"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
 func (s *Service) RandomNickname(accountType string) (string, error) {
-	switch accountType {
+	switch strings.TrimSpace(accountType) {
 	case accountTypeBase:
 		return randomHumorousID(), nil
 	case accountTypeAnonymous:
 		return randomAnonymousID(), nil
 	default:
-		return "", result.ErrParam
+		return "", bizerr.Param("account_type 非法")
 	}
 }
 
 func (s *Service) PreAuthentication(ctx context.Context, userID int64, nickname, pwd string) error {
 	if userID <= 0 || strings.TrimSpace(nickname) == "" {
-		return result.ErrParam
+		return bizerr.Param(errMsgInvalidParam)
 	}
 	if pwd != "zjb&bjz" {
-		return result.NewBizError(result.CodeFail, "预认证密码错误")
+		return bizerr.Biz("预认证密码错误")
 	}
 
-	res := s.db.WithContext(ctx).
-		Model(&User{}).
-		Where("id = ? AND nickname = ?", userID, nickname).
-		Update("stu_is_check", true)
-	if res.Error != nil {
-		return fmt.Errorf("pre-authenticate user: %w", res.Error)
+	updated, err := s.repo.MarkPreAuthenticated(ctx, userID, nickname)
+	if err != nil {
+		return err
 	}
-	if res.RowsAffected == 0 {
-		return result.NewBizError(result.CodeUnknownError, "预认证更新失败")
+	if !updated {
+		return bizerr.Biz("预认证更新失败")
 	}
 	return nil
 }
@@ -57,16 +55,8 @@ func (s *Service) Authenticate(
 	if err != nil {
 		return nil, err
 	}
-
-	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).Updates(map[string]interface{}{
-		"stu_is_check": true,
-		"stu_num":      req.SchoolID,
-		"stuCla":       loginResp.Major,
-		"stuName":      loginResp.Name,
-		"stu_pwd":      encPwd,
-		"school":       req.School,
-	}).Error; err != nil {
-		return nil, fmt.Errorf("authenticate user: %w", err)
+	if err := s.repo.SaveAuthentication(ctx, userID, req, loginResp, encPwd); err != nil {
+		return nil, err
 	}
 	return loginResp, nil
 }
@@ -80,16 +70,7 @@ func (s *Service) ReAuthentication(
 }
 
 func (s *Service) DelAuthentication(ctx context.Context, userID int64) error {
-	if err := s.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).Updates(map[string]interface{}{
-		"stu_num":      "",
-		"stu_pwd":      "",
-		"stuName":      "",
-		"stuCla":       "",
-		"stu_is_check": false,
-	}).Error; err != nil {
-		return fmt.Errorf("delete authentication: %w", err)
-	}
-	return nil
+	return s.repo.DeleteAuthentication(ctx, userID)
 }
 
 func (s *Service) CheckLogin(ctx context.Context, req CheckLoginReq) (*JWLoginData, error) {
@@ -98,7 +79,7 @@ func (s *Service) CheckLogin(ctx context.Context, req CheckLoginReq) (*JWLoginDa
 
 func (s *Service) GetCourseByWeeks(ctx context.Context, req UserCourseReq) (*JWCommonResp, error) {
 	if s.jwClient == nil {
-		return nil, fmt.Errorf("jw client not initialized")
+		return nil, errors.New("jw client not initialized")
 	}
 	return s.jwClient.GetCourseByWeeks(ctx, req.StartDate, req.Week, JWGetCourseReq{
 		Term:     req.Term,
@@ -109,7 +90,7 @@ func (s *Service) GetCourseByWeeks(ctx context.Context, req UserCourseReq) (*JWC
 
 func (s *Service) GetExam(ctx context.Context, req ExamReq) (*JWCommonResp, error) {
 	if s.jwClient == nil {
-		return nil, fmt.Errorf("jw client not initialized")
+		return nil, errors.New("jw client not initialized")
 	}
 	return s.jwClient.GetExam(ctx, JWGetExamReq{
 		SchoolID: req.SchoolID,
@@ -120,7 +101,7 @@ func (s *Service) GetExam(ctx context.Context, req ExamReq) (*JWCommonResp, erro
 
 func (s *Service) GetExamScore(ctx context.Context, req ExamScoreReq) (*JWCommonResp, error) {
 	if s.jwClient == nil {
-		return nil, fmt.Errorf("jw client not initialized")
+		return nil, errors.New("jw client not initialized")
 	}
 	return s.jwClient.GetExamScore(ctx, JWGetExamScoreReq{
 		SchoolID: req.SchoolID,
@@ -129,11 +110,11 @@ func (s *Service) GetExamScore(ctx context.Context, req ExamScoreReq) (*JWCommon
 	})
 }
 
-
 func (s *Service) GenerateUnlimitedWXACode(ctx context.Context, scene, page string) (string, error) {
 	if s.wxClient == nil {
 		return "", errors.New("wx client not initialized")
 	}
+
 	data, err := s.wxClient.UnlimitedWXACode(ctx, scene, page)
 	if err != nil {
 		return "", fmt.Errorf("generate unlimited wxa code: %w", err)
@@ -143,17 +124,18 @@ func (s *Service) GenerateUnlimitedWXACode(ctx context.Context, scene, page stri
 
 func (s *Service) checkJWLogin(ctx context.Context, schoolID, password string) (*JWLoginData, error) {
 	if s.jwClient == nil {
-		return nil, fmt.Errorf("jw client not initialized")
+		return nil, errors.New("jw client not initialized")
 	}
+
 	resp, err := s.jwClient.CheckLogin(ctx, schoolID, password)
 	if err != nil {
 		return nil, err
 	}
 	if resp == nil {
-		return nil, result.NewBizError(result.CodeFail, "登陆失败")
+		return nil, bizerr.Biz("登陆失败")
 	}
 	if resp.Code != 200 {
-		return nil, result.NewBizError(result.CodeFail, resp.Message)
+		return nil, bizerr.Biz(resp.Message)
 	}
 
 	dataMap, err := toJWLoginData(resp.Data)
@@ -167,6 +149,7 @@ func (s *Service) encryptAES(raw string) (string, error) {
 	if s.cfg == nil || strings.TrimSpace(s.cfg.Encryption.Key) == "" {
 		return raw, nil
 	}
+
 	encrypted, err := encrypt.AESEncrypt(raw, s.cfg.Encryption.Key)
 	if err != nil {
 		return "", fmt.Errorf("encrypt password: %w", err)
@@ -174,11 +157,12 @@ func (s *Service) encryptAES(raw string) (string, error) {
 	return encrypted, nil
 }
 
-func toJWLoginData(data interface{}) (*JWLoginData, error) {
+func toJWLoginData(data any) (*JWLoginData, error) {
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
+
 	var out struct {
 		IsLoginSnake bool   `json:"is_login"`
 		IsLoginCamel bool   `json:"isLogin"`
@@ -188,6 +172,7 @@ func toJWLoginData(data interface{}) (*JWLoginData, error) {
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return nil, err
 	}
+
 	return &JWLoginData{
 		IsLogin: out.IsLoginSnake || out.IsLoginCamel,
 		Major:   out.Major,

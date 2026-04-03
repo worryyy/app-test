@@ -85,14 +85,13 @@ func run() error {
 	}()
 
 	userSvc := user.NewService(db, mongoDB, rds, cfg, logger)
-	userSvc.SetProducer(producer)
+	userSvc.SetProducer(newUserProducerAdapter(producer))
 	topicSvc := topic.NewService(db, mongoDB, rds, cfg, logger, producer)
 	commentSvc := comment.NewService(db, mongoDB, rds, cfg, logger, producer)
 	themeSvc := theme.NewService(db, mongoDB, rds, cfg, logger)
 	fileSvc := file.NewService(db, mongoDB, rds, cfg, logger)
 	chatSvc := chat.NewService(db, mongoDB, rds, cfg, logger)
 	schoolSvc := school.NewService(db, mongoDB, rds, cfg, logger, producer)
-
 
 	userH := user.NewHandler(userSvc)
 	topicH := topic.NewHandler(topicSvc)
@@ -115,7 +114,6 @@ func run() error {
 		Chat:    chatH,
 		School:  schoolH,
 	})
-
 
 	consumers, err := mq.NewConsumers(amqpConn, rds, mongoDB, db, cfg, logger, producer)
 	if err != nil {

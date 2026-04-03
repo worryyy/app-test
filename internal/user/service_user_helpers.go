@@ -2,11 +2,8 @@ package user
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
-	"gorm.io/gorm"
 )
 
 const (
@@ -16,7 +13,6 @@ const (
 
 	anonymousNicknameUpdateHourLimit = 72
 	defaultAdminSecondaryPassword    = "pyhtip-nyxqen-6rigvE"
-
 )
 
 func (s *Service) sanitizeUser(user *User) *User {
@@ -24,6 +20,7 @@ func (s *Service) sanitizeUser(user *User) *User {
 		return nil
 	}
 	s.ensureUserDefaults(user)
+
 	copyUser := *user
 	copyUser.StuPwd = ""
 	return &copyUser
@@ -33,6 +30,7 @@ func (s *Service) sanitizeUsers(users []User) []User {
 	if len(users) == 0 {
 		return []User{}
 	}
+
 	out := make([]User, 0, len(users))
 	for i := range users {
 		s.ensureUserDefaults(&users[i])
@@ -85,6 +83,7 @@ func (s *Service) getRootUser(ctx context.Context, user *User) (*User, error) {
 	if user.RootUserID == 0 || user.RootUserID == user.ID {
 		return user, nil
 	}
+
 	rootUser, err := s.GetByID(ctx, user.RootUserID)
 	if err != nil {
 		return nil, err
@@ -92,6 +91,7 @@ func (s *Service) getRootUser(ctx context.Context, user *User) (*User, error) {
 	if rootUser == nil {
 		return user, nil
 	}
+
 	s.ensureUserDefaults(rootUser)
 	return rootUser, nil
 }
@@ -112,6 +112,7 @@ func (s *Service) resolveActiveIdentity(ctx context.Context, rootUser *User) (*U
 	if target == nil {
 		return rootUser, s.persistLastSwitch(ctx, rootUser.ID, rootUser.ID)
 	}
+
 	s.ensureUserDefaults(target)
 	if rootUserID(target) != rootUser.ID {
 		return rootUser, s.persistLastSwitch(ctx, rootUser.ID, rootUser.ID)
@@ -120,41 +121,23 @@ func (s *Service) resolveActiveIdentity(ctx context.Context, rootUser *User) (*U
 }
 
 func (s *Service) getIdentityByType(ctx context.Context, rootUserID int64, accountType string) (*User, error) {
-	var user User
-	err := s.db.WithContext(ctx).
-		Where(colRootUserID+" = ? AND "+colAccountType+" = ?", rootUserID, accountType).
-		First(&user).Error
+	user, err := s.repo.FindUserByRootAndAccountType(ctx, rootUserID, accountType)
 	if err != nil {
-		if isRecordNotFound(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("find identity by type: %w", err)
+		return nil, err
 	}
-	s.ensureUserDefaults(&user)
-	return &user, nil
-}
-
-func isRecordNotFound(err error) bool {
-	return errors.Is(err, gorm.ErrRecordNotFound)
+	s.ensureUserDefaults(user)
+	return user, nil
 }
 
 func (s *Service) persistLastSwitch(ctx context.Context, rootUserID, targetUserID int64) error {
-	if rootUserID == 0 || targetUserID == 0 {
-		return nil
-	}
-	if err := s.db.WithContext(ctx).
-		Model(&User{}).
-		Where("id = ?", rootUserID).
-		Update("last_switch_id", targetUserID).Error; err != nil {
-		return fmt.Errorf("update last switch id: %w", err)
-	}
-	return nil
+	return s.repo.UpdateUserLastSwitch(ctx, rootUserID, targetUserID)
 }
 
 func (s *Service) buildTokenUser(identity, rootUser *User) *jwtutil.TokenUser {
 	if identity == nil || rootUser == nil {
 		return nil
 	}
+
 	s.ensureUserDefaults(identity)
 	s.ensureUserDefaults(rootUser)
 	return &jwtutil.TokenUser{

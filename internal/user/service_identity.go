@@ -3,9 +3,10 @@ package user
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 )
 
 func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64) (*Identity, error) {
@@ -23,42 +24,39 @@ func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64)
 		return nil, err
 	}
 	if existing != nil {
-		return nil, result.NewBizError(result.CodeFail, "匿名身份已存在，无法重复创建")
+		return nil, bizerr.Biz("匿名身份已存在，无法重复创建")
 	}
 
 	anonymous := &User{
-		Avatar:       s.defaultAnonymousAvatar(),
-		CreatedBy:    rootUser.ID,
-		UpdatedBy:    rootUser.ID,
-		Nickname:     randomAnonymousID(),
-		OpenID:       fmt.Sprintf("%s:anon:%d", rootUser.OpenID, rootUser.ID),
-		Power:        0,
-		AccountType:  accountTypeAnonymous,
-		RootUserID:   rootUser.ID,
-		StuIsCheck:   true,
-		Tag:          rootUser.Tag,
-		Gender:       rootUser.Gender,
-		Signature:    "",
-		LastSwitchID: nil,
+		Avatar:      s.defaultAnonymousAvatar(),
+		CreatedBy:   rootUser.ID,
+		UpdatedBy:   rootUser.ID,
+		Nickname:    randomAnonymousID(),
+		OpenID:      fmt.Sprintf("%s:anon:%d", rootUser.OpenID, rootUser.ID),
+		Power:       0,
+		AccountType: accountTypeAnonymous,
+		RootUserID:  rootUser.ID,
+		StuIsCheck:  true,
+		Tag:         rootUser.Tag,
+		Gender:      rootUser.Gender,
+		Signature:   "",
 	}
 
-	if err := s.db.WithContext(ctx).Create(anonymous).Error; err != nil {
-		return nil, fmt.Errorf("create anonymous identity: %w", err)
+	if err := s.repo.CreateUser(ctx, anonymous); err != nil {
+		return nil, err
 	}
-	anonymous.LastSwitchID = &anonymous.ID
-	if err := s.db.WithContext(ctx).
-		Model(&User{}).
-		Where("id = ?", anonymous.ID).
-		Update("last_switch_id", anonymous.ID).Error; err != nil {
-		return nil, fmt.Errorf("update anonymous last switch id: %w", err)
+	if err := s.repo.UpdateUserLastSwitch(ctx, anonymous.ID, anonymous.ID); err != nil {
+		return nil, err
 	}
 
+	lastSwitchID := anonymous.ID
+	anonymous.LastSwitchID = &lastSwitchID
 	return buildIdentity(anonymous), nil
 }
 
 func (s *Service) UpdateAnonymousNickname(ctx context.Context, rootUserID int64, nickname string) error {
-	if nickname == "" {
-		return result.ErrParam
+	if strings.TrimSpace(nickname) == "" {
+		return bizerr.Param(errMsgInvalidParam)
 	}
 
 	rootUser, err := s.GetByID(ctx, rootUserID)
@@ -74,29 +72,19 @@ func (s *Service) UpdateAnonymousNickname(ctx context.Context, rootUserID int64,
 		return err
 	}
 	if anonymous == nil {
-		return result.NewBizError(result.CodeFail, "匿名身份不存在")
+		return bizerr.Biz("匿名身份不存在")
 	}
 
 	if !anonymous.UpdatedAt.IsZero() {
 		hoursSinceUpdate := int(time.Since(anonymous.UpdatedAt).Hours())
 		if hoursSinceUpdate < anonymousNicknameUpdateHourLimit {
-			return result.NewBizError(
-				result.CodeFail,
+			return bizerr.Biz(
 				fmt.Sprintf("昵称修改还需等待 %d 小时", anonymousNicknameUpdateHourLimit-hoursSinceUpdate),
 			)
 		}
 	}
 
-	if err := s.db.WithContext(ctx).
-		Model(&User{}).
-		Where("id = ?", anonymous.ID).
-		Updates(map[string]interface{}{
-			"nickname":  nickname,
-			"updatedBy": rootUser.ID,
-		}).Error; err != nil {
-		return fmt.Errorf("update anonymous nickname: %w", err)
-	}
-	return nil
+	return s.repo.UpdateAnonymousNickname(ctx, anonymous.ID, rootUser.ID, nickname)
 }
 
 func (s *Service) ListIdentities(ctx context.Context, rootUserID int64) (*IdentityListResp, error) {
@@ -108,12 +96,9 @@ func (s *Service) ListIdentities(ctx context.Context, rootUserID int64) (*Identi
 		return nil, ErrUserNotFound
 	}
 
-	var users []User
-	if err := s.db.WithContext(ctx).
-		Where("root_user_id = ?", rootUserID).
-		Order("id ASC").
-		Find(&users).Error; err != nil {
-		return nil, fmt.Errorf("list identities: %w", err)
+	users, err := s.repo.FindUsersByRootUserID(ctx, rootUserID)
+	if err != nil {
+		return nil, err
 	}
 
 	identities := make([]*Identity, 0, len(users))
@@ -133,7 +118,7 @@ func (s *Service) ListIdentities(ctx context.Context, rootUserID int64) (*Identi
 	}, nil
 }
 
-func (s *Service) SwitchIdentity(ctx context.Context, rootID int64, targetUserID int64) (string, string, *User, int64, error) {
+func (s *Service) SwitchIdentity(ctx context.Context, rootID, targetUserID int64) (string, string, *User, int64, error) {
 	if s.jwtHelper == nil {
 		return "", "", nil, 0, fmt.Errorf("jwt helper not initialized")
 	}
@@ -156,6 +141,7 @@ func (s *Service) SwitchIdentity(ctx context.Context, rootID int64, targetUserID
 	if err := s.persistLastSwitch(ctx, rootUser.ID, targetUser.ID); err != nil {
 		return "", "", nil, 0, err
 	}
+
 	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildTokenUser(targetUser, rootUser))
 	if err != nil {
 		return "", "", nil, 0, err
@@ -176,11 +162,12 @@ func (s *Service) SwitchIdentityByAccountType(
 		return "", "", nil, 0, ErrUserNotFound
 	}
 
+	accountType = strings.TrimSpace(accountType)
 	if accountType == "" {
-		return "", "", nil, 0, result.ErrParam
+		return "", "", nil, 0, bizerr.Param(errMsgInvalidParam)
 	}
 	if accountType != accountTypeBase && accountType != accountTypeAnonymous && accountType != accountTypeOfficial {
-		return "", "", nil, 0, result.NewBizError(result.CodeFail, "account_type 非法")
+		return "", "", nil, 0, bizerr.Biz("account_type 非法")
 	}
 	if accountType == accountTypeBase {
 		return s.SwitchIdentity(ctx, rootUser.ID, rootUser.ID)
@@ -191,7 +178,7 @@ func (s *Service) SwitchIdentityByAccountType(
 		return "", "", nil, 0, err
 	}
 	if targetUser == nil {
-		return "", "", nil, 0, result.NewBizError(result.CodeFail, "目标身份不存在，请先创建")
+		return "", "", nil, 0, bizerr.Biz("目标身份不存在，请先创建")
 	}
 	return s.SwitchIdentity(ctx, rootUser.ID, targetUser.ID)
 }
