@@ -9,8 +9,33 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-
 )
+
+type PageResult[T any] struct {
+	Data    []T   `json:"data"`
+	Current int   `json:"current"`
+	Total   int64 `json:"total"`
+	Size    int   `json:"size"`
+}
+
+func NewPageResult[T any](data []T, total int64, page, size int) *PageResult[T] {
+	if data == nil {
+		data = []T{}
+	}
+	if page <= 0 {
+		page = 1
+	}
+	if size <= 0 {
+		size = 15
+	}
+
+	return &PageResult[T]{
+		Data:    data,
+		Current: page,
+		Total:   total,
+		Size:    size,
+	}
+}
 
 func PageSize(c *gin.Context) (int, int) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -28,19 +53,21 @@ func ListMongoPage[T any](
 	ctx context.Context,
 	coll *mongo.Collection,
 	filter bson.M,
-	sort interface{},
+	sort any,
 	page, size int,
-) (*result.CusPage[T], error) {
+) (*PageResult[T], error) {
 	if page <= 0 {
 		page = 1
 	}
 	if size <= 0 {
 		size = 15
 	}
+
 	total, err := coll.CountDocuments(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("count mongo docs: %w", err)
 	}
+
 	opts := options.Find().
 		SetSkip(int64((page - 1) * size)).
 		SetLimit(int64(size)).
@@ -60,5 +87,6 @@ func ListMongoPage[T any](
 	if closeErr := cur.Close(ctx); closeErr != nil {
 		return nil, fmt.Errorf("close mongo cursor: %w", closeErr)
 	}
-	return result.NewCusPage(list, total, page, size), nil
+
+	return NewPageResult(list, total, page, size), nil
 }

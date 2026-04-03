@@ -27,12 +27,6 @@ type JWCommonResp struct {
 	Data    interface{} `json:"data"`
 }
 
-type JWLoginData struct {
-	IsLogin bool   `json:"is_login"`
-	Major   string `json:"major"`
-	Name    string `json:"name"`
-}
-
 type JWLoginReq struct {
 	SchoolID string `json:"school_id"`
 	Password string `json:"password"`
@@ -86,6 +80,27 @@ func (j *JWClient) GetExam(ctx context.Context, req JWGetExamReq) (*JWCommonResp
 
 func (j *JWClient) GetExamScore(ctx context.Context, req JWGetExamScoreReq) (*JWCommonResp, error) {
 	return j.doJSON(ctx, http.MethodPost, "/get_exam_score", nil, req)
+}
+
+func (j *JWClient) CheckLogin(ctx context.Context, schoolID, password string) (*JWCommonResp, error) {
+	req := JWLoginReq{
+		SchoolID: schoolID,
+		Password: password,
+	}
+	resp, err := j.doJSON(ctx, http.MethodPost, "/check_login", nil, req)
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil {
+		return nil, fmt.Errorf("empty response")
+	}
+	if resp.Code != 200 {
+		return nil, fmt.Errorf("jw api error: %s", resp.Message)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("parse jw login data: %w", err)
+	}
+	return data, nil
 }
 
 func (j *JWClient) doJSON(

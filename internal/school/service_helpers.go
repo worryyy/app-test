@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"google.golang.org/genproto/googleapis/rpc/code"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/encrypt"
@@ -19,7 +20,18 @@ func (s *Service) GetUserByID(ctx context.Context, id int64) (*campusUser, error
 	return user, nil
 }
 
+func (s *Service) checkJWLogin(ctx context.Context, schoolID, password string) (*JWCommonResp, error) {
+	var resp *JWCommonResp
+	resp, err := s.jwClient.CheckLogin(ctx, schoolID, password)
+	if err != nil {
+		return nil, bizerr.InternalWrap("登录教务系统失败", err)
+	}
+	if resp == nil {
+		return nil, bizerr.Internal("登录教务系统失败: 响应为空")
+	}
+	return resp, nil
 
+}
 
 func (s *Service) encryptAES(raw string) (string, error) {
 	if s.cfg == nil || strings.TrimSpace(s.cfg.Encryption.Key) == "" {
@@ -33,28 +45,7 @@ func (s *Service) encryptAES(raw string) (string, error) {
 	return encrypted, nil
 }
 
-func toJWLoginData(data any) (*JWLoginData, error) {
-	raw, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
 
-	var out struct {
-		IsLoginSnake bool   `json:"is_login"`
-		IsLoginCamel bool   `json:"isLogin"`
-		Major        string `json:"major"`
-		Name         string `json:"name"`
-	}
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, err
-	}
-
-	return &JWLoginData{
-		IsLogin: out.IsLoginSnake || out.IsLoginCamel,
-		Major:   out.Major,
-		Name:    out.Name,
-	}, nil
-}
 
 func parseTermObjectID(termID string) (primitive.ObjectID, error) {
 	termID = strings.TrimSpace(termID)

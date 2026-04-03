@@ -32,7 +32,7 @@ func (r *Repository) SaveAuthentication(
 	ctx context.Context,
 	userID int64,
 	req AuthenticationReq,
-	loginResp *JWLoginData,
+	loginResp *JWCommonResp,
 	encryptedPassword string,
 ) error {
 	db, err := r.gormDB(ctx)
@@ -45,8 +45,6 @@ func (r *Repository) SaveAuthentication(
 		Updates(map[string]any{
 			"stu_is_check": true,
 			"stu_num":      req.SchoolID,
-			"stu_cla":      loginResp.Major,
-			"stu_name":     loginResp.Name,
 			"stu_pwd":      encryptedPassword,
 			"school":       req.School,
 		}).Error; err != nil {

@@ -13,6 +13,10 @@ type AuthenticationReq struct {
 	School   string `json:"school" binding:"required"`
 }
 
+type CheckLoginReq struct {
+	SchoolID string `json:"schoolId" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
 
 type UserCourseReq struct {
 	SchoolID  string `json:"schoolId" binding:"required"`
