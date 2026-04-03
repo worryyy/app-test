@@ -5,16 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
 )
 
 func (s *Service) Search(
@@ -23,7 +21,7 @@ func (s *Service) Search(
 	themeIDs []string,
 	content string,
 	page, size, ordCreated int,
-) (*result.CusPage[Topic], error) {
+) (*PageResult[Topic], error) {
 	if ordCreated == 0 {
 		return s.searchHot(ctx, userID, themeIDs, content, page, size)
 	}
@@ -44,14 +42,7 @@ func (s *Service) searchHot(
 	themeIDs []string,
 	content string,
 	page, size int,
-) (*result.CusPage[Topic], error) {
-	if page <= 0 {
-		page = 1
-	}
-	if size <= 0 {
-		size = 15
-	}
-
+) (*PageResult[Topic], error) {
 	match := bson.M{"hasCheck": true}
 	if len(themeIDs) > 0 {
 		match["themeId"] = bson.M{"$in": themeIDs}
@@ -60,52 +51,16 @@ func (s *Service) searchHot(
 		match["content"] = primitive.Regex{Pattern: ".*" + content + ".*", Options: "i"}
 	}
 
-	sevenDaysAgo := primitive.NewObjectIDFromTimestamp(time.Now().AddDate(0, 0, -7))
-	pipeline := mongo.Pipeline{
-		{{Key: "$match", Value: match}},
-		{{Key: "$addFields", Value: bson.M{
-			"hotScore": bson.M{"$add": []interface{}{
-				bson.M{"$multiply": []interface{}{"$commentNum", 9}},
-				bson.M{"$multiply": []interface{}{"$likeNum", 6}},
-				bson.M{"$multiply": []interface{}{"$visitedNum", 1}},
-			}},
-		}}},
-		{{Key: "$addFields", Value: bson.M{
-			"recentFlag": bson.M{"$cond": bson.M{
-				"if":   bson.M{"$gte": []interface{}{"$_id", sevenDaysAgo}},
-				"then": 1,
-				"else": 0,
-			}},
-		}}},
-		{{Key: "$sort", Value: bson.D{{Key: "recentFlag", Value: -1}, {Key: "hotScore", Value: -1}, {Key: "_id", Value: -1}}}},
-		{{Key: "$skip", Value: int64((page - 1) * size)}},
-		{{Key: "$limit", Value: int64(size)}},
-	}
-
-	total, err := s.topicColl().CountDocuments(ctx, match)
+	topics, total, err := s.repo.SearchHotTopics(ctx, match, page, size)
 	if err != nil {
-		return nil, fmt.Errorf("count hot topics: %w", err)
+		return nil, bizerr.InternalWrap("查询热门帖子失败", err)
 	}
 
-	cur, err := s.topicColl().Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, fmt.Errorf("aggregate hot topics: %w", err)
-	}
-	defer func() {
-		if closeErr := cur.Close(ctx); closeErr != nil {
-			s.logger.Warn("close hot topic cursor failed", zap.Error(closeErr))
-		}
-	}()
-
-	var topics []Topic
-	if err := cur.All(ctx, &topics); err != nil {
-		return nil, fmt.Errorf("decode hot topics: %w", err)
-	}
 	s.prepareTopics(topics)
 	if err := s.fillLikeAndCollection(ctx, userID, topics); err != nil {
 		s.logger.Warn("fill topic like/collection failed", zap.Error(err))
 	}
-	return result.NewCusPage(topics, total, page, size), nil
+	return NewPageResult(topics, total, page, size), nil
 }
 
 func (s *Service) GetSuggestList(ctx context.Context, userID string, page, size int) (*SuggestList, error) {
@@ -150,7 +105,7 @@ func (s *Service) GetSuggestList(ctx context.Context, userID string, page, size 
 
 	topics, err := s.findByIDs(ctx, topicIDs)
 	if err != nil {
-		return nil, err
+		return nil, bizerr.InternalWrap("查询推荐帖子失败", err)
 	}
 	if err := s.fillLikeAndCollection(ctx, userID, topics); err != nil {
 		s.logger.Warn("fill topic like/collection failed", zap.Error(err))
@@ -169,4 +124,3 @@ func (s *Service) GetSuggestList(ctx context.Context, userID string, page, size 
 	}
 	return vo, nil
 }
-

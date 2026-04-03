@@ -1,19 +1,23 @@
 package middleware
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
-
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
 )
+
+var adminForbiddenResp = responses.New(bizerr.CodeBizErr, "权限不足", http.StatusForbidden)
 
 func AdminCheck(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims := GetClaims(c)
 		if claims == nil {
-			result.Fail(c, result.CodeForbidden, "权限不足")
+			adminForbiddenResp.Resp(c)
 			c.Abort()
 			return
 		}
@@ -22,20 +26,20 @@ func AdminCheck(db *gorm.DB) gin.HandlerFunc {
 
 		var count int64
 		if db == nil {
-			result.Fail(c, result.CodeForbidden, "权限不足")
+			adminForbiddenResp.Resp(c)
 			c.Abort()
 			return
 		}
 
 		if err := db.Model(&user.Admin{}).Where("user_id = ?", claims.UserID).Count(&count).Error; err != nil {
-			result.Fail(c, result.CodeForbidden, "权限不足")
+			adminForbiddenResp.Resp(c)
 			c.Abort()
 			return
 		}
 		isAdminUser := count > 0
 
 		if !isAdminToken || !isAdminUser {
-			result.Fail(c, result.CodeForbidden, "权限不足")
+			adminForbiddenResp.Resp(c)
 			c.Abort()
 			return
 		}

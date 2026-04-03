@@ -7,11 +7,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
 )
 
 const authPermissionMsg = "当前接口需要进行认证后，方可使用"
+
+var (
+	authPermissionResp = responses.New(bizerr.CodeBizErr, authPermissionMsg, http.StatusForbidden)
+	authInternalResp   = responses.New(bizerr.CodeInternalErr, "系统错误", http.StatusInternalServerError)
+)
 
 var authPermissionExcludes = map[string]struct{}{
 	"/api/user/authentication":     {},
@@ -30,12 +36,12 @@ func CertifiedUserCheck(db *gorm.DB) gin.HandlerFunc {
 
 		claims := GetClaims(c)
 		if claims == nil || claims.UserID <= 0 {
-			result.Fail(c, result.CodeFail, authPermissionMsg)
+			authPermissionResp.Resp(c)
 			c.Abort()
 			return
 		}
 		if db == nil {
-			result.FailWithStatus(c, http.StatusInternalServerError, result.CodeUnknownError, "系统错误")
+			authInternalResp.Resp(c)
 			c.Abort()
 			return
 		}
@@ -46,17 +52,17 @@ func CertifiedUserCheck(db *gorm.DB) gin.HandlerFunc {
 			Where("id = ?", claims.UserID).
 			Take(&current).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			result.Fail(c, result.CodeFail, authPermissionMsg)
+			authPermissionResp.Resp(c)
 			c.Abort()
 			return
 		}
 		if err != nil {
-			result.FailWithStatus(c, http.StatusInternalServerError, result.CodeUnknownError, "系统错误")
+			authInternalResp.Resp(c)
 			c.Abort()
 			return
 		}
 		if !current.StuIsCheck {
-			result.Fail(c, result.CodeFail, authPermissionMsg)
+			authPermissionResp.Resp(c)
 			c.Abort()
 			return
 		}

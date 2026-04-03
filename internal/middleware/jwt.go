@@ -2,12 +2,20 @@ package middleware
 
 import (
 	"errors"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+)
+
+var (
+	authNotFoundResp  = responses.New(bizerr.CodeBizErr, "authorization 找不到", http.StatusUnauthorized)
+	tokenNotFoundResp = responses.New(bizerr.CodeBizErr, "token 不存在,或已过期", http.StatusUnauthorized)
+	tokenInvalidResp  = responses.New(bizerr.CodeBizErr, "token invalid", http.StatusUnauthorized)
 )
 
 func JWTAuth(helper *jwtutil.Helper, rds *redis.Client) gin.HandlerFunc {
@@ -19,7 +27,7 @@ func JWTAuth(helper *jwtutil.Helper, rds *redis.Client) gin.HandlerFunc {
 
 		token := c.GetHeader("Authorization")
 		if token == "" {
-			result.Fail(c, result.CodeAuthNotExisted, "authorization 找不到")
+			authNotFoundResp.Resp(c)
 			c.Abort()
 			return
 		}
@@ -28,11 +36,11 @@ func JWTAuth(helper *jwtutil.Helper, rds *redis.Client) gin.HandlerFunc {
 		if err != nil {
 			switch {
 			case errors.Is(err, jwtutil.ErrTokenEmpty):
-				result.Fail(c, result.CodeAuthNotExisted, "authorization 找不到")
+				authNotFoundResp.Resp(c)
 			case errors.Is(err, jwtutil.ErrTokenNotExisted):
-				result.Fail(c, result.CodeTokenNotExisted, "token 不存在,或已过期")
+				tokenNotFoundResp.Resp(c)
 			default:
-				result.Fail(c, result.CodeTokenInvalid, "token invalid")
+				tokenInvalidResp.Resp(c)
 			}
 			c.Abort()
 			return

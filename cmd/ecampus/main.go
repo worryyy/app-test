@@ -86,7 +86,8 @@ func run() error {
 
 	userSvc := user.NewService(db, mongoDB, rds, cfg, logger)
 	userSvc.SetProducer(newUserProducerAdapter(producer))
-	topicSvc := topic.NewService(db, mongoDB, rds, cfg, logger, producer)
+	topicSvc := topic.NewService(db, mongoDB, rds, cfg, logger)
+	topicSvc.SetProducer(newTopicProducerAdapter(producer))
 	commentSvc := comment.NewService(db, mongoDB, rds, cfg, logger, producer)
 	themeSvc := theme.NewService(db, mongoDB, rds, cfg, logger)
 	fileSvc := file.NewService(db, mongoDB, rds, cfg, logger)
