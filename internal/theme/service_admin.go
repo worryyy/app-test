@@ -2,18 +2,16 @@ package theme
 
 import (
 	"context"
-	"fmt"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 )
 
 func (s *Service) UpdateTheme(ctx context.Context, id string, req *ThemeUpdateReq) (*Theme, error) {
 	if req == nil {
-		return nil, result.ErrParam
+		return nil, bizerr.Param(errMsgInvalidParam)
 	}
 
 	theme, err := s.GetThemeByID(ctx, id)
@@ -29,8 +27,8 @@ func (s *Service) UpdateTheme(ctx context.Context, id string, req *ThemeUpdateRe
 		update["needSearch"] = *req.NeedSearch
 	}
 
-	if _, err := s.themeColl().UpdateByID(ctx, theme.ID, bson.M{"$set": update}); err != nil {
-		return nil, fmt.Errorf("update theme: %w", err)
+	if err := s.repo.UpdateTheme(ctx, theme.ID, update); err != nil {
+		return nil, bizerr.InternalWrap("更新主题失败", err)
 	}
 
 	theme.Name = req.Name
@@ -43,35 +41,33 @@ func (s *Service) UpdateTheme(ctx context.Context, id string, req *ThemeUpdateRe
 
 func (s *Service) UpdateNeedSearch(ctx context.Context, themeIDs []string, needSearch bool) error {
 	if len(themeIDs) == 0 {
-		return nil
+		return bizerr.Param(errMsgInvalidParam)
 	}
 
-	oids := make([]primitive.ObjectID, 0, len(themeIDs))
-	for _, id := range themeIDs {
-		oid, err := primitive.ObjectIDFromHex(id)
-		if err != nil {
-			return fmt.Errorf("invalid theme id: %w", err)
-		}
-		oids = append(oids, oid)
+	oids, err := parseThemeObjectIDs(themeIDs)
+	if err != nil {
+		return err
 	}
 
-	if _, err := s.themeColl().UpdateMany(ctx, bson.M{"_id": bson.M{"$in": oids}}, bson.M{"$set": bson.M{"needSearch": needSearch}}); err != nil {
-		return fmt.Errorf("update need search: %w", err)
+	if err := s.repo.UpdateThemesNeedSearch(ctx, oids, needSearch); err != nil {
+		return bizerr.InternalWrap("更新主题检索状态失败", err)
 	}
 	return nil
 }
 
 func (s *Service) UpdateSuggestByList(ctx context.Context, req *ThemeSuggestReq) ([]Theme, error) {
-	if req == nil {
-		return nil, result.ErrParam
-	}
-	if len(req.List) == 0 {
-		return []Theme{}, nil
+	if req == nil || len(req.List) == 0 {
+		return nil, bizerr.Param(errMsgInvalidParam)
 	}
 
 	names := make([]string, 0, len(req.List))
 	seen := make(map[string]struct{}, len(req.List))
 	for _, item := range req.List {
+		themeName := strings.TrimSpace(item.ThemeName)
+		if themeName == "" {
+			return nil, bizerr.Param(errMsgInvalidParam)
+		}
+
 		update := bson.M{
 			"needSuggest":       item.NeedSuggest,
 			"suggestBasicScore": item.SuggestBasicScore,
@@ -79,26 +75,19 @@ func (s *Service) UpdateSuggestByList(ctx context.Context, req *ThemeSuggestReq)
 			"suggestSetName":    item.SuggestSetName,
 			"suggestType":       item.SuggestType,
 		}
-		if _, err := s.themeColl().UpdateMany(ctx, bson.M{"name": item.ThemeName}, bson.M{"$set": update}); err != nil {
-			return nil, fmt.Errorf("update suggest config: %w", err)
+		if err := s.repo.UpdateThemeSuggestByName(ctx, themeName, update); err != nil {
+			return nil, bizerr.InternalWrap("更新主题推荐配置失败", err)
 		}
-		if _, ok := seen[item.ThemeName]; !ok {
-			names = append(names, item.ThemeName)
-			seen[item.ThemeName] = struct{}{}
+
+		if _, ok := seen[themeName]; !ok {
+			names = append(names, themeName)
+			seen[themeName] = struct{}{}
 		}
 	}
 
-	cur, err := s.themeColl().Find(ctx, bson.M{"name": bson.M{"$in": names}}, options.Find().SetSort(bson.M{"name": 1}))
+	themes, err := s.repo.FindThemesByNames(ctx, names)
 	if err != nil {
-		return nil, fmt.Errorf("list updated suggest themes: %w", err)
-	}
-	defer func() {
-		_ = cur.Close(ctx)
-	}()
-
-	var themes []Theme
-	if err := cur.All(ctx, &themes); err != nil {
-		return nil, fmt.Errorf("decode updated suggest themes: %w", err)
+		return nil, bizerr.InternalWrap("查询主题推荐配置失败", err)
 	}
 	return themes, nil
 }

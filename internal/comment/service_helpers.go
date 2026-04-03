@@ -2,37 +2,13 @@ package comment
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.uber.org/zap"
-	"gorm.io/gorm"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 )
-
-const maxPageSize = 100
-
-type userRecord struct {
-	ID          int64  `gorm:"column:id"`
-	Nickname    string `gorm:"column:nickname"`
-	Avatar      string `gorm:"column:avatar"`
-	AccountType string `gorm:"column:account_type"`
-	Power       int    `gorm:"column:power"`
-	Gender      string `gorm:"column:gender"`
-	RootUserID  int64  `gorm:"column:root_user_id"`
-	Signature   string `gorm:"column:signature"`
-}
-
-func (userRecord) TableName() string {
-	return "campus_user"
-}
 
 func (s *Service) normalizePage(page, size int) (int, int) {
 	if page <= 0 {
@@ -48,18 +24,14 @@ func (s *Service) normalizePage(page, size int) (int, int) {
 }
 
 func (s *Service) loadUser(ctx context.Context, userID int64) (*userRecord, error) {
-	if userID <= 0 {
-		return nil, result.NewBizError(result.CodeFail, fmt.Sprintf("userId=%d用户不存在", userID))
+	user, err := s.repo.FindUserByID(ctx, userID)
+	if err != nil {
+		return nil, bizerr.InternalWrap("查询用户失败", err)
 	}
-
-	var user userRecord
-	if err := s.db.WithContext(ctx).Table(user.TableName()).Where("id = ?", userID).Take(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, result.NewBizError(result.CodeFail, fmt.Sprintf("userId=%d用户不存在", userID))
-		}
-		return nil, fmt.Errorf("find user: %w", err)
+	if user == nil {
+		return nil, ErrUserNotFound
 	}
-	return &user, nil
+	return user, nil
 }
 
 func (s *Service) loadUserByStringID(ctx context.Context, userID string) (*userRecord, error) {
@@ -71,22 +43,17 @@ func (s *Service) loadUserByStringID(ctx context.Context, userID string) (*userR
 }
 
 func (s *Service) getTopic(ctx context.Context, topicID string, onlyChecked bool) (*CommentTopic, error) {
-	oid, err := primitive.ObjectIDFromHex(topicID)
+	oid, err := parseCommentObjectID(topicID)
 	if err != nil {
+		return nil, err
+	}
+
+	topic, err := s.repo.FindTopicByID(ctx, oid, onlyChecked)
+	if err != nil {
+		return nil, bizerr.InternalWrap("查询帖子失败", err)
+	}
+	if topic == nil {
 		return nil, nil
-	}
-
-	filter := bson.M{"_id": oid}
-	if onlyChecked {
-		filter["hasCheck"] = true
-	}
-
-	var topic CommentTopic
-	if err := s.mongoDB.Collection("campus_topic").FindOne(ctx, filter).Decode(&topic); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("find topic: %w", err)
 	}
 
 	if topic.Imgs == nil {
@@ -94,7 +61,7 @@ func (s *Service) getTopic(ctx context.Context, topicID string, onlyChecked bool
 	}
 	createdAt := topic.ID.Timestamp()
 	topic.CreatedTime = &createdAt
-	return &topic, nil
+	return topic, nil
 }
 
 func (s *Service) ensureTopicExists(ctx context.Context, topicID string) error {
@@ -103,67 +70,38 @@ func (s *Service) ensureTopicExists(ctx context.Context, topicID string) error {
 		return err
 	}
 	if topic == nil {
-		return result.NewBizError(result.CodeFail, fmt.Sprintf("%s 帖子不存在", topicID))
+		return ErrTopicNotFound
 	}
 	return nil
 }
 
 func (s *Service) getCommentByID(ctx context.Context, commentID string) (*Comment, error) {
-	oid, err := primitive.ObjectIDFromHex(commentID)
+	oid, err := parseCommentObjectID(commentID)
 	if err != nil {
-		return nil, result.NewBizError(result.CodeFail, fmt.Sprintf("%s 评论不存在", commentID))
+		return nil, err
 	}
 
-	var cmt Comment
-	if err := s.commentColl().FindOne(ctx, bson.M{"_id": oid}).Decode(&cmt); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, result.NewBizError(result.CodeFail, fmt.Sprintf("%s 评论不存在", commentID))
-		}
-		return nil, fmt.Errorf("find comment: %w", err)
+	cmt, err := s.repo.FindCommentByID(ctx, oid)
+	if err != nil {
+		return nil, bizerr.InternalWrap("查询评论失败", err)
 	}
-	return &cmt, nil
+	if cmt == nil {
+		return nil, ErrCommentNotFound
+	}
+	return cmt, nil
 }
 
 func (s *Service) getHasLikeBatch(ctx context.Context, userID string, comments []Comment) (map[string]struct{}, error) {
-	liked := make(map[string]struct{}, len(comments))
-	if userID == "" || len(comments) == 0 {
-		return liked, nil
-	}
-
 	ids := make([]string, 0, len(comments))
 	for _, comment := range comments {
 		if !comment.ID.IsZero() {
 			ids = append(ids, comment.ID.Hex())
 		}
 	}
-	if len(ids) == 0 {
-		return liked, nil
-	}
 
-	cur, err := s.mongoDB.Collection("campus_comment_like").Find(
-		ctx,
-		bson.M{"commentId": bson.M{"$in": ids}, "userIds": userID},
-		options.Find().SetProjection(bson.M{"commentId": 1}),
-	)
+	liked, err := s.repo.FindLikedCommentIDs(ctx, ids, userID)
 	if err != nil {
-		return nil, fmt.Errorf("find liked comments: %w", err)
-	}
-	defer func() {
-		if closeErr := cur.Close(ctx); closeErr != nil {
-			s.logger.Warn("close comment like cursor failed", zap.Error(closeErr))
-		}
-	}()
-
-	var rows []struct {
-		CommentID string `bson:"commentId"`
-	}
-	if err := cur.All(ctx, &rows); err != nil {
-		return nil, fmt.Errorf("decode liked comments: %w", err)
-	}
-	for _, row := range rows {
-		if row.CommentID != "" {
-			liked[row.CommentID] = struct{}{}
-		}
+		return nil, bizerr.InternalWrap("查询评论点赞状态失败", err)
 	}
 	return liked, nil
 }
@@ -200,7 +138,7 @@ func (s *Service) validateCommentPermission(ctx context.Context, actor *userReco
 	actorType := normalizeCommentAccountType(actor.AccountType)
 	topicType := normalizeCommentAccountType(topic.AccountType)
 	if actorType == "anonymous" && topicType != "anonymous" {
-		return result.NewBizError(result.CodeForbidden, "匿名用户禁止评论非匿名帖")
+		return ErrAnonymousCommentForbidden
 	}
 	if actorType != "base" || topicType != "anonymous" {
 		return nil
@@ -210,6 +148,7 @@ func (s *Service) validateCommentPermission(ctx context.Context, actor *userReco
 	if err != nil || topicAuthor == nil {
 		return err
 	}
+
 	actorRootUserID := actor.RootUserID
 	if actorRootUserID == 0 {
 		actorRootUserID = actor.ID
@@ -219,7 +158,22 @@ func (s *Service) validateCommentPermission(ctx context.Context, actor *userReco
 		topicRootUserID = topicAuthor.ID
 	}
 	if actorRootUserID == topicRootUserID {
-		return result.NewBizError(result.CodeForbidden, "禁止左右脑互搏和自导自演")
+		return ErrCommentSelfRolePlayForbidden
 	}
 	return nil
+}
+
+func userIDString(userID int64) string {
+	if userID <= 0 {
+		return ""
+	}
+	return strconv.FormatInt(userID, 10)
+}
+
+func parseCommentObjectID(raw string) (primitive.ObjectID, error) {
+	oid, err := primitive.ObjectIDFromHex(strings.TrimSpace(raw))
+	if err != nil {
+		return primitive.NilObjectID, bizerr.Param(errMsgInvalidParam)
+	}
+	return oid, nil
 }

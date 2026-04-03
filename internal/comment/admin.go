@@ -2,8 +2,8 @@ package comment
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 )
 
 type AdminHandler struct {
@@ -16,8 +16,8 @@ func NewAdminHandler(svc *Service) *AdminHandler {
 
 func (h *AdminHandler) Delete(c *gin.Context) {
 	if err := h.svc.DeleteComment(c.Request.Context(), c.Param("topic_id"), c.Param("comment_id"), 0, true); err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	result.Success(c, nil)
+	responses.Success.Resp(c)
 }

@@ -10,8 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 )
 
 const (
@@ -86,7 +87,7 @@ func (h *Handler) WS(c *gin.Context) {
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		result.Fail(c, result.CodeFail, "websocket upgrade failed")
+		responses.Fail(c, bizerr.Biz("websocket upgrade failed"))
 		return
 	}
 	defer func() {

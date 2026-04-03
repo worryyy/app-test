@@ -1,7 +1,6 @@
 package chat
 
 import (
-	"context"
 	"strconv"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -11,19 +10,15 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
-
-	
 )
 
 const maxPageSize = 100
 
 type Service struct {
-	db      *gorm.DB
-	mongoDB *mongo.Database
-	redis   *redis.Client
-	cfg     *config.Config
-	logger  *zap.Logger
+	repo   *Repository
+	redis  *redis.Client
+	cfg    *config.Config
+	logger *zap.Logger
 }
 
 func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *config.Config, logger *zap.Logger) *Service {
@@ -31,11 +26,10 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 		logger = zap.NewNop()
 	}
 	return &Service{
-		db:      db,
-		mongoDB: mongoDB,
-		redis:   rds,
-		cfg:     cfg,
-		logger:  logger,
+		repo:   NewRepository(db, mongoDB),
+		redis:  rds,
+		cfg:    cfg,
+		logger: logger,
 	}
 }
 
@@ -61,32 +55,4 @@ func normalizePage(page, size, defaultSize int) (int, int) {
 
 func userIDString(userID int64) string {
 	return strconv.FormatInt(userID, 10)
-}
-
-func newFail(msg string) error {
-	return result.NewBizError(result.CodeFail, msg)
-}
-
-func newNotExisted(msg string) error {
-	if msg == "" {
-		msg = result.ErrNotExisted.Error()
-	}
-	return result.NewBizError(result.CodeNotExisted, msg)
-}
-
-func (s *Service) messageColl() *mongo.Collection {
-	return s.mongoDB.Collection("campus_messages")
-}
-
-func (s *Service) notifyColl() *mongo.Collection {
-	return s.mongoDB.Collection("campus_notifications")
-}
-
-func closeCursor(ctx context.Context, logger *zap.Logger, cur *mongo.Cursor, msg string) {
-	if cur == nil {
-		return
-	}
-	if err := cur.Close(ctx); err != nil && logger != nil {
-		logger.Warn(msg, zap.Error(err))
-	}
 }

@@ -1,9 +1,10 @@
 package theme
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
 
-import 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
-
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+)
 
 type Handler struct {
 	svc *Service
@@ -16,17 +17,17 @@ func NewHandler(svc *Service) *Handler {
 func (h *Handler) InitCampusThemes(c *gin.Context) {
 	data, err := h.svc.InitCampusThemes(c.Request.Context())
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	result.Data(c, data)
+	responses.Success.RespData(c, data)
 }
 
 func (h *Handler) GetCampusThemes(c *gin.Context) {
 	data, err := h.svc.ListCampusThemes(c.Request.Context())
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	result.Data(c, data)
+	responses.Success.RespData(c, data)
 }

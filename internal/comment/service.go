@@ -2,19 +2,19 @@ package comment
 
 import (
 	"context"
-	"go.mongodb.org/mongo-driver/mongo"
-	"gorm.io/gorm"
 
 	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 )
 
+const maxPageSize = 100
+
 type Service struct {
-	db       *gorm.DB
-	mongoDB  *mongo.Database
-	redis    *redis.Client
+	repo     *Repository
 	cfg      *config.Config
 	logger   *zap.Logger
 	producer CommentProducer
@@ -25,22 +25,23 @@ type CommentProducer interface {
 	SendDeleteComment(ctx context.Context, topicID, commentID string) error
 }
 
-func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *config.Config, logger *zap.Logger, producer CommentProducer) *Service {
+func NewService(
+	db *gorm.DB,
+	mongoDB *mongo.Database,
+	_ *redis.Client,
+	cfg *config.Config,
+	logger *zap.Logger,
+	producer CommentProducer,
+) *Service {
 	if logger == nil {
 		logger = zap.NewNop()
 	}
 	return &Service{
-		db:       db,
-		mongoDB:  mongoDB,
-		redis:    rds,
+		repo:     NewRepository(db, mongoDB),
 		cfg:      cfg,
 		logger:   logger,
 		producer: producer,
 	}
-}
-
-func (s *Service) commentColl() *mongo.Collection {
-	return s.mongoDB.Collection("campus_comment")
 }
 
 func (s *Service) defaultPageSize() int {

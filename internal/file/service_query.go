@@ -6,21 +6,19 @@ import (
 	"mime/multipart"
 	"strings"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 )
 
 func (s *Service) GetByMD5(ctx context.Context, md5Value string) (*File, error) {
-	var f File
-	if err := s.fileColl().FindOne(ctx, bson.M{"md5": md5Value}).Decode(&f); err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("get file by md5: %w", err)
+	if strings.TrimSpace(md5Value) == "" {
+		return nil, bizerr.Param(errMsgInvalidParam)
 	}
-	return &f, nil
+
+	file, err := s.repo.FindFileByMD5(ctx, md5Value)
+	if err != nil {
+		return nil, bizerr.InternalWrap("查询文件失败", err)
+	}
+	return file, nil
 }
 
 func (s *Service) GetDownloadURL(ctx context.Context, md5Value string, showOrigin bool) (string, error) {
@@ -29,7 +27,7 @@ func (s *Service) GetDownloadURL(ctx context.Context, md5Value string, showOrigi
 		return "", err
 	}
 	if f == nil {
-		return "", result.ErrNotExisted
+		return "", ErrFileNotFound
 	}
 	if !showOrigin {
 		return s.compressFileURL(md5Value), nil
@@ -56,20 +54,8 @@ func normalizeContentType(header *multipart.FileHeader) (string, error) {
 	case "image/png", "image/jpeg", "image/x-icon":
 		return contentType, nil
 	default:
-		return "", result.NewBizError(result.CodeParamError, "图片格式只能是[image/png image/jpeg image/x-icon application/octet-stream]")
+		return "", ErrUnsupportedFileFormat
 	}
-}
-
-func (s *Service) findByUserAndMD5(ctx context.Context, userID, md5Value string) (*File, error) {
-	var current File
-	err := s.fileColl().FindOne(ctx, bson.M{"userId": userID, "md5": md5Value}).Decode(&current)
-	if err == mongo.ErrNoDocuments {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("find file by user and md5: %w", err)
-	}
-	return &current, nil
 }
 
 func (s *Service) fileURL(md5Value string) string {

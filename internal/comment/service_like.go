@@ -2,21 +2,15 @@ package comment
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
-
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/result"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 )
 
 func (s *Service) LikeComment(ctx context.Context, commentID string, userID int64) error {
-	userIDStr := strconv.FormatInt(userID, 10)
-	exists, err := s.commentLikeExists(ctx, commentID, userIDStr)
+	userIDStr := userIDString(userID)
+	exists, err := s.repo.CommentLikeExists(ctx, commentID, userIDStr)
 	if err != nil {
-		return err
+		return bizerr.InternalWrap("查询评论点赞状态失败", err)
 	}
 	if exists {
 		return nil
@@ -25,73 +19,53 @@ func (s *Service) LikeComment(ctx context.Context, commentID string, userID int6
 	if err := s.incCommentLikeStrict(ctx, commentID, 1); err != nil {
 		return err
 	}
-	res, err := s.mongoDB.Collection("campus_comment_like").UpdateOne(
-		ctx,
-		bson.M{"commentId": commentID},
-		bson.M{
-			"$setOnInsert": bson.M{"commentId": commentID},
-			"$addToSet":    bson.M{"userIds": userIDStr},
-		},
-		options.Update().SetUpsert(true),
-	)
+
+	updated, err := s.repo.AddCommentLike(ctx, commentID, userIDStr)
 	if err != nil {
-		return fmt.Errorf("like comment: %w", err)
+		return bizerr.InternalWrap("点赞评论失败", err)
 	}
-	if res.ModifiedCount == 0 && res.UpsertedCount == 0 {
-		return result.NewBizError(result.CodeFail, "点赞失败")
+	if !updated {
+		return ErrCommentLikeFailed
 	}
 	return nil
 }
 
 func (s *Service) UnlikeComment(ctx context.Context, commentID string, userID int64) error {
-	userIDStr := strconv.FormatInt(userID, 10)
-	exists, err := s.commentLikeExists(ctx, commentID, userIDStr)
+	userIDStr := userIDString(userID)
+	exists, err := s.repo.CommentLikeExists(ctx, commentID, userIDStr)
 	if err != nil {
-		return err
+		return bizerr.InternalWrap("查询评论点赞状态失败", err)
 	}
 	if !exists {
-		return result.NewBizError(result.CodeFail, "还没有对该评论进行点赞")
+		return ErrCommentLikeNotFound
 	}
 
 	if err := s.incCommentLikeStrict(ctx, commentID, -1); err != nil {
 		return err
 	}
-	res, err := s.mongoDB.Collection("campus_comment_like").UpdateOne(
-		ctx,
-		bson.M{"commentId": commentID},
-		bson.M{"$pull": bson.M{"userIds": userIDStr}},
-	)
+
+	updated, err := s.repo.RemoveCommentLike(ctx, commentID, userIDStr)
 	if err != nil {
-		return fmt.Errorf("unlike comment: %w", err)
+		return bizerr.InternalWrap("取消点赞失败", err)
 	}
-	if res.ModifiedCount == 0 {
-		return result.NewBizError(result.CodeFail, "取消点赞失败")
+	if !updated {
+		return ErrCommentUnlikeFailed
 	}
 	return nil
 }
 
-func (s *Service) commentLikeExists(ctx context.Context, commentID, userID string) (bool, error) {
-	count, err := s.mongoDB.Collection("campus_comment_like").CountDocuments(ctx, bson.M{
-		"commentId": commentID,
-		"userIds":   userID,
-	})
-	if err != nil {
-		return false, fmt.Errorf("count comment like: %w", err)
-	}
-	return count > 0, nil
-}
-
 func (s *Service) incCommentLikeStrict(ctx context.Context, commentID string, delta int64) error {
-	oid, err := primitive.ObjectIDFromHex(commentID)
+	oid, err := parseCommentObjectID(commentID)
 	if err != nil {
-		return result.NewBizError(result.CodeFail, "点赞失败")
+		return err
 	}
-	res, err := s.commentColl().UpdateByID(ctx, oid, bson.M{"$inc": bson.M{"likeNum": delta}})
+
+	ok, err := s.repo.IncrementCommentLikeNum(ctx, oid, delta)
 	if err != nil {
-		return fmt.Errorf("update comment like num: %w", err)
+		return bizerr.InternalWrap("更新评论点赞数失败", err)
 	}
-	if res.MatchedCount == 0 {
-		return result.NewBizError(result.CodeFail, "点赞失败")
+	if !ok {
+		return ErrCommentLikeFailed
 	}
 	return nil
 }

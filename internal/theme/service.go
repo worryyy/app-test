@@ -2,21 +2,16 @@ package theme
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/gorm"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
-
 )
 
 var defaultCampusThemes = []CampusTheme{
@@ -30,138 +25,96 @@ var defaultCampusThemes = []CampusTheme{
 }
 
 type Service struct {
-	db      *gorm.DB
-	mongoDB *mongo.Database
-	redis   *redis.Client
-	cfg     *config.Config
-	logger  *zap.Logger
+	repo   *Repository
+	logger *zap.Logger
 }
 
-func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *config.Config, logger *zap.Logger) *Service {
+func NewService(db *gorm.DB, mongoDB *mongo.Database, _ *redis.Client, _ *config.Config, logger *zap.Logger) *Service {
 	if logger == nil {
 		logger = zap.NewNop()
 	}
 	return &Service{
-		db:      db,
-		mongoDB: mongoDB,
-		redis:   rds,
-		cfg:     cfg,
-		logger:  logger,
+		repo:   NewRepository(db, mongoDB),
+		logger: logger,
 	}
 }
 
 func (s *Service) InitCampusThemes(ctx context.Context) ([]CampusTheme, error) {
 	for _, theme := range defaultCampusThemes {
-		if _, err := s.campusThemeColl().UpdateOne(
-			ctx,
-			bson.M{"themeId": theme.ThemeID},
-			bson.M{"$setOnInsert": bson.M{
-				"name":    theme.Name,
-				"themeId": theme.ThemeID,
-			}},
-			options.Update().SetUpsert(true),
-		); err != nil {
-			return nil, fmt.Errorf("init campus themes: %w", err)
+		item := theme
+		if err := s.repo.UpsertCampusTheme(ctx, &item); err != nil {
+			return nil, bizerr.InternalWrap("初始化校园主题失败", err)
 		}
 	}
 	return s.ListCampusThemes(ctx)
 }
 
 func (s *Service) ListCampusThemes(ctx context.Context) ([]CampusTheme, error) {
-	cur, err := s.campusThemeColl().Find(ctx, bson.M{}, options.Find().SetSort(bson.M{"_id": 1}))
+	themes, err := s.repo.FindCampusThemes(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list campus themes: %w", err)
-	}
-	defer func() {
-		if closeErr := cur.Close(ctx); closeErr != nil {
-			s.logger.Warn("close theme cursor failed", zap.Error(closeErr))
-		}
-	}()
-
-	var themes []CampusTheme
-	if err := cur.All(ctx, &themes); err != nil {
-		return nil, fmt.Errorf("decode campus themes: %w", err)
+		return nil, bizerr.InternalWrap("查询校园主题失败", err)
 	}
 	return themes, nil
 }
 
 func (s *Service) ListThemes(ctx context.Context, name string) ([]Theme, error) {
-	filter := bson.M{}
-	if strings.TrimSpace(name) != "" {
-		filter["name"] = name
-	}
-	cur, err := s.themeColl().Find(ctx, filter, options.Find().SetSort(bson.M{"name": 1}))
+	themes, err := s.repo.FindThemes(ctx, strings.TrimSpace(name))
 	if err != nil {
-		return nil, fmt.Errorf("list themes: %w", err)
-	}
-	defer func() {
-		if closeErr := cur.Close(ctx); closeErr != nil {
-			s.logger.Warn("close theme cursor failed", zap.Error(closeErr))
-		}
-	}()
-
-	var themes []Theme
-	if err := cur.All(ctx, &themes); err != nil {
-		return nil, fmt.Errorf("decode themes: %w", err)
+		return nil, bizerr.InternalWrap("查询主题列表失败", err)
 	}
 	return themes, nil
 }
 
 func (s *Service) AddTheme(ctx context.Context, theme *Theme) (string, error) {
-	res, err := s.themeColl().InsertOne(ctx, theme)
-	if err != nil {
-		return "", fmt.Errorf("add theme: %w", err)
+	if theme == nil {
+		return "", bizerr.Param(errMsgInvalidParam)
 	}
-	oid, ok := res.InsertedID.(primitive.ObjectID)
-	if !ok {
-		return "", fmt.Errorf("theme id invalid")
+
+	oid, err := s.repo.CreateTheme(ctx, theme)
+	if err != nil {
+		return "", bizerr.InternalWrap("新增主题失败", err)
 	}
 	return oid.Hex(), nil
 }
 
 func (s *Service) AddCampusTheme(ctx context.Context, theme *CampusTheme) (*CampusTheme, error) {
-	if theme == nil {
-		return nil, result.ErrParam
+	if theme == nil || strings.TrimSpace(theme.ThemeID) == "" || strings.TrimSpace(theme.Name) == "" {
+		return nil, bizerr.Param(errMsgInvalidParam)
 	}
 
-	res, err := s.campusThemeColl().InsertOne(ctx, theme)
-	if err != nil {
-		return nil, fmt.Errorf("add campus theme: %w", err)
-	}
-	if oid, ok := res.InsertedID.(primitive.ObjectID); ok {
-		theme.ID = oid
+	if err := s.repo.CreateCampusTheme(ctx, theme); err != nil {
+		return nil, bizerr.InternalWrap("新增校园主题失败", err)
 	}
 	return theme, nil
 }
 
-func (s *Service) DeleteCampusTheme(ctx context.Context, themeID string) (bool, error) {
-	res, err := s.campusThemeColl().DeleteOne(ctx, bson.M{"themeId": themeID})
-	if err != nil {
-		return false, fmt.Errorf("delete campus theme: %w", err)
+func (s *Service) DeleteCampusTheme(ctx context.Context, themeID string) error {
+	if strings.TrimSpace(themeID) == "" {
+		return bizerr.Param(errMsgInvalidParam)
 	}
-	return res.DeletedCount > 0, nil
+
+	deleted, err := s.repo.DeleteCampusThemeByThemeID(ctx, themeID)
+	if err != nil {
+		return bizerr.InternalWrap("删除校园主题失败", err)
+	}
+	if !deleted {
+		return ErrCampusThemeNotFound
+	}
+	return nil
 }
 
 func (s *Service) GetThemeByID(ctx context.Context, id string) (*Theme, error) {
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := parseThemeObjectID(id)
 	if err != nil {
-		return nil, fmt.Errorf("invalid theme id: %w", err)
+		return nil, err
 	}
 
-	var theme Theme
-	if err := s.themeColl().FindOne(ctx, bson.M{"_id": oid}).Decode(&theme); err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, result.NewBizError(result.CodeNotExisted, "资源不存在")
-		}
-		return nil, fmt.Errorf("get theme: %w", err)
+	theme, err := s.repo.FindThemeByID(ctx, oid)
+	if err != nil {
+		return nil, bizerr.InternalWrap("查询主题失败", err)
 	}
-	return &theme, nil
-}
-
-func (s *Service) themeColl() *mongo.Collection {
-	return s.mongoDB.Collection("campus_theme")
-}
-
-func (s *Service) campusThemeColl() *mongo.Collection {
-	return s.mongoDB.Collection("campus_theme_id")
+	if theme == nil {
+		return nil, ErrThemeNotFound
+	}
+	return theme, nil
 }

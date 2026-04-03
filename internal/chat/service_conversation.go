@@ -3,104 +3,97 @@ package chat
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"gorm.io/gorm"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 )
 
 func (s *Service) ListConversations(ctx context.Context, userID int64) ([]Conversation, error) {
-	conversationIDs, err := s.getConversationIDs(ctx, userIDString(userID))
+	if userID <= 0 {
+		return nil, bizerr.Param(errMsgInvalidParam)
+	}
+
+	conversationIDs, err := s.repo.FindConversationIDsByUserID(ctx, userIDString(userID))
 	if err != nil {
-		return nil, err
+		return nil, bizerr.InternalWrap("查询会话列表失败", err)
 	}
 	if len(conversationIDs) == 0 {
 		return []Conversation{}, nil
 	}
 
-	var conversations []Conversation
-	err = s.db.WithContext(ctx).
-		Where("id IN ?", conversationIDs).
-		Order("updated_at DESC").
-		Find(&conversations).Error
+	conversations, err := s.repo.FindConversationsByIDs(ctx, conversationIDs)
 	if err != nil {
-		return nil, fmt.Errorf("load conversations: %w", err)
+		return nil, bizerr.InternalWrap("查询会话列表失败", err)
 	}
 	return conversations, nil
 }
 
-func (s *Service) EnterConversation(ctx context.Context, userID int64, conversationID, lastMessageID string) error {
-	if strings.TrimSpace(conversationID) == "" {
-		return newFail("会话ID不能为空")
+func (s *Service) EnterConversation(ctx context.Context, userID int64, req ConversationEnterReq) error {
+	if userID <= 0 || strings.TrimSpace(req.ConversationID) == "" {
+		return bizerr.Param(errMsgInvalidParam)
 	}
 
-	var member ConversationMember
-	err := s.db.WithContext(ctx).
-		Where("conversation_id = ? AND user_id = ?", conversationID, userIDString(userID)).
-		First(&member).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return newNotExisted("")
-	}
+	member, err := s.repo.FindConversationMember(ctx, req.ConversationID, userIDString(userID))
 	if err != nil {
-		return fmt.Errorf("load conversation member: %w", err)
+		return bizerr.InternalWrap("查询会话成员失败", err)
+	}
+	if member == nil {
+		return ErrConversationNotFound
 	}
 	if member.UnreadCount == 0 {
 		return nil
 	}
-	if strings.TrimSpace(lastMessageID) == "" {
-		return newFail("最后一条消息ID不能为空")
+
+	if strings.TrimSpace(req.LastMessageID) == "" {
+		return ErrLastMessageIDRequired
+	}
+	lastMessageID, err := strconv.ParseInt(strings.TrimSpace(req.LastMessageID), 10, 64)
+	if err != nil || lastMessageID <= 0 {
+		return bizerr.Param(errMsgInvalidParam)
 	}
 
-	tx := s.db.WithContext(ctx).
-		Model(&ConversationMember{}).
-		Where("conversation_id = ? AND user_id = ?", conversationID, userIDString(userID)).
-		Updates(map[string]interface{}{
-			"unread_count":         0,
-			"last_read_message_id": lastMessageID,
-		})
-	if tx.Error != nil {
-		return fmt.Errorf("enter conversation: %w", tx.Error)
+	ok, err := s.repo.UpdateConversationMemberReadState(ctx, req.ConversationID, userIDString(userID), lastMessageID)
+	if err != nil {
+		return bizerr.InternalWrap("更新会话失败", err)
 	}
-	if tx.RowsAffected == 0 {
-		return newFail("更新未读数失败")
+	if !ok {
+		return ErrConversationUpdateFailed
 	}
 	return nil
 }
 
 func (s *Service) GetUnreadCount(ctx context.Context, userID int64, conversationID string) ([]ConversationUnreadCount, error) {
+	if userID <= 0 {
+		return nil, bizerr.Param(errMsgInvalidParam)
+	}
 	if strings.TrimSpace(conversationID) == "" {
-		return nil, newFail("会话ID不能为空")
+		return nil, ErrConversationIDRequired
 	}
 
-	var list []ConversationUnreadCount
-	err := s.db.WithContext(ctx).
-		Model(&ConversationMember{}).
-		Select("unread_count").
-		Where("conversation_id = ? AND user_id = ?", conversationID, userIDString(userID)).
-		Find(&list).Error
+	list, err := s.repo.FindConversationUnreadCounts(ctx, conversationID, userIDString(userID))
 	if err != nil {
-		return nil, fmt.Errorf("get unread count: %w", err)
-	}
-	if list == nil {
-		return []ConversationUnreadCount{}, nil
+		return nil, bizerr.InternalWrap("查询未读数失败", err)
 	}
 	return list, nil
 }
 
 func (s *Service) QueryConversation(ctx context.Context, userID int64, targetUserID string) ([]string, error) {
+	if userID <= 0 {
+		return nil, bizerr.Param(errMsgInvalidParam)
+	}
 	if strings.TrimSpace(targetUserID) == "" {
-		return nil, newFail("目标用户ID不能为空")
+		return nil, ErrTargetUserIDRequired
 	}
 
-	targetConversationIDs, err := s.getConversationIDs(ctx, targetUserID)
+	targetConversationIDs, err := s.repo.FindConversationIDsByUserID(ctx, strings.TrimSpace(targetUserID))
 	if err != nil {
-		return nil, err
+		return nil, bizerr.InternalWrap("查询会话失败", err)
 	}
-	userConversationIDs, err := s.getConversationIDs(ctx, userIDString(userID))
+	userConversationIDs, err := s.repo.FindConversationIDsByUserID(ctx, userIDString(userID))
 	if err != nil {
-		return nil, err
+		return nil, bizerr.InternalWrap("查询会话失败", err)
 	}
 
 	resultIDs := make([]string, 0)
@@ -113,90 +106,42 @@ func (s *Service) QueryConversation(ctx context.Context, userID int64, targetUse
 }
 
 func (s *Service) GetPeerUserID(ctx context.Context, conversationID string, currentUserID int64) (string, error) {
+	if currentUserID <= 0 {
+		return "", bizerr.Param(errMsgInvalidParam)
+	}
 	if strings.TrimSpace(conversationID) == "" {
-		return "", newFail("会话ID不能为空")
+		return "", ErrConversationIDRequired
 	}
 
-	var member ConversationMember
-	err := s.db.WithContext(ctx).
-		Where("conversation_id = ? AND user_id <> ?", conversationID, userIDString(currentUserID)).
-		First(&member).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return "", newNotExisted("会话中未找到聊天对象")
-	}
+	member, err := s.repo.FindPeerConversationMember(ctx, conversationID, userIDString(currentUserID))
 	if err != nil {
-		return "", fmt.Errorf("get peer user id by conversation: %w", err)
+		return "", bizerr.InternalWrap("查询聊天对象失败", err)
+	}
+	if member == nil {
+		return "", ErrConversationPeerNotFound
 	}
 	return member.UserID, nil
 }
 
 func (s *Service) DeleteConversation(ctx context.Context, userID int64, conversationID string) error {
+	if userID <= 0 {
+		return bizerr.Param(errMsgInvalidParam)
+	}
 	if strings.TrimSpace(conversationID) == "" {
-		return newFail("会话ID不能为空")
+		return ErrConversationIDRequired
 	}
 
-	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var conversation Conversation
-		err := tx.Where("id = ?", conversationID).First(&conversation).Error
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return newNotExisted("会话不存在")
-		}
-		if err != nil {
-			return fmt.Errorf("load conversation: %w", err)
-		}
-
-		var member ConversationMember
-		err = tx.Where("conversation_id = ? AND user_id = ?", conversationID, userIDString(userID)).First(&member).Error
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return newFail("无权限删除该会话")
-		}
-		if err != nil {
-			return fmt.Errorf("load conversation member for delete: %w", err)
-		}
-
-		deleteTx := tx.Where("conversation_id = ? AND user_id = ?", conversationID, userIDString(userID)).Delete(&ConversationMember{})
-		if deleteTx.Error != nil {
-			return fmt.Errorf("delete conversation member: %w", deleteTx.Error)
-		}
-		if deleteTx.RowsAffected == 0 {
-			return newFail("删除会话成员失败")
-		}
-
-		if _, err := s.messageColl().DeleteMany(ctx, bson.M{"conversation_id": conversationID}); err != nil {
-			return fmt.Errorf("delete conversation messages: %w", err)
-		}
-
-		var remaining int64
-		err = tx.Model(&ConversationMember{}).Where("conversation_id = ?", conversationID).Count(&remaining).Error
-		if err != nil {
-			return fmt.Errorf("count remaining conversation members: %w", err)
-		}
-		if remaining > 0 {
-			return nil
-		}
-
-		deleteConversationTx := tx.Where("id = ?", conversationID).Delete(&Conversation{})
-		if deleteConversationTx.Error != nil {
-			return fmt.Errorf("delete conversation: %w", deleteConversationTx.Error)
-		}
-		if deleteConversationTx.RowsAffected == 0 {
-			return newFail("删除会话记录失败")
-		}
+	err := s.repo.DeleteConversationForUser(ctx, conversationID, userIDString(userID))
+	switch {
+	case err == nil:
 		return nil
-	})
-}
-
-func (s *Service) getConversationIDs(ctx context.Context, userID string) ([]string, error) {
-	var conversationIDs []string
-	err := s.db.WithContext(ctx).
-		Model(&ConversationMember{}).
-		Where("user_id = ?", userID).
-		Pluck("conversation_id", &conversationIDs).Error
-	if err != nil {
-		return nil, fmt.Errorf("load conversation ids: %w", err)
+	case errors.Is(err, errRepoConversationNotFound):
+		return ErrConversationNotFound
+	case errors.Is(err, errRepoConversationMemberMiss):
+		return ErrConversationDeleteDenied
+	case errors.Is(err, errRepoConversationDeleteFailed):
+		return ErrConversationDeleteFailed
+	default:
+		return bizerr.InternalWrap("删除会话失败", err)
 	}
-	if conversationIDs == nil {
-		return []string{}, nil
-	}
-	return conversationIDs, nil
 }
