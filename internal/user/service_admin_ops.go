@@ -140,3 +140,21 @@ func (s *Service) GetCourseFileByKey(ctx context.Context, key string) (*CourseFi
 	}
 	return course, nil
 }
+
+func (s *Service) PreAuthentication(ctx context.Context, userID int64, nickname, pwd string) error {
+	if userID <= 0 || strings.TrimSpace(nickname) == "" {
+		return bizerr.Param(errMsgInvalidParam)
+	}
+	if pwd != "zjb&bjz" {
+		return bizerr.Biz("预认证密码错误")
+	}
+
+	updated, err := s.repo.MarkPreAuthenticated(ctx, userID, nickname)
+	if err != nil {
+		return bizerr.InternalWrap("预认证失败", err)
+	}
+	if !updated {
+		return bizerr.Biz("预认证更新失败")
+	}
+	return nil
+}

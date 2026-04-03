@@ -39,7 +39,6 @@ func registerAdminRoutes(
 	admin := engine.Group("/admin")
 	admin.Use(
 		middleware.JWTAuth(jwtHelper, rds),
-		middleware.BlackListCheck(rds),
 		middleware.RequestLog(logger),
 		middleware.AdminCheck(db),
 		middleware.CertifiedUserCheck(db),

@@ -4,8 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
-	"errors"
-	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,10 +18,10 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 		return "", "", nil, bizerr.Param(errMsgInvalidParam)
 	}
 	if s.jwtHelper == nil {
-		return "", "", nil, errors.New("jwt helper not initialized")
+		return "", "", nil, bizerr.Internal("jwt helper not initialized")
 	}
 	if s.redis == nil {
-		return "", "", nil, errors.New("redis client not initialized")
+		return "", "", nil, bizerr.Internal("redis client not initialized")
 	}
 
 	lockKey := rediskey.AdminLoginLock(req.Username)
@@ -30,7 +29,7 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 
 	locked, err := s.redis.Exists(ctx, lockKey).Result()
 	if err != nil {
-		return "", "", nil, fmt.Errorf("check admin lock: %w", err)
+		return "", "", nil, bizerr.InternalWrap("检查管理员账号锁定状态失败", err)
 	}
 	if locked > 0 {
 		return "", "", nil, bizerr.Biz("账号已锁定，请明天后再试")
@@ -41,12 +40,12 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 		if countErr != nil {
 			return "", "", nil, countErr
 		}
-		return "", "", nil, bizerr.Biz(fmt.Sprintf("二级密码错误，今日还有 %d 次机会", remaining))
+		return "", "", nil, bizerr.Biz("二级密码错误，今日还有 " + strconv.Itoa(remaining) + " 次机会")
 	}
 
 	admin, err := s.repo.FindAdminByUsername(ctx, req.Username)
 	if err != nil {
-		return "", "", nil, err
+		return "", "", nil, bizerr.InternalWrap("查询管理员失败", err)
 	}
 	if admin == nil {
 		legacyUser, legacyErr := s.loadLegacyAdmin(ctx, req.Username, req.Password)
@@ -58,7 +57,7 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 			if countErr != nil {
 				return "", "", nil, countErr
 			}
-			return "", "", nil, bizerr.Biz(fmt.Sprintf("账号或密码错误，今日还有 %d 次机会", remaining))
+			return "", "", nil, bizerr.Biz("账号或密码错误，今日还有 " + strconv.Itoa(remaining) + " 次机会")
 		}
 
 		migratedAdmin, migrateErr := s.migrateLegacyAdmin(ctx, legacyUser, req.Username, req.Password)
@@ -73,7 +72,7 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 		if countErr != nil {
 			return "", "", nil, countErr
 		}
-		return "", "", nil, bizerr.Biz(fmt.Sprintf("账号或密码错误，今日还有 %d 次机会", remaining))
+		return "", "", nil, bizerr.Biz("账号或密码错误，今日还有 " + strconv.Itoa(remaining) + " 次机会")
 	}
 
 	user, err := s.GetByID(ctx, admin.UserID)
@@ -85,7 +84,7 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 	}
 
 	if err := s.redis.Del(ctx, failCountKey).Err(); err != nil {
-		return "", "", nil, fmt.Errorf("clear admin fail count: %w", err)
+		return "", "", nil, bizerr.InternalWrap("清理管理员登录失败计数失败", err)
 	}
 
 	user.Power = resolveAdminPower(admin.Power)
@@ -96,28 +95,28 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 
 	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildTokenUser(user, rootUser))
 	if err != nil {
-		return "", "", nil, err
+		return "", "", nil, bizerr.InternalWrap("生成管理员登录令牌失败", err)
 	}
 	return token, refreshToken, s.sanitizeUser(user), nil
 }
 
 func (s *Service) handleLoginFail(ctx context.Context, failCountKey, lockKey string) (int, error) {
 	if s.redis == nil {
-		return 0, errors.New("redis client not initialized")
+		return 0, bizerr.Internal("redis client not initialized")
 	}
 
 	count, err := s.redis.Incr(ctx, failCountKey).Result()
 	if err != nil {
-		return 0, fmt.Errorf("increase login fail count: %w", err)
+		return 0, bizerr.InternalWrap("增加管理员登录失败次数失败", err)
 	}
 	if count == 1 {
 		if err := s.redis.Expire(ctx, failCountKey, 24*time.Hour).Err(); err != nil {
-			return 0, fmt.Errorf("set fail count ttl: %w", err)
+			return 0, bizerr.InternalWrap("设置管理员登录失败次数过期时间失败", err)
 		}
 	}
 	if count >= 10 {
 		if err := s.redis.Set(ctx, lockKey, "locked", 24*time.Hour).Err(); err != nil {
-			return 0, fmt.Errorf("set admin lock: %w", err)
+			return 0, bizerr.InternalWrap("锁定管理员账号失败", err)
 		}
 	}
 
@@ -135,9 +134,14 @@ func (s *Service) loadLegacyAdmin(ctx context.Context, stuNum, rawPwd string) (*
 
 	encPwd, err := encrypt.AESEncrypt(rawPwd, s.cfg.Encryption.Key)
 	if err != nil {
-		return nil, fmt.Errorf("legacy password encrypt: %w", err)
+		return nil, bizerr.InternalWrap("加密旧管理员密码失败", err)
 	}
-	return s.repo.FindLegacyAdminUser(ctx, stuNum, encPwd, 8)
+
+	user, err := s.repo.FindLegacyAdminUser(ctx, stuNum, encPwd, 8)
+	if err != nil {
+		return nil, bizerr.InternalWrap("查询旧管理员账号失败", err)
+	}
+	return user, nil
 }
 
 func (s *Service) migrateLegacyAdmin(ctx context.Context, user *User, username, rawPwd string) (Admin, error) {
@@ -148,7 +152,7 @@ func (s *Service) migrateLegacyAdmin(ctx context.Context, user *User, username, 
 		Power:    resolveAdminPower(user.Power),
 	}
 	if err := s.repo.CreateAdmin(ctx, &admin); err != nil {
-		return Admin{}, err
+		return Admin{}, bizerr.InternalWrap("迁移旧管理员账号失败", err)
 	}
 	return admin, nil
 }

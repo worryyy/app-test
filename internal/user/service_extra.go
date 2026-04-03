@@ -3,13 +3,9 @@ package user
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/encrypt"
 )
 
 func (s *Service) RandomNickname(accountType string) (string, error) {
@@ -23,159 +19,15 @@ func (s *Service) RandomNickname(accountType string) (string, error) {
 	}
 }
 
-func (s *Service) PreAuthentication(ctx context.Context, userID int64, nickname, pwd string) error {
-	if userID <= 0 || strings.TrimSpace(nickname) == "" {
-		return bizerr.Param(errMsgInvalidParam)
-	}
-	if pwd != "zjb&bjz" {
-		return bizerr.Biz("预认证密码错误")
-	}
-
-	updated, err := s.repo.MarkPreAuthenticated(ctx, userID, nickname)
-	if err != nil {
-		return err
-	}
-	if !updated {
-		return bizerr.Biz("预认证更新失败")
-	}
-	return nil
-}
-
-func (s *Service) Authenticate(
-	ctx context.Context,
-	userID int64,
-	req AuthenticationReq,
-) (*JWLoginData, error) {
-	loginResp, err := s.checkJWLogin(ctx, req.SchoolID, req.Password)
-	if err != nil {
-		return nil, err
-	}
-
-	encPwd, err := s.encryptAES(req.Password)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.repo.SaveAuthentication(ctx, userID, req, loginResp, encPwd); err != nil {
-		return nil, err
-	}
-	return loginResp, nil
-}
-
-func (s *Service) ReAuthentication(
-	ctx context.Context,
-	userID int64,
-	req AuthenticationReq,
-) (*JWLoginData, error) {
-	return s.Authenticate(ctx, userID, req)
-}
-
-func (s *Service) DelAuthentication(ctx context.Context, userID int64) error {
-	return s.repo.DeleteAuthentication(ctx, userID)
-}
-
-func (s *Service) CheckLogin(ctx context.Context, req CheckLoginReq) (*JWLoginData, error) {
-	return s.checkJWLogin(ctx, req.SchoolID, req.Password)
-}
-
-func (s *Service) GetCourseByWeeks(ctx context.Context, req UserCourseReq) (*JWCommonResp, error) {
-	if s.jwClient == nil {
-		return nil, errors.New("jw client not initialized")
-	}
-	return s.jwClient.GetCourseByWeeks(ctx, req.StartDate, req.Week, JWGetCourseReq{
-		Term:     req.Term,
-		SchoolID: req.SchoolID,
-		Password: req.Password,
-	})
-}
-
-func (s *Service) GetExam(ctx context.Context, req ExamReq) (*JWCommonResp, error) {
-	if s.jwClient == nil {
-		return nil, errors.New("jw client not initialized")
-	}
-	return s.jwClient.GetExam(ctx, JWGetExamReq{
-		SchoolID: req.SchoolID,
-		Password: req.Password,
-		XNXQID:   req.XNXQID,
-	})
-}
-
-func (s *Service) GetExamScore(ctx context.Context, req ExamScoreReq) (*JWCommonResp, error) {
-	if s.jwClient == nil {
-		return nil, errors.New("jw client not initialized")
-	}
-	return s.jwClient.GetExamScore(ctx, JWGetExamScoreReq{
-		SchoolID: req.SchoolID,
-		Password: req.Password,
-		SS:       req.SS,
-	})
-}
-
 func (s *Service) GenerateUnlimitedWXACode(ctx context.Context, scene, page string) (string, error) {
 	if s.wxClient == nil {
-		return "", errors.New("wx client not initialized")
+		return "", bizerr.Internal("wx client not initialized")
 	}
 
 	data, err := s.wxClient.UnlimitedWXACode(ctx, scene, page)
 	if err != nil {
-		return "", fmt.Errorf("generate unlimited wxa code: %w", err)
+		return "", bizerr.InternalWrap("生成小程序码失败", err)
 	}
 	return base64.StdEncoding.EncodeToString(data), nil
 }
 
-func (s *Service) checkJWLogin(ctx context.Context, schoolID, password string) (*JWLoginData, error) {
-	if s.jwClient == nil {
-		return nil, errors.New("jw client not initialized")
-	}
-
-	resp, err := s.jwClient.CheckLogin(ctx, schoolID, password)
-	if err != nil {
-		return nil, err
-	}
-	if resp == nil {
-		return nil, bizerr.Biz("登陆失败")
-	}
-	if resp.Code != 200 {
-		return nil, bizerr.Biz(resp.Message)
-	}
-
-	dataMap, err := toJWLoginData(resp.Data)
-	if err != nil {
-		return nil, fmt.Errorf("decode jw login response: %w", err)
-	}
-	return dataMap, nil
-}
-
-func (s *Service) encryptAES(raw string) (string, error) {
-	if s.cfg == nil || strings.TrimSpace(s.cfg.Encryption.Key) == "" {
-		return raw, nil
-	}
-
-	encrypted, err := encrypt.AESEncrypt(raw, s.cfg.Encryption.Key)
-	if err != nil {
-		return "", fmt.Errorf("encrypt password: %w", err)
-	}
-	return encrypted, nil
-}
-
-func toJWLoginData(data any) (*JWLoginData, error) {
-	raw, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-
-	var out struct {
-		IsLoginSnake bool   `json:"is_login"`
-		IsLoginCamel bool   `json:"isLogin"`
-		Major        string `json:"major"`
-		Name         string `json:"name"`
-	}
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, err
-	}
-
-	return &JWLoginData{
-		IsLogin: out.IsLoginSnake || out.IsLoginCamel,
-		Major:   out.Major,
-		Name:    out.Name,
-	}, nil
-}

@@ -21,6 +21,8 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/server"
+	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 )
 
 func main() {
@@ -68,12 +70,16 @@ func run() error {
 
 	engine := gin.New()
 	engine.Use(gin.Recovery())
+	engine.Use(middleware.CORS())
+
+	server.RegisterCommonRoutes(engine)
+
 	registerAdminRoutes(engine, logger, db, jwtHelper, rds, AdminHandlers{
-		User:      user.NewAdminHandler(userSvc),
-		Comment:   comment.NewAdminHandler(commentSvc),
-		Theme:     theme.NewAdminHandler(themeSvc),
-		File:      file.NewAdminHandler(fileSvc),
-		School:    school.NewAdminHandler(schoolSvc),
+		User:    user.NewAdminHandler(userSvc),
+		Comment: comment.NewAdminHandler(commentSvc),
+		Theme:   theme.NewAdminHandler(themeSvc),
+		File:    file.NewAdminHandler(fileSvc),
+		School:  school.NewAdminHandler(schoolSvc),
 	})
 
 	server := &http.Server{

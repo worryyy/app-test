@@ -24,6 +24,8 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
 	"github.com/Milchstrassse/Ecampus-go/internal/topic"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/server"
+	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 )
 
 func main() {
@@ -101,17 +103,21 @@ func run() error {
 	chatH := chat.NewHandler(chatSvc, userSvc, jwtHelper, rds)
 	schoolH := school.NewHandler(schoolSvc)
 
-	engine := gin.New()
-	engine.Use(gin.Recovery())
-	registerUserRoutes(engine, logger, db, jwtHelper, rds, UserHandlers{
-		User:    userH,
-		Topic:   topicH,
-		Comment: commentH,
-		Theme:   themeH,
-		File:    fileH,
-		Chat:    chatH,
-		School:  schoolH,
-	})
+engine := gin.New()
+engine.Use(gin.Recovery())
+engine.Use(middleware.CORS())
+
+server.RegisterCommonRoutes(engine)
+
+registerUserRoutes(engine, logger, db, jwtHelper, rds, UserHandlers{
+	User:    userH,
+	Topic:   topicH,
+	Comment: commentH,
+	Theme:   themeH,
+	File:    fileH,
+	Chat:    chatH,
+	School:  schoolH,
+})
 
 	consumers, err := mq.NewConsumers(amqpConn, rds, mongoDB, db, cfg, logger, producer)
 	if err != nil {

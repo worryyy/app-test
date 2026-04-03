@@ -48,13 +48,6 @@ func (Admin) TableName() string {
 	return "admin"
 }
 
-type UserBlacklist struct {
-	ID             string    `bson:"_id,omitempty" json:"id"`
-	BlockedUserIDs []string  `bson:"blocked_user_ids" json:"blockedUserIds"`
-	CreatedTime    time.Time `bson:"created_time" json:"createdTime"`
-	UpdatedTime    time.Time `bson:"updated_time" json:"updatedTime"`
-}
-
 type AdminLoginReq struct {
 	Username          string `json:"username" binding:"required"`
 	Password          string `json:"password" binding:"required"`

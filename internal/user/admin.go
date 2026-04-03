@@ -31,6 +31,7 @@ func (h *AdminHandler) Login(c *gin.Context) {
 		responses.Fail(c, err)
 		return
 	}
+
 	responses.Success.RespData(c, &AdminLoginResp{
 		Token:        token,
 		RefreshToken: refreshToken,
@@ -43,10 +44,12 @@ func (h *AdminHandler) AddUser(c *gin.Context) {
 	if !bindJSON(c, &req) {
 		return
 	}
+
 	if err := h.svc.CreateUser(c.Request.Context(), &req); err != nil {
 		responses.Fail(c, err)
 		return
 	}
+
 	responses.Success.Resp(c)
 }
 
@@ -55,10 +58,12 @@ func (h *AdminHandler) AddAdmin(c *gin.Context) {
 	if !bindJSON(c, &req) {
 		return
 	}
+
 	if err := h.svc.AddAdmin(c.Request.Context(), req.UserID, req.Username, req.Password, req.Power); err != nil {
 		responses.Fail(c, err)
 		return
 	}
+
 	responses.Success.RespMessage(c, "添加成功")
 }
 
@@ -67,10 +72,12 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	if !ok {
 		return
 	}
+
 	if err := h.svc.DeleteUser(c.Request.Context(), id); err != nil {
 		responses.Fail(c, err)
 		return
 	}
+
 	responses.Success.RespMessage(c, "删除成功")
 }
 
@@ -84,10 +91,12 @@ func (h *AdminHandler) EditUser(c *gin.Context) {
 	if !bindJSON(c, &req) {
 		return
 	}
+
 	if err := h.svc.EditAdminUser(c.Request.Context(), id, currentUserID(c), req); err != nil {
 		responses.Fail(c, err)
 		return
 	}
+
 	responses.Success.RespMessage(c, "更新成功")
 }
 
@@ -106,6 +115,7 @@ func (h *AdminHandler) GetUser(c *gin.Context) {
 		responses.Fail(c, ErrUserNotFound)
 		return
 	}
+
 	responses.Success.RespData(c, h.svc.sanitizeUser(user))
 }
 
@@ -118,7 +128,22 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 		responses.Fail(c, err)
 		return
 	}
+
 	responses.Success.RespData(c, data)
+}
+
+func (h *Handler) PreAuth(c *gin.Context) {
+	userID, ok := queryPositiveInt64(c, "user_id")
+	if !ok {
+		return
+	}
+
+	if err := h.svc.PreAuthentication(c.Request.Context(), userID, c.Query("nick_name"), c.Query("pwd")); err != nil {
+		responses.Fail(c, err)
+		return
+	}
+
+	responses.Success.RespMessage(c, "预认证成功")
 }
 
 func (h *AdminHandler) ClearAuthentication(c *gin.Context) {
@@ -126,10 +151,12 @@ func (h *AdminHandler) ClearAuthentication(c *gin.Context) {
 	if !bindJSON(c, &req) {
 		return
 	}
+
 	if err := h.svc.ClearAuthentication(c.Request.Context(), req.UserID); err != nil {
 		responses.Fail(c, err)
 		return
 	}
+
 	responses.Success.Resp(c)
 }
 

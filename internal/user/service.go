@@ -27,7 +27,6 @@ var (
 	ErrUserNotFound   = bizerr.NotFound("用户不存在")
 	ErrRTKNotExisted  = bizerr.NotFound("refresh_token 不存在, 或已过期")
 	ErrRTKUsed        = bizerr.Biz("refresh_token 已使用")
-	ErrFollowSelf     = bizerr.Biz("不能关注自己")
 	ErrIdentityDenied = bizerr.Biz("身份切换无权限")
 )
 
@@ -38,7 +37,6 @@ type Service struct {
 	logger    *zap.Logger
 	jwtHelper *jwtutil.Helper
 	wxClient  *wxutil.Client
-	jwClient  *JWClient
 	producer  EventProducer
 }
 
@@ -57,18 +55,9 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 	if cfg != nil {
 		s.jwtHelper = jwtutil.NewHelper(cfg.JWT, rds)
 		s.wxClient = wxutil.NewClient(cfg.WX, logger)
-		s.jwClient = NewJWClient(cfg, logger)
 	}
 
 	return s
-}
-
-func (s *Service) SetJWTHelper(helper *jwtutil.Helper) {
-	s.jwtHelper = helper
-}
-
-func (s *Service) SetWXClient(client *wxutil.Client) {
-	s.wxClient = client
 }
 
 func (s *Service) SetProducer(producer EventProducer) {
@@ -202,16 +191,9 @@ func (s *Service) WechatLogin(ctx context.Context, code string) (string, string,
 	if err != nil {
 		return "", "", nil, nil, false, fmt.Errorf("generate token pair: %w", err)
 	}
-
-	if s.redis != nil {
-		today := time.Now().Format("20060102")
-		if err := s.redis.PFAdd(ctx, rediskey.ActiveDay(today), rootUser.ID).Err(); err != nil {
-			s.logger.Warn("record active user failed", zap.Error(err), zap.Int64("userID", rootUser.ID))
-		}
-	}
-
 	return token, refreshToken, s.sanitizeUser(rootUser), s.sanitizeUser(activeIdentity), isNew, nil
 }
+
 
 func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (string, string, *User, error) {
 	if s.jwtHelper == nil {

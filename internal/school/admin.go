@@ -1,9 +1,10 @@
 package school
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
 
-import 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
-
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+)
 
 type AdminHandler struct {
 	svc *Service
@@ -15,34 +16,36 @@ func NewAdminHandler(svc *Service) *AdminHandler {
 
 func (h *AdminHandler) AddTerm(c *gin.Context) {
 	var req Term
-	if !result.BindJSON(c, &req) {
+	if !bindJSON(c, &req) {
 		return
 	}
+
 	term, err := h.svc.AddTerm(c.Request.Context(), &req)
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	result.Data(c, term)
+	responses.Success.RespData(c, term)
 }
 
 func (h *AdminHandler) DeleteTerm(c *gin.Context) {
 	if err := h.svc.DeleteTerm(c.Request.Context(), c.Param("id")); err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	result.Success(c, nil)
+	responses.Success.Resp(c)
 }
 
 func (h *AdminHandler) SetCurrentTerm(c *gin.Context) {
 	var req CurTermReq
-	if !result.BindJSON(c, &req) {
+	if !bindJSON(c, &req) {
 		return
 	}
+
 	curTerm, err := h.svc.SetCurrentTerm(c.Request.Context(), req.TermID)
 	if err != nil {
-		result.HandleError(c, err)
+		responses.Fail(c, err)
 		return
 	}
-	result.Data(c, curTerm)
+	responses.Success.RespData(c, curTerm)
 }

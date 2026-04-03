@@ -2,7 +2,6 @@ package user
 
 import (
 	"errors"
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -50,14 +49,6 @@ func parsePositiveInt64(raw string) (int64, error) {
 		return 0, bizerr.Param(errMsgInvalidParam)
 	}
 	return value, nil
-}
-
-func writeJWCommonResponse(c *gin.Context, resp *JWCommonResp) {
-	if resp == nil {
-		responses.Fail(c, bizerr.Biz("获取失败"))
-		return
-	}
-	responses.New(resp.Code, resp.Message, http.StatusOK).RespData(c, resp.Data)
 }
 
 func (h *Handler) currentUser(c *gin.Context) (*User, bool) {

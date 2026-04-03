@@ -3,11 +3,7 @@ package school
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strconv"
-	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 
@@ -16,7 +12,7 @@ import (
 
 	"github.com/Milchstrassse/Ecampus-go/internal/mq"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+	"github.com/Milchstrassse/Ecampus-go/internal/school/jw_client"
 
 )
 
@@ -50,86 +46,66 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 	}
 }
 
-func (s *Service) TermList(ctx context.Context) ([]Term, error) {
-	cur, err := s.mongoDB.Collection("campus_term").Find(ctx, bson.M{})
+
+func (s *Service) GetCourseByWeeks(ctx context.Context, req UserCourseReq) (*JWCommonResp, error) {
+	if s.jwClient == nil {
+		return nil, errors.New("jw client not initialized")
+	}
+	return s.jwClient.GetCourseByWeeks(ctx, req.StartDate, req.Week, JWGetCourseReq{
+		Term:     req.Term,
+		SchoolID: req.SchoolID,
+		Password: req.Password,
+	})
+}
+
+func (s *Service) GetExam(ctx context.Context, req ExamReq) (*JWCommonResp, error) {
+	if s.jwClient == nil {
+		return nil, errors.New("jw client not initialized")
+	}
+	return s.jwClient.GetExam(ctx, JWGetExamReq{
+		SchoolID: req.SchoolID,
+		Password: req.Password,
+		XNXQID:   req.XNXQID,
+	})
+}
+
+func (s *Service) GetExamScore(ctx context.Context, req ExamScoreReq) (*JWCommonResp, error) {
+	if s.jwClient == nil {
+		return nil, errors.New("jw client not initialized")
+	}
+	return s.jwClient.GetExamScore(ctx, JWGetExamScoreReq{
+		SchoolID: req.SchoolID,
+		Password: req.Password,
+		SS:       req.SS,
+	})
+}
+
+
+
+func (s *Service) Authenticate(
+	ctx context.Context,
+	userID int64,
+	req AuthenticationReq,
+) (*JWLoginData, error) {
+	loginResp, err := s.checkJWLogin(ctx, req.SchoolID, req.Password)
 	if err != nil {
-		return nil, fmt.Errorf("find terms: %w", err)
+		return nil, err
 	}
-	defer func() {
-		if closeErr := cur.Close(ctx); closeErr != nil {
-			s.logger.Warn("close term cursor failed", zap.Error(closeErr))
-		}
-	}()
 
-	var list []Term
-	if err := cur.All(ctx, &list); err != nil {
-		return nil, fmt.Errorf("decode terms: %w", err)
-	}
-	if list == nil {
-		return []Term{}, nil
-	}
-	return list, nil
-}
-
-func (s *Service) CurrentTerm(ctx context.Context) (*CurDateAndTerm, error) {
-	var cur CurTerm
-	err := s.mongoDB.Collection("campus_cur_term").FindOne(ctx, bson.M{}).Decode(&cur)
-	if err == mongo.ErrNoDocuments {
-		return nil, ErrCurrentTermNotConfigured
-	}
+	encPwd, err := s.encryptAES(req.Password)
 	if err != nil {
-		return nil, fmt.Errorf("find current term: %w", err)
+		return nil, err
 	}
-
-	var term Term
-	if err := s.mongoDB.Collection("campus_term").FindOne(ctx, bson.M{"term": cur.Term}).Decode(&term); err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, ErrCurrentTermInvalid
-		}
-		return nil, fmt.Errorf("find term detail: %w", err)
+	if err := s.repo.SaveAuthentication(ctx, userID, req, loginResp, encPwd); err != nil {
+		return nil, err
 	}
-
-	return &CurDateAndTerm{
-		CurDate:    time.Now().Format("2006-01-02"),
-		CurTerm:    cur.Term,
-		StartDate:  term.StartDate,
-		TotalWeeks: term.TotalWeeks,
-	}, nil
+	return loginResp, nil
 }
 
-func (s *Service) RequestGetCourse(ctx context.Context, userID int64, stuNum, stuPwd, term string, week int) error {
-	if s.producer == nil {
-		return nil
-	}
-	msg := mq.CourseMsg{
-		UserID: userID,
-		StuNum: stuNum,
-		StuPwd: stuPwd,
-		Term:   term,
-		Week:   week,
-	}
-	if err := s.producer.SendGetCourse(ctx, msg); err != nil {
-		return fmt.Errorf("send get course mq: %w", err)
-	}
-	return nil
-}
-
-func (s *Service) GetCourseByWeeks(ctx context.Context, userID int64, term string, weeks []int) ([]UserCourse, error) {
-	var list []UserCourse
-	if err := s.db.WithContext(ctx).Where("user_id = ? AND term = ? AND week IN ?", userID, term, weeks).Order("week ASC").Find(&list).Error; err != nil {
-		return nil, fmt.Errorf("query user courses by weeks: %w", err)
-	}
-	return list, nil
-}
-
-func (s *Service) ParseWeek(v string) int {
-	week, err := strconv.Atoi(v)
-	if err != nil || week <= 0 {
-		return 1
-	}
-	return week
-}
-
-func (s *Service) ToCusPage(list []Course, total int64, page, size int) *result.CusPage[Course] {
-	return result.NewCusPage(list, total, page, size)
+func (s *Service) ReAuthentication(
+	ctx context.Context,
+	userID int64,
+	req AuthenticationReq,
+) (*JWLoginData, error) {
+	return s.Authenticate(ctx, userID, req)
 }

@@ -1,11 +1,11 @@
 package school
 
 import (
-	"errors"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
+	
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 
 )
@@ -18,39 +18,101 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-func (h *Handler) TermList(c *gin.Context) {
-	data, err := h.svc.TermList(c.Request.Context())
-	if err != nil {
-		result.HandleError(c, err)
+
+
+func (h *Handler) Authenticate(c *gin.Context) {
+	var req AuthenticationReq
+	if !bindJSON(c, &req) {
 		return
 	}
-	result.Data(c, data)
+
+	currentUser, ok := h.currentUser(c)
+	if !ok {
+		return
+	}
+	if currentUser.StuIsCheck {
+		responses.Fail(c, bizerr.Biz("当前用户已认证, 如需更换请重新认证"))
+		return
+	}
+
+	loginResp, err := h.svc.Authenticate(c.Request.Context(), currentUser.ID, req)
+	if err != nil {
+		responses.Fail(c, err)
+		return
+	}
+	responses.Success.RespMessageData(c, "认证成功", loginResp)
 }
 
-func (h *Handler) CurrentTerm(c *gin.Context) {
-	data, err := h.svc.CurrentTerm(c.Request.Context())
-	if err != nil {
-		switch {
-		case errors.Is(err, ErrCurrentTermNotConfigured):
-			result.Fail(c, result.CodeNotExisted, "请联系管理员设置当前学期")
-		case errors.Is(err, ErrCurrentTermInvalid):
-			result.Fail(c, result.CodeNotExisted, "请联系管理员检查学期")
-		default:
-			result.HandleError(c, err)
-		}
+func (h *Handler) ReAuthenticate(c *gin.Context) {
+	var req AuthenticationReq
+	if !bindJSON(c, &req) {
 		return
 	}
-	result.Data(c, data)
+
+	currentUser, ok := h.currentUser(c)
+	if !ok {
+		return
+	}
+	if !currentUser.StuIsCheck {
+		responses.Fail(c, bizerr.Biz("当前用户未认证，请先认证"))
+		return
+	}
+
+	loginResp, err := h.svc.ReAuthentication(c.Request.Context(), currentUser.ID, req)
+	if err != nil {
+		responses.Fail(c, err)
+		return
+	}
+	responses.Success.RespMessageData(c, "认证成功", loginResp)
 }
 
-func (h *Handler) CourseColor(c *gin.Context) {
-	var req CourseColorReq
-	if !result.BindJSON(c, &req) {
+func (h *Handler) GetCourseByWeeks(c *gin.Context) {
+	var req UserCourseReq
+	if !bindJSON(c, &req) {
 		return
 	}
-	if err := h.svc.SetCourseColor(c.Request.Context(), middleware.GetUserID(c), req.Colors); err != nil {
-		result.HandleError(c, err)
+	if _, ok := h.requireCertifiedUser(c); !ok {
 		return
 	}
-	result.Success(c, nil)
+
+	resp, err := h.svc.GetCourseByWeeks(c.Request.Context(), req)
+	if err != nil {
+		responses.Fail(c, err)
+		return
+	}
+	writeJWCommonResponse(c, resp)
+}
+
+func (h *Handler) GetExam(c *gin.Context) {
+	var req ExamReq
+	if !bindJSON(c, &req) {
+		return
+	}
+	if _, ok := h.requireCertifiedUser(c); !ok {
+		return
+	}
+
+	resp, err := h.svc.GetExam(c.Request.Context(), req)
+	if err != nil {
+		responses.Fail(c, err)
+		return
+	}
+	writeJWCommonResponse(c, resp)
+}
+
+func (h *Handler) GetExamScore(c *gin.Context) {
+	var req ExamScoreReq
+	if !bindJSON(c, &req) {
+		return
+	}
+	if _, ok := h.requireCertifiedUser(c); !ok {
+		return
+	}
+
+	resp, err := h.svc.GetExamScore(c.Request.Context(), req)
+	if err != nil {
+		responses.Fail(c, err)
+		return
+	}
+	writeJWCommonResponse(c, resp)
 }

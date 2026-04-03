@@ -1,4 +1,4 @@
-package user
+package school
 
 import (
 	"encoding/json"

@@ -114,6 +114,69 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int, nickname str
 	return users, total, nil
 }
 
+func (r *Repository) UpdateAdminUser(
+	ctx context.Context,
+	userID, operatorID int64,
+	req AdminEditUserReq,
+) error {
+	updates := map[string]any{}
+	if req.Nickname != "" {
+		updates["nickname"] = req.Nickname
+	}
+	if req.Avatar != "" {
+		updates["avatar"] = req.Avatar
+	}
+	if req.Power != nil {
+		updates["power"] = *req.Power
+	}
+	if req.StuNum != "" {
+		updates["stu_num"] = req.StuNum
+	}
+	if req.StuName != "" {
+		updates["stu_name"] = req.StuName
+	}
+	if req.StuCla != "" {
+		updates["stu_cla"] = req.StuCla
+	}
+	if req.StuIsCheck != nil {
+		updates["stu_is_check"] = *req.StuIsCheck
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+	if operatorID > 0 {
+		updates["updated_by"] = operatorID
+	}
+	return r.updateUserFields(ctx, userID, updates)
+}
+
+func (r *Repository) MarkPreAuthenticated(ctx context.Context, userID int64, nickname string) (bool, error) {
+	db, err := r.gormDB(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	res := db.
+		Model(&User{}).
+		Where("id = ? AND nickname = ?", userID, nickname).
+		Update("stu_is_check", true)
+	if res.Error != nil {
+		return false, fmt.Errorf("pre-authenticate user %d: %w", userID, res.Error)
+	}
+	return res.RowsAffected > 0, nil
+}
+
+func (r *Repository) ClearAuthentication(ctx context.Context, userID int64) error {
+	return r.updateUserFields(ctx, userID, map[string]any{
+		"stu_is_check": false,
+		"stu_name":     "",
+		"stu_cla":      "",
+		"stu_num":      "",
+		"stu_pwd":      "",
+		"school":       "",
+	})
+}
+
 func (r *Repository) FindCourseFileByKey(ctx context.Context, key string) (*CourseFile, error) {
 	coll, err := r.courseCollection()
 	if err != nil {

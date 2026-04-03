@@ -1,4 +1,4 @@
-package user
+package school
 
 import (
 	"bytes"
@@ -67,12 +67,6 @@ func NewJWClient(cfg *config.Config, logger *zap.Logger) *JWClient {
 	}
 }
 
-func (j *JWClient) CheckLogin(ctx context.Context, schoolID, password string) (*JWCommonResp, error) {
-	return j.doJSON(ctx, http.MethodPost, "/check_login", nil, JWLoginReq{
-		SchoolID: schoolID,
-		Password: password,
-	})
-}
 
 func (j *JWClient) GetCourseByWeeks(
 	ctx context.Context,
