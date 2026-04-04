@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"google.golang.org/genproto/googleapis/rpc/code"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/encrypt"
@@ -21,16 +20,22 @@ func (s *Service) GetUserByID(ctx context.Context, id int64) (*campusUser, error
 }
 
 func (s *Service) checkJWLogin(ctx context.Context, schoolID, password string) (*JWCommonResp, error) {
-	var resp *JWCommonResp
 	resp, err := s.jwClient.CheckLogin(ctx, schoolID, password)
 	if err != nil {
 		return nil, bizerr.InternalWrap("登录教务系统失败", err)
 	}
-	if resp == nil {
-		return nil, bizerr.Internal("登录教务系统失败: 响应为空")
+	if err := ensureJWRespSuccess(resp, "登录失败"); err != nil {
+		return nil, err
+	}
+
+	loggedIn, _, _, err := decodeJWLoginMeta(resp.Data)
+	if err != nil {
+		return nil, bizerr.InternalWrap("解析教务登录结果失败", err)
+	}
+	if !loggedIn {
+		return nil, bizerr.Biz(resp.Message)
 	}
 	return resp, nil
-
 }
 
 func (s *Service) encryptAES(raw string) (string, error) {
@@ -45,7 +50,39 @@ func (s *Service) encryptAES(raw string) (string, error) {
 	return encrypted, nil
 }
 
+func decodeJWLoginMeta(data any) (bool, string, string, error) {
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return false, "", "", err
+	}
 
+	var out struct {
+		IsLoginSnake bool   `json:"is_login"`
+		IsLoginCamel bool   `json:"isLogin"`
+		Major        string `json:"major"`
+		Name         string `json:"name"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return false, "", "", err
+	}
+
+	return out.IsLoginSnake || out.IsLoginCamel, out.Name, out.Major, nil
+}
+
+func ensureJWRespSuccess(resp *JWCommonResp, fallback string) error {
+	if resp == nil {
+		return bizerr.Internal(fallback)
+	}
+	if resp.Code == 200 {
+		return nil
+	}
+
+	msg := strings.TrimSpace(resp.Message)
+	if msg == "" {
+		msg = fallback
+	}
+	return bizerr.Biz(msg)
+}
 
 func parseTermObjectID(termID string) (primitive.ObjectID, error) {
 	termID = strings.TrimSpace(termID)

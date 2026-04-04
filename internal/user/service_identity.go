@@ -10,24 +10,20 @@ import (
 )
 
 func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64) (*Identity, error) {
-	rootUser, err := s.GetByID(ctx, rootUserID)
+	rootUser, err := s.requireRootIdentity(ctx, rootUserID)
 	if err != nil {
 		return nil, err
 	}
-	if rootUser == nil {
-		return nil, ErrUserNotFound
-	}
-	s.ensureUserDefaults(rootUser)
 
-	existing, err := s.getIdentityByType(ctx, rootUser.ID, accountTypeAnonymous)
+	anonymous, err := s.getIdentityByType(ctx, rootUser.ID, accountTypeAnonymous)
 	if err != nil {
 		return nil, err
 	}
-	if existing != nil {
+	if anonymous != nil {
 		return nil, bizerr.Biz("匿名身份已存在，无法重复创建")
 	}
 
-	anonymous := &User{
+	anonymous = &User{
 		Avatar:      s.defaultAnonymousAvatar(),
 		CreatedBy:   rootUser.ID,
 		UpdatedBy:   rootUser.ID,
@@ -39,7 +35,6 @@ func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64)
 		StuIsCheck:  true,
 		Tag:         rootUser.Tag,
 		Gender:      rootUser.Gender,
-		Signature:   "",
 	}
 
 	if err := s.repo.CreateUser(ctx, anonymous); err != nil {
@@ -55,24 +50,19 @@ func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64)
 }
 
 func (s *Service) UpdateAnonymousNickname(ctx context.Context, rootUserID int64, nickname string) error {
-	if strings.TrimSpace(nickname) == "" {
+	nickname = strings.TrimSpace(nickname)
+	if nickname == "" {
 		return bizerr.Param(errMsgInvalidParam)
 	}
 
-	rootUser, err := s.GetByID(ctx, rootUserID)
+	rootUser, err := s.requireRootIdentity(ctx, rootUserID)
 	if err != nil {
 		return err
-	}
-	if rootUser == nil {
-		return ErrUserNotFound
 	}
 
-	anonymous, err := s.getIdentityByType(ctx, rootUserID, accountTypeAnonymous)
+	anonymous, err := s.requireAnonymousIdentity(ctx, rootUser.ID)
 	if err != nil {
 		return err
-	}
-	if anonymous == nil {
-		return bizerr.Biz("匿名身份不存在")
 	}
 
 	if !anonymous.UpdatedAt.IsZero() {
@@ -88,15 +78,12 @@ func (s *Service) UpdateAnonymousNickname(ctx context.Context, rootUserID int64,
 }
 
 func (s *Service) ListIdentities(ctx context.Context, rootUserID int64) (*IdentityListResp, error) {
-	rootUser, err := s.GetByID(ctx, rootUserID)
+	rootUser, err := s.requireRootIdentity(ctx, rootUserID)
 	if err != nil {
 		return nil, err
 	}
-	if rootUser == nil {
-		return nil, ErrUserNotFound
-	}
 
-	users, err := s.repo.FindUsersByRootUserID(ctx, rootUserID)
+	users, err := s.repo.FindUsersByRootUserID(ctx, rootUser.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -112,27 +99,100 @@ func (s *Service) ListIdentities(ctx context.Context, rootUserID int64) (*Identi
 	}
 
 	return &IdentityListResp{
-		RootUserID:   rootUserID,
+		RootUserID:   rootUser.ID,
 		Identities:   identities,
 		HasAnonymous: hasAnonymous,
 	}, nil
 }
 
 func (s *Service) SwitchIdentity(ctx context.Context, rootID, targetUserID int64) (string, string, *User, int64, error) {
-	if s.jwtHelper == nil {
-		return "", "", nil, 0, fmt.Errorf("jwt helper not initialized")
-	}
-
-	rootUser, err := s.GetByID(ctx, rootID)
+	rootUser, err := s.requireRootIdentity(ctx, rootID)
 	if err != nil {
 		return "", "", nil, 0, err
 	}
+
 	targetUser, err := s.GetByID(ctx, targetUserID)
 	if err != nil {
 		return "", "", nil, 0, err
 	}
-	if rootUser == nil || targetUser == nil {
+	if targetUser == nil {
 		return "", "", nil, 0, ErrUserNotFound
+	}
+
+	return s.switchToIdentity(ctx, rootUser, targetUser)
+}
+
+func (s *Service) SwitchIdentityByAccountType(
+	ctx context.Context,
+	rootUserID int64,
+	accountType string,
+) (string, string, *User, int64, error) {
+	rootUser, err := s.requireRootIdentity(ctx, rootUserID)
+	if err != nil {
+		return "", "", nil, 0, err
+	}
+
+	targetUser, err := s.targetIdentityByAccountType(ctx, rootUser, accountType)
+	if err != nil {
+		return "", "", nil, 0, err
+	}
+
+	return s.switchToIdentity(ctx, rootUser, targetUser)
+}
+
+func (s *Service) requireRootIdentity(ctx context.Context, rootUserID int64) (*User, error) {
+	rootUser, err := s.GetByID(ctx, rootUserID)
+	if err != nil {
+		return nil, err
+	}
+	if rootUser == nil {
+		return nil, ErrUserNotFound
+	}
+	s.ensureUserDefaults(rootUser)
+	return rootUser, nil
+}
+
+func (s *Service) requireAnonymousIdentity(ctx context.Context, rootUserID int64) (*User, error) {
+	anonymous, err := s.getIdentityByType(ctx, rootUserID, accountTypeAnonymous)
+	if err != nil {
+		return nil, err
+	}
+	if anonymous == nil {
+		return nil, bizerr.Biz("匿名身份不存在")
+	}
+	return anonymous, nil
+}
+
+func (s *Service) targetIdentityByAccountType(ctx context.Context, rootUser *User, accountType string) (*User, error) {
+	accountType = strings.TrimSpace(accountType)
+	if accountType == "" {
+		return nil, bizerr.Param(errMsgInvalidParam)
+	}
+
+	switch accountType {
+	case accountTypeBase:
+		return rootUser, nil
+	case accountTypeAnonymous, accountTypeOfficial:
+		targetUser, err := s.getIdentityByType(ctx, rootUser.ID, accountType)
+		if err != nil {
+			return nil, err
+		}
+		if targetUser == nil {
+			return nil, bizerr.Biz("目标身份不存在，请先创建")
+		}
+		return targetUser, nil
+	default:
+		return nil, bizerr.Biz("account_type 非法")
+	}
+}
+
+func (s *Service) switchToIdentity(
+	ctx context.Context,
+	rootUser *User,
+	targetUser *User,
+) (string, string, *User, int64, error) {
+	if s.jwtHelper == nil {
+		return "", "", nil, 0, bizerr.Internal("jwt helper not initialized")
 	}
 	if rootUserID(targetUser) != rootUser.ID {
 		return "", "", nil, 0, ErrIdentityDenied
@@ -144,43 +204,10 @@ func (s *Service) SwitchIdentity(ctx context.Context, rootID, targetUserID int64
 
 	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildTokenUser(targetUser, rootUser))
 	if err != nil {
-		return "", "", nil, 0, err
+		return "", "", nil, 0, bizerr.InternalWrap("生成身份切换令牌失败", err)
 	}
+
 	return token, refreshToken, s.sanitizeUser(targetUser), rootUser.ID, nil
-}
-
-func (s *Service) SwitchIdentityByAccountType(
-	ctx context.Context,
-	rootUserID int64,
-	accountType string,
-) (string, string, *User, int64, error) {
-	rootUser, err := s.GetByID(ctx, rootUserID)
-	if err != nil {
-		return "", "", nil, 0, err
-	}
-	if rootUser == nil {
-		return "", "", nil, 0, ErrUserNotFound
-	}
-
-	accountType = strings.TrimSpace(accountType)
-	if accountType == "" {
-		return "", "", nil, 0, bizerr.Param(errMsgInvalidParam)
-	}
-	if accountType != accountTypeBase && accountType != accountTypeAnonymous && accountType != accountTypeOfficial {
-		return "", "", nil, 0, bizerr.Biz("account_type 非法")
-	}
-	if accountType == accountTypeBase {
-		return s.SwitchIdentity(ctx, rootUser.ID, rootUser.ID)
-	}
-
-	targetUser, err := s.getIdentityByType(ctx, rootUser.ID, accountType)
-	if err != nil {
-		return "", "", nil, 0, err
-	}
-	if targetUser == nil {
-		return "", "", nil, 0, bizerr.Biz("目标身份不存在，请先创建")
-	}
-	return s.SwitchIdentity(ctx, rootUser.ID, targetUser.ID)
 }
 
 func (s *Service) defaultAnonymousAvatar() string {

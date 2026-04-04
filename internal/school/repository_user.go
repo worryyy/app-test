@@ -32,22 +32,31 @@ func (r *Repository) SaveAuthentication(
 	ctx context.Context,
 	userID int64,
 	req AuthenticationReq,
-	loginResp *JWCommonResp,
 	encryptedPassword string,
+	name string,
+	major string,
 ) error {
 	db, err := r.gormDB(ctx)
 	if err != nil {
 		return err
 	}
 
+	updates := map[string]any{
+		"stu_is_check": true,
+		"stu_num":      req.SchoolID,
+		"stu_pwd":      encryptedPassword,
+		"school":       req.School,
+	}
+	if name != "" {
+		updates["stu_name"] = name
+	}
+	if major != "" {
+		updates["stu_cla"] = major
+	}
+
 	if err := db.Model(&campusUser{}).
 		Where("id = ?", userID).
-		Updates(map[string]any{
-			"stu_is_check": true,
-			"stu_num":      req.SchoolID,
-			"stu_pwd":      encryptedPassword,
-			"school":       req.School,
-		}).Error; err != nil {
+		Updates(updates).Error; err != nil {
 		return fmt.Errorf("save authentication for user %d: %w", userID, err)
 	}
 	return nil

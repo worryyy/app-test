@@ -20,6 +20,7 @@ func (h *Handler) UpdateAnonymousNickname(c *gin.Context) {
 	if !bindJSON(c, &req) {
 		return
 	}
+
 	if err := h.svc.UpdateAnonymousNickname(c.Request.Context(), currentRootUserID(c), req.Nickname); err != nil {
 		responses.Fail(c, err)
 		return

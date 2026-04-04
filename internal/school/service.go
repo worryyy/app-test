@@ -51,12 +51,17 @@ func (s *Service) Authenticate(ctx context.Context, userID int64, req Authentica
 		return nil, err
 	}
 
+	_, name, major, err := decodeJWLoginMeta(loginResp.Data)
+	if err != nil {
+		return nil, bizerr.InternalWrap("解析认证结果失败", err)
+	}
+
 	encPwd, err := s.encryptAES(req.Password)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.repo.SaveAuthentication(ctx, userID, req, loginResp, encPwd); err != nil {
+	if err := s.repo.SaveAuthentication(ctx, userID, req, encPwd, name, major); err != nil {
 		return nil, bizerr.InternalWrap("保存校园认证信息失败", err)
 	}
 	return loginResp, nil
@@ -67,10 +72,6 @@ func (s *Service) ReAuthentication(ctx context.Context, userID int64, req Authen
 }
 
 func (s *Service) GetCourseByWeeks(ctx context.Context, req UserCourseReq) (*JWCommonResp, error) {
-	if s.jwClient == nil {
-		return nil, bizerr.Internal("jw client not initialized")
-	}
-
 	resp, err := s.jwClient.GetCourseByWeeks(ctx, req.StartDate, req.Week, JWGetCourseReq{
 		Term:     req.Term,
 		SchoolID: req.SchoolID,
@@ -79,14 +80,13 @@ func (s *Service) GetCourseByWeeks(ctx context.Context, req UserCourseReq) (*JWC
 	if err != nil {
 		return nil, bizerr.InternalWrap("查询课表失败", err)
 	}
+	if err := ensureJWRespSuccess(resp, "查询课表失败"); err != nil {
+		return nil, err
+	}
 	return resp, nil
 }
 
 func (s *Service) GetExam(ctx context.Context, req ExamReq) (*JWCommonResp, error) {
-	if s.jwClient == nil {
-		return nil, bizerr.Internal("jw client not initialized")
-	}
-
 	resp, err := s.jwClient.GetExam(ctx, JWGetExamReq{
 		SchoolID: req.SchoolID,
 		Password: req.Password,
@@ -95,14 +95,13 @@ func (s *Service) GetExam(ctx context.Context, req ExamReq) (*JWCommonResp, erro
 	if err != nil {
 		return nil, bizerr.InternalWrap("查询考试失败", err)
 	}
+	if err := ensureJWRespSuccess(resp, "查询考试失败"); err != nil {
+		return nil, err
+	}
 	return resp, nil
 }
 
 func (s *Service) GetExamScore(ctx context.Context, req ExamScoreReq) (*JWCommonResp, error) {
-	if s.jwClient == nil {
-		return nil, bizerr.Internal("jw client not initialized")
-	}
-
 	resp, err := s.jwClient.GetExamScore(ctx, JWGetExamScoreReq{
 		SchoolID: req.SchoolID,
 		Password: req.Password,
@@ -110,6 +109,9 @@ func (s *Service) GetExamScore(ctx context.Context, req ExamScoreReq) (*JWCommon
 	})
 	if err != nil {
 		return nil, bizerr.InternalWrap("查询成绩失败", err)
+	}
+	if err := ensureJWRespSuccess(resp, "查询成绩失败"); err != nil {
+		return nil, err
 	}
 	return resp, nil
 }

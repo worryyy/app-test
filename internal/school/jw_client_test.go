@@ -1,35 +1,37 @@
 package school
 
-import (
-	"encoding/json"
-	"testing"
-)
+import "testing"
 
-func TestToJWLoginDataSupportsSnakeCase(t *testing.T) {
-	data, err := toJWLoginData(map[string]interface{}{
+func TestDecodeJWLoginMetaSupportsSnakeCase(t *testing.T) {
+	loggedIn, name, major, err := decodeJWLoginMeta(map[string]any{
 		"is_login": true,
-		"major":    "计算机科学与技术",
 		"name":     "张三",
+		"major":    "计算机科学与技术",
 	})
 	if err != nil {
-		t.Fatalf("toJWLoginData returned error: %v", err)
+		t.Fatalf("decodeJWLoginMeta returned error: %v", err)
 	}
-	if !data.IsLogin || data.Major != "计算机科学与技术" || data.Name != "张三" {
-		t.Fatalf("unexpected jw login data: %+v", data)
+	if !loggedIn {
+		t.Fatalf("expected login success")
+	}
+	if name != "张三" {
+		t.Fatalf("unexpected name: %s", name)
+	}
+	if major != "计算机科学与技术" {
+		t.Fatalf("unexpected major: %s", major)
 	}
 }
 
-func TestJWLoginDataMarshalUsesSnakeCase(t *testing.T) {
-	raw, err := json.Marshal(JWLoginData{
-		IsLogin: true,
-		Major:   "计算机科学与技术",
-		Name:    "张三",
+func TestDecodeJWLoginMetaSupportsCamelCase(t *testing.T) {
+	loggedIn, name, major, err := decodeJWLoginMeta(map[string]any{
+		"isLogin": true,
+		"name":    "李四",
+		"major":   "软件工程",
 	})
 	if err != nil {
-		t.Fatalf("marshal JWLoginData: %v", err)
+		t.Fatalf("decodeJWLoginMeta returned error: %v", err)
 	}
-	want := `{"is_login":true,"major":"计算机科学与技术","name":"张三"}`
-	if string(raw) != want {
-		t.Fatalf("unexpected json: got %s want %s", raw, want)
+	if !loggedIn || name != "李四" || major != "软件工程" {
+		t.Fatalf("unexpected decoded login meta: loggedIn=%v name=%s major=%s", loggedIn, name, major)
 	}
 }
