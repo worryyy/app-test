@@ -58,8 +58,6 @@ func (h *Handler) RefreshToken(c *gin.Context) {
 	})
 }
 
-
-
 func (h *Handler) GetCurrent(c *gin.Context) {
 	user, ok := h.currentUser(c)
 	if !ok {
@@ -93,8 +91,9 @@ func (h *Handler) Edit(c *gin.Context) {
 }
 
 func (h *Handler) GetUserProfile(c *gin.Context) {
-	targetUserID, ok := queryPositiveInt64(c, "target_user_id")
-	if !ok {
+	targetUserID, err := parsePositiveInt64(firstNonBlank(c.Query("target_user_id"), c.Query("targetUserId")))
+	if err != nil {
+		responses.Fail(c, err)
 		return
 	}
 

@@ -3,6 +3,7 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 )
 
@@ -43,10 +44,16 @@ func (h *Handler) SwitchIdentity(c *gin.Context) {
 		return
 	}
 
+	accountType := req.ResolvedAccountType()
+	if accountType == "" {
+		responses.Fail(c, bizerr.Param(errMsgInvalidParam))
+		return
+	}
+
 	token, refreshToken, target, rootUserID, err := h.svc.SwitchIdentityByAccountType(
 		c.Request.Context(),
 		currentRootUserID(c),
-		req.AccountType,
+		accountType,
 	)
 	if err != nil {
 		responses.Fail(c, err)

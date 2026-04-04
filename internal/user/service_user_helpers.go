@@ -134,6 +134,18 @@ func (s *Service) persistLastSwitch(ctx context.Context, rootUserID, targetUserI
 }
 
 func (s *Service) buildTokenUser(identity, rootUser *User) *jwtutil.TokenUser {
+	return s.buildTokenUserWithPower(identity, rootUser, 0)
+}
+
+func (s *Service) buildAdminTokenUser(identity, rootUser *User) *jwtutil.TokenUser {
+	power := 0
+	if identity != nil {
+		power = identity.Power
+	}
+	return s.buildTokenUserWithPower(identity, rootUser, power)
+}
+
+func (s *Service) buildTokenUserWithPower(identity, rootUser *User, power int) *jwtutil.TokenUser {
 	if identity == nil || rootUser == nil {
 		return nil
 	}
@@ -143,7 +155,7 @@ func (s *Service) buildTokenUser(identity, rootUser *User) *jwtutil.TokenUser {
 	return &jwtutil.TokenUser{
 		ID:          identity.ID,
 		OpenID:      rootUser.OpenID,
-		Power:       rootUser.Power,
+		Power:       power,
 		AccountType: identity.AccountType,
 		RootUserID:  rootUser.ID,
 	}

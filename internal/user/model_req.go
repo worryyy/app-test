@@ -9,7 +9,12 @@ type RefreshTokenReq struct {
 }
 
 type IdentitySwitchReq struct {
-	AccountType string `json:"account_type" binding:"required"`
+	AccountType       string `json:"accountType"`
+	LegacyAccountType string `json:"account_type"`
+}
+
+func (r IdentitySwitchReq) ResolvedAccountType() string {
+	return firstNonBlank(r.AccountType, r.LegacyAccountType)
 }
 
 type UpdateAnonymousNicknameReq struct {

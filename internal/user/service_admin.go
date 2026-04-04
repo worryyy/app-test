@@ -93,7 +93,7 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 		return "", "", nil, err
 	}
 
-	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildTokenUser(user, rootUser))
+	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildAdminTokenUser(user, rootUser))
 	if err != nil {
 		return "", "", nil, bizerr.InternalWrap("生成管理员登录令牌失败", err)
 	}

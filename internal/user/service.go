@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -31,13 +32,14 @@ var (
 )
 
 type Service struct {
-	repo      *Repository
-	redis     *redis.Client
-	cfg       *config.Config
-	logger    *zap.Logger
-	jwtHelper *jwtutil.Helper
-	wxClient  *wxutil.Client
-	producer  EventProducer
+	repo       *Repository
+	redis      *redis.Client
+	cfg        *config.Config
+	logger     *zap.Logger
+	jwtHelper  *jwtutil.Helper
+	wxClient   *wxutil.Client
+	producer   EventProducer
+	identityMu sync.Mutex
 }
 
 func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *config.Config, logger *zap.Logger) *Service {
@@ -101,6 +103,7 @@ func (s *Service) GetUserProfile(ctx context.Context, targetUserID int64) (*User
 }
 
 func (s *Service) Edit(ctx context.Context, userID int64, req UserEditReq) (*User, error) {
+	req = normalizeUserEditReq(req)
 	if req.Nickname == "" && req.Avatar == "" && req.Gender == "" && req.Signature == "" {
 		return s.sanitizeUserByID(ctx, userID)
 	}
@@ -193,7 +196,6 @@ func (s *Service) WechatLogin(ctx context.Context, code string) (string, string,
 	}
 	return token, refreshToken, s.sanitizeUser(rootUser), s.sanitizeUser(activeIdentity), isNew, nil
 }
-
 
 func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (string, string, *User, error) {
 	if s.jwtHelper == nil {

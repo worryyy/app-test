@@ -15,6 +15,9 @@ func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64)
 		return nil, err
 	}
 
+	s.identityMu.Lock()
+	defer s.identityMu.Unlock()
+
 	anonymous, err := s.getIdentityByType(ctx, rootUser.ID, accountTypeAnonymous)
 	if err != nil {
 		return nil, err
