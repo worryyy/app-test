@@ -15,8 +15,8 @@ import (
 const authPermissionMsg = "当前接口需要进行认证后，方可使用"
 
 var (
-	authPermissionResp = responses.New(bizerr.CodeBizErr, authPermissionMsg, http.StatusForbidden)
-	authInternalResp   = responses.New(bizerr.CodeInternalErr, "系统错误", http.StatusInternalServerError)
+	authPermissionResp = responses.New(false,bizerr.CodeBizErr, authPermissionMsg, http.StatusForbidden)
+	authInternalResp   = responses.New(false,bizerr.CodeInternalErr, "系统错误", http.StatusInternalServerError)
 )
 
 var authPermissionExcludes = map[string]struct{}{

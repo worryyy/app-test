@@ -108,7 +108,6 @@ func (c *Consumers) handleTopicCheck(ctx context.Context, data json.RawMessage) 
 			c.logger.Warn("send add topic search failed", zap.Error(err), zap.String("topicID", msg.TopicID))
 		}
 	}
-	incPostPublish("success")
 	_ = c.wxClient.SendSubscribeMsg(ctx, topic.UserID, "您的帖子已发布", filteredTitle)
 	return nil
 }
@@ -183,7 +182,6 @@ func (c *Consumers) handleCommentAdd(ctx context.Context, data json.RawMessage) 
 		c.notifyCommentUsers(ctx, cmt, filteredComment, topic.UserID, now)
 	}
 
-	incCommentPublish("success")
 	return nil
 }
 

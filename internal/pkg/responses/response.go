@@ -7,6 +7,7 @@ import (
 )
 
 type Response struct {
+	Success    bool   `json:"success"`
 	Code       int    `json:"code"`
 	Message    string `json:"message"`
 	Data       any    `json:"data,omitempty"`
@@ -14,8 +15,9 @@ type Response struct {
 	HTTPStatus int    `json:"-"`
 }
 
-func New(code int, message string, httpStatus int) Response {
+func New(success bool,code int, message string, httpStatus int) Response {
 	return Response{
+		Success:	success,
 		Code:       code,
 		Message:    message,
 		HTTPStatus: httpStatus,

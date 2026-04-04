@@ -3,10 +3,10 @@ package responses
 import "net/http"
 
 var (
-	Success = New(CodeSuccess, "success", http.StatusOK)
+	Success = New(true,CodeSuccess, "success", http.StatusOK)
 
-	ParamErr    = New(CodeParamErr, "invalid parameters", http.StatusBadRequest)
-	BizErr      = New(CodeBizErr, "business error", http.StatusBadRequest)
-	NotFound    = New(CodeNotFound, "not found", http.StatusBadRequest)
-	InternalErr = New(CodeInternalErr, "internal error", http.StatusBadRequest)
+	ParamErr    = New(false,CodeParamErr, "invalid parameters", http.StatusBadRequest)
+	BizErr      = New(false,CodeBizErr, "business error", http.StatusBadRequest)
+	NotFound    = New(false,CodeNotFound, "not found", http.StatusBadRequest)
+	InternalErr = New(false,CodeInternalErr, "internal error", http.StatusBadRequest)
 )

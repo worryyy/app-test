@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	authNotFoundResp  = responses.New(bizerr.CodeBizErr, "authorization 找不到", http.StatusUnauthorized)
-	tokenNotFoundResp = responses.New(bizerr.CodeBizErr, "token 不存在,或已过期", http.StatusUnauthorized)
-	tokenInvalidResp  = responses.New(bizerr.CodeBizErr, "token invalid", http.StatusUnauthorized)
+	authNotFoundResp  = responses.New(false,bizerr.CodeBizErr, "authorization 找不到", http.StatusUnauthorized)
+	tokenNotFoundResp = responses.New(false,bizerr.CodeBizErr, "token 不存在,或已过期", http.StatusUnauthorized)
+	tokenInvalidResp  = responses.New(false,bizerr.CodeBizErr, "token invalid", http.StatusUnauthorized)
 )
 
 func JWTAuth(helper *jwtutil.Helper, rds *redis.Client) gin.HandlerFunc {
