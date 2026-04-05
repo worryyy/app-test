@@ -59,6 +59,22 @@ func (r *Repository) FindTermByID(ctx context.Context, id primitive.ObjectID) (*
 	return &term, nil
 }
 
+func (r *Repository) FindTermByValue(ctx context.Context, termValue string) (*Term, error) {
+	coll, err := r.mongoCollection(mongoCollTerm)
+	if err != nil {
+		return nil, err
+	}
+
+	var term Term
+	if err := coll.FindOne(ctx, bson.M{"term": termValue}).Decode(&term); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("find term by value %s: %w", termValue, err)
+	}
+	return &term, nil
+}
+
 func (r *Repository) DeleteTermByID(ctx context.Context, id primitive.ObjectID) (bool, error) {
 	coll, err := r.mongoCollection(mongoCollTerm)
 	if err != nil {

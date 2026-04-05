@@ -2,6 +2,8 @@ package school
 
 import (
 	"context"
+	"strings"
+	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
@@ -39,6 +41,35 @@ func NewService(
 		logger:   logger,
 		jwClient: NewJWClient(cfg, logger),
 	}
+}
+
+func (s *Service) CurTerm(ctx context.Context) (*CurDateAndTerm, error) {
+	current, err := s.repo.FindCurrentTerm(ctx)
+	if err != nil {
+		return nil, bizerr.InternalWrap("查询当前学期失败", err)
+	}
+	termValue := ""
+	if current != nil {
+		termValue = strings.TrimSpace(current.Term)
+	}
+	if termValue == "" {
+		return nil, bizerr.NotFound("请联系管理员设置当前学期")
+	}
+
+	term, err := s.repo.FindTermByValue(ctx, termValue)
+	if err != nil {
+		return nil, bizerr.InternalWrap("查询学期失败", err)
+	}
+	if term == nil {
+		return nil, bizerr.NotFound("请联系管理员检查学期")
+	}
+
+	return &CurDateAndTerm{
+		CurDate:    time.Now().Format("2006-01-02"),
+		CurTerm:    termValue,
+		TotalWeeks: term.TotalWeeks,
+		StartDate:  term.StartDate,
+	}, nil
 }
 
 func (s *Service) Authenticate(ctx context.Context, userID int64, req AuthenticationReq) (*JWCommonResp, error) {

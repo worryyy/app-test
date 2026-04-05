@@ -4,10 +4,7 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 
 	"github.com/gin-gonic/gin"
-
-	
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
-
 )
 
 type Handler struct {
@@ -18,7 +15,14 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-
+func (h *Handler) CurTerm(c *gin.Context) {
+	data, err := h.svc.CurTerm(c.Request.Context())
+	if err != nil {
+		responses.Fail(c, err)
+		return
+	}
+	responses.Success.RespData(c, data)
+}
 
 func (h *Handler) Authenticate(c *gin.Context) {
 	var req AuthenticationReq
