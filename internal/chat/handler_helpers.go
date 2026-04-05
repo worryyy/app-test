@@ -18,6 +18,14 @@ func bindQuery(c *gin.Context, req any) bool {
 	return true
 }
 
+func bindURI(c *gin.Context, req any) bool {
+	if err := c.ShouldBindUri(req); err != nil {
+		responses.Fail(c, bizerr.Param(errMsgInvalidParam))
+		return false
+	}
+	return true
+}
+
 func pageSize(c *gin.Context) (int, int) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "15"))

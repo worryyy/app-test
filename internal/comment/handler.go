@@ -16,12 +16,17 @@ func NewHandler(svc *Service) *Handler {
 }
 
 func (h *Handler) Create(c *gin.Context) {
+	var uri topicURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
 	var req CreateCommentReq
 	if !bindJSON(c, &req) {
 		return
 	}
 
-	if _, err := h.svc.AddComment(c.Request.Context(), c.Param("topic_id"), middleware.GetUserID(c), req.Comment, req.ParentCmtID); err != nil {
+	if _, err := h.svc.AddComment(c.Request.Context(), uri.TopicID, middleware.GetUserID(c), req.Comment, req.ParentCmtID); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -29,7 +34,12 @@ func (h *Handler) Create(c *gin.Context) {
 }
 
 func (h *Handler) Delete(c *gin.Context) {
-	if err := h.svc.DeleteComment(c.Request.Context(), c.Param("topic_id"), c.Param("comment_id"), middleware.GetUserID(c), false); err != nil {
+	var uri topicCommentURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	if err := h.svc.DeleteComment(c.Request.Context(), uri.TopicID, uri.CommentID, middleware.GetUserID(c), false); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -37,9 +47,17 @@ func (h *Handler) Delete(c *gin.Context) {
 }
 
 func (h *Handler) ListByTopic(c *gin.Context) {
+	var uri topicURI
+	if !bindURI(c, &uri) {
+		return
+	}
+	var query commentListQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
 	page, size := pageSize(c)
-	rootID := firstNonEmpty(c.Query("root_id"), c.Query("rootId"))
-	data, err := h.svc.ListByTopic(c.Request.Context(), c.Param("topic_id"), rootID, middleware.GetUserID(c), page, size)
+	data, err := h.svc.ListByTopic(c.Request.Context(), uri.TopicID, query.ResolvedRootID(), middleware.GetUserID(c), page, size)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -58,9 +76,13 @@ func (h *Handler) Mine(c *gin.Context) {
 }
 
 func (h *Handler) TargetUserComments(c *gin.Context) {
+	var query targetUserCommentsQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
 	page, size := pageSize(c)
-	targetUserID := firstNonEmpty(c.Query("target_user_id"), c.Query("targetUserId"))
-	data, err := h.svc.ListTargetUserComments(c.Request.Context(), targetUserID, page, size)
+	data, err := h.svc.ListTargetUserComments(c.Request.Context(), query.ResolvedTargetUserID(), page, size)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -69,7 +91,12 @@ func (h *Handler) TargetUserComments(c *gin.Context) {
 }
 
 func (h *Handler) Like(c *gin.Context) {
-	if err := h.svc.LikeComment(c.Request.Context(), c.Param("comment_id"), middleware.GetUserID(c)); err != nil {
+	var uri commentURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	if err := h.svc.LikeComment(c.Request.Context(), uri.CommentID, middleware.GetUserID(c)); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -77,7 +104,12 @@ func (h *Handler) Like(c *gin.Context) {
 }
 
 func (h *Handler) Unlike(c *gin.Context) {
-	if err := h.svc.UnlikeComment(c.Request.Context(), c.Param("comment_id"), middleware.GetUserID(c)); err != nil {
+	var uri commentURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	if err := h.svc.UnlikeComment(c.Request.Context(), uri.CommentID, middleware.GetUserID(c)); err != nil {
 		responses.Fail(c, err)
 		return
 	}

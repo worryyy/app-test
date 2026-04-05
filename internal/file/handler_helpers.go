@@ -1,8 +1,29 @@
 package file
 
-import "strconv"
+import (
+	"strconv"
 
-import "github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
+
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+)
+
+func bindQuery(c *gin.Context, req any) bool {
+	if err := c.ShouldBindQuery(req); err != nil {
+		responses.Fail(c, bizerr.Param(errMsgInvalidParam))
+		return false
+	}
+	return true
+}
+
+func bindURI(c *gin.Context, req any) bool {
+	if err := c.ShouldBindUri(req); err != nil {
+		responses.Fail(c, bizerr.Param(errMsgInvalidParam))
+		return false
+	}
+	return true
+}
 
 func pageSize(c *gin.Context) (int, int) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))

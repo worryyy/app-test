@@ -15,14 +15,14 @@ import (
 
 	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
+	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/server"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/snowflake"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/server"
-	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 )
 
 func main() {
@@ -69,6 +69,7 @@ func run() error {
 	schoolSvc := school.NewService(db, mongoDB, rds, cfg, logger, nil)
 
 	engine := gin.New()
+	engine.HandleMethodNotAllowed = true
 	engine.Use(gin.Recovery())
 	engine.Use(middleware.CORS())
 

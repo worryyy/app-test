@@ -94,9 +94,9 @@ func (s *Service) ListIdentities(ctx context.Context, rootUserID int64) (*Identi
 	identities := make([]*Identity, 0, len(users))
 	hasAnonymous := false
 	for i := range users {
-		s.ensureUserDefaults(&users[i])
-		identities = append(identities, buildIdentity(&users[i]))
-		if users[i].AccountType == accountTypeAnonymous {
+		normalized := s.normalizedUser(&users[i])
+		identities = append(identities, buildIdentity(normalized))
+		if normalized != nil && normalized.AccountType == accountTypeAnonymous {
 			hasAnonymous = true
 		}
 	}
@@ -151,7 +151,6 @@ func (s *Service) requireRootIdentity(ctx context.Context, rootUserID int64) (*U
 	if rootUser == nil {
 		return nil, ErrUserNotFound
 	}
-	s.ensureUserDefaults(rootUser)
 	return rootUser, nil
 }
 

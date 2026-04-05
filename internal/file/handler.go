@@ -19,8 +19,16 @@ func NewHandler(svc *Service) *Handler {
 }
 
 func (h *Handler) Download(c *gin.Context) {
-	showOrigin, _ := strconv.Atoi(c.DefaultQuery("show_origin", "0"))
-	url, err := h.svc.GetDownloadURL(c.Request.Context(), c.Param("md5"), showOrigin > 0)
+	var uri fileMD5URI
+	if !bindURI(c, &uri) {
+		return
+	}
+	var query fileDownloadQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
+	url, err := h.svc.GetDownloadURL(c.Request.Context(), uri.MD5, query.ShowOrigin > 0)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -55,8 +63,13 @@ func (h *Handler) Upload(c *gin.Context) {
 }
 
 func (h *Handler) Delete(c *gin.Context) {
+	var uri fileMD5URI
+	if !bindURI(c, &uri) {
+		return
+	}
+
 	userID := strconv.FormatInt(middleware.GetUserID(c), 10)
-	if err := h.svc.Delete(c.Request.Context(), c.Param("md5"), userID, false); err != nil {
+	if err := h.svc.Delete(c.Request.Context(), uri.MD5, userID, false); err != nil {
 		responses.Fail(c, err)
 		return
 	}

@@ -68,7 +68,12 @@ func (h *Handler) GetCurrent(c *gin.Context) {
 }
 
 func (h *Handler) RandomNickname(c *gin.Context) {
-	name, err := h.svc.RandomNickname(c.Query("type"))
+	var query randomNicknameQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
+	name, err := h.svc.RandomNickname(query.Type)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -91,7 +96,12 @@ func (h *Handler) Edit(c *gin.Context) {
 }
 
 func (h *Handler) GetUserProfile(c *gin.Context) {
-	targetUserID, err := parsePositiveInt64(firstNonBlank(c.Query("target_user_id"), c.Query("targetUserId")))
+	var query userProfileQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
+	targetUserID, err := parsePositiveInt64(query.ResolvedTargetUserID())
 	if err != nil {
 		responses.Fail(c, err)
 		return

@@ -3,8 +3,6 @@ package user
 import (
 	"errors"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -68,12 +66,12 @@ func (h *AdminHandler) AddAdmin(c *gin.Context) {
 }
 
 func (h *AdminHandler) DeleteUser(c *gin.Context) {
-	id, ok := pathPositiveInt64(c, "id")
-	if !ok {
+	var uri userIDURI
+	if !bindURI(c, &uri) {
 		return
 	}
 
-	if err := h.svc.DeleteUser(c.Request.Context(), id); err != nil {
+	if err := h.svc.DeleteUser(c.Request.Context(), uri.ID); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -82,8 +80,8 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 }
 
 func (h *AdminHandler) EditUser(c *gin.Context) {
-	id, ok := pathPositiveInt64(c, "id")
-	if !ok {
+	var uri userIDURI
+	if !bindURI(c, &uri) {
 		return
 	}
 
@@ -92,7 +90,7 @@ func (h *AdminHandler) EditUser(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.EditAdminUser(c.Request.Context(), id, currentUserID(c), req); err != nil {
+	if err := h.svc.EditAdminUser(c.Request.Context(), uri.ID, currentUserID(c), req); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -101,12 +99,12 @@ func (h *AdminHandler) EditUser(c *gin.Context) {
 }
 
 func (h *AdminHandler) GetUser(c *gin.Context) {
-	id, ok := pathPositiveInt64(c, "id")
-	if !ok {
+	var uri userIDURI
+	if !bindURI(c, &uri) {
 		return
 	}
 
-	user, err := h.svc.GetByID(c.Request.Context(), id)
+	user, err := h.svc.GetByID(c.Request.Context(), uri.ID)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -120,10 +118,12 @@ func (h *AdminHandler) GetUser(c *gin.Context) {
 }
 
 func (h *AdminHandler) ListUsers(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	size, _ := strconv.Atoi(c.DefaultQuery("size", "0"))
+	var query adminListUsersQuery
+	if !bindQuery(c, &query) {
+		return
+	}
 
-	data, err := h.svc.ListUsers(c.Request.Context(), page, size, c.Query("nickName"))
+	data, err := h.svc.ListUsers(c.Request.Context(), query.Page, query.Size, query.NickName)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -133,12 +133,12 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 }
 
 func (h *Handler) PreAuth(c *gin.Context) {
-	userID, ok := queryPositiveInt64(c, "user_id")
-	if !ok {
+	var query preAuthQuery
+	if !bindQuery(c, &query) {
 		return
 	}
 
-	if err := h.svc.PreAuthentication(c.Request.Context(), userID, c.Query("nick_name"), c.Query("pwd")); err != nil {
+	if err := h.svc.PreAuthentication(c.Request.Context(), query.UserID, query.NickName, query.Pwd); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -161,13 +161,12 @@ func (h *AdminHandler) ClearAuthentication(c *gin.Context) {
 }
 
 func (h *AdminHandler) UserCourse(c *gin.Context) {
-	key := strings.TrimSpace(c.Query("key"))
-	if key == "" {
-		responses.Fail(c, bizerr.Param(errMsgInvalidParam))
+	var query courseKeyQuery
+	if !bindQuery(c, &query) {
 		return
 	}
 
-	course, err := h.svc.GetCourseFileByKey(c.Request.Context(), key)
+	course, err := h.svc.GetCourseFileByKey(c.Request.Context(), query.Key)
 	if err != nil {
 		var be *bizerr.Error
 		if errors.As(err, &be) && be.Code == bizerr.CodeNotFound {
@@ -178,6 +177,6 @@ func (h *AdminHandler) UserCourse(c *gin.Context) {
 		return
 	}
 
-	c.Header("Content-Disposition", "attachment;filename="+key)
+	c.Header("Content-Disposition", "attachment;filename="+query.Key)
 	c.Data(http.StatusOK, "application/msexcel", course.Val)
 }

@@ -18,12 +18,20 @@ func bindJSON(c *gin.Context, req any) bool {
 	return true
 }
 
+func bindURI(c *gin.Context, req any) bool {
+	if err := c.ShouldBindUri(req); err != nil {
+		responses.Fail(c, bizerr.Param(errMsgInvalidParam))
+		return false
+	}
+	return true
+}
+
 func writeJWCommonResponse(c *gin.Context, resp *JWCommonResp) {
 	if resp == nil {
 		responses.Fail(c, bizerr.Biz("获取失败"))
 		return
 	}
-	responses.New(false,resp.Code, resp.Message, http.StatusOK).RespData(c, resp.Data)
+	responses.New(false, resp.Code, resp.Message, http.StatusOK).RespData(c, resp.Data)
 }
 
 func (h *Handler) currentUser(c *gin.Context) (*campusUser, bool) {

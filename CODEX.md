@@ -490,7 +490,7 @@ gin.DebugPrintRouteFunc = func(method, path, handler string, n int) {
 gin.SetMode(gin.ReleaseMode)
 ```
 
-解释：FAQ 明确给出两种启用方式，并说明 Release 模式会禁用 debug 日志并提升性能。生产、压测环境必须启用。citeturn31view1turn31view2  
+解释：FAQ 明确给出两种启用方式，并说明 Release 模式会禁用 debug 日志并提升性能。生产、压测环境必须启用。  
 官方链接：`https://gin-gonic.com/en/docs/faq/`
 
 **CFG-B 需要自定义 HTTP 参数（超时、Header 限制等）时必须使用 `http.Server` 显式配置**
@@ -505,7 +505,7 @@ srv := &http.Server{
 }
 ```
 
-解释：官方“Custom HTTP configuration”说明可将 Gin router 作为 `http.Server` 的 Handler，并显式设置读写超时、最大 header 大小等。团队在生产必须显式配置以增强抗慢请求与资源控制能力。citeturn4search11  
+解释：官方“Custom HTTP configuration”说明可将 Gin router 作为 `http.Server` 的 Handler，并显式设置读写超时、最大 header 大小等。团队在生产必须显式配置以增强抗慢请求与资源控制能力。 
 官方链接：`https://gin-gonic.com/en/docs/server-config/custom-http-config/`
 
 **CFG-C 服务必须支持优雅退出（完成 in-flight 请求、释放资源）**
@@ -516,7 +516,7 @@ srv := &http.Server{Addr: ":8080", Handler: router.Handler()}
 // _ = srv.Shutdown(ctx)
 ```
 
-解释：官方指出立即退出会丢弃正在处理的请求并可能造成不一致；优雅退出应停止接收新连接、等待处理中的请求完成、清理资源；并给出基于 `http.Server.Shutdown()` 的示例。citeturn25view2  
+解释：官方指出立即退出会丢弃正在处理的请求并可能造成不一致；优雅退出应停止接收新连接、等待处理中的请求完成、清理资源；并给出基于 `http.Server.Shutdown()` 的示例。
 官方链接：`https://gin-gonic.com/en/docs/server-config/graceful-restart-or-stop/`
 
 **TEST-A HTTP 测试首选 `net/http/httptest`，并通过 `setupRouter()` 复用路由**

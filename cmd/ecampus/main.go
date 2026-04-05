@@ -16,16 +16,16 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/chat"
 	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
+	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 	"github.com/Milchstrassse/Ecampus-go/internal/mq"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/server"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/snowflake"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
 	"github.com/Milchstrassse/Ecampus-go/internal/topic"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/server"
-	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 )
 
 func main() {
@@ -103,21 +103,22 @@ func run() error {
 	chatH := chat.NewHandler(chatSvc, userSvc, jwtHelper, rds)
 	schoolH := school.NewHandler(schoolSvc)
 
-engine := gin.New()
-engine.Use(gin.Recovery())
-engine.Use(middleware.CORS())
+	engine := gin.New()
+	engine.HandleMethodNotAllowed = true
+	engine.Use(gin.Recovery())
+	engine.Use(middleware.CORS())
 
-server.RegisterCommonRoutes(engine)
+	server.RegisterCommonRoutes(engine)
 
-registerUserRoutes(engine, logger, db, jwtHelper, rds, UserHandlers{
-	User:    userH,
-	Topic:   topicH,
-	Comment: commentH,
-	Theme:   themeH,
-	File:    fileH,
-	Chat:    chatH,
-	School:  schoolH,
-})
+	registerUserRoutes(engine, logger, db, jwtHelper, rds, UserHandlers{
+		User:    userH,
+		Topic:   topicH,
+		Comment: commentH,
+		Theme:   themeH,
+		File:    fileH,
+		Chat:    chatH,
+		School:  schoolH,
+	})
 
 	consumers, err := mq.NewConsumers(amqpConn, rds, mongoDB, db, cfg, logger, producer)
 	if err != nil {

@@ -71,8 +71,7 @@ func (s *Service) GetByID(ctx context.Context, id int64) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.ensureUserDefaults(user)
-	return user, nil
+	return s.normalizedUser(user), nil
 }
 
 func (s *Service) GetByOpenID(ctx context.Context, openID string) (*User, error) {
@@ -80,8 +79,7 @@ func (s *Service) GetByOpenID(ctx context.Context, openID string) (*User, error)
 	if err != nil {
 		return nil, err
 	}
-	s.ensureUserDefaults(user)
-	return user, nil
+	return s.normalizedUser(user), nil
 }
 
 func (s *Service) GetUserProfile(ctx context.Context, targetUserID int64) (*UserProfile, error) {

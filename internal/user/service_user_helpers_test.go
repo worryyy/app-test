@@ -61,3 +61,47 @@ func TestBuildAdminTokenUserPreservesAdminPower(t *testing.T) {
 		t.Fatalf("expected root user id %d, got %d", rootUser.ID, tokenUser.RootUserID)
 	}
 }
+
+func TestNormalizedUserReturnsCopyWithDefaults(t *testing.T) {
+	svc := &Service{}
+	raw := &User{ID: 42, StuPwd: "secret"}
+
+	normalized := svc.normalizedUser(raw)
+	if normalized == nil {
+		t.Fatal("expected normalized user")
+	}
+	if normalized == raw {
+		t.Fatal("expected normalized user to be a copy")
+	}
+	if normalized.RootUserID != 42 {
+		t.Fatalf("expected root user id 42, got %d", normalized.RootUserID)
+	}
+	if normalized.AccountType != accountTypeBase {
+		t.Fatalf("expected account type %q, got %q", accountTypeBase, normalized.AccountType)
+	}
+	if normalized.LastSwitchID == nil || *normalized.LastSwitchID != 42 {
+		t.Fatalf("expected last switch id 42, got %#v", normalized.LastSwitchID)
+	}
+	if raw.RootUserID != 0 || raw.AccountType != "" || raw.LastSwitchID != nil {
+		t.Fatalf("expected raw user to stay unchanged, got %+v", raw)
+	}
+}
+
+func TestSanitizeUserDoesNotMutateInput(t *testing.T) {
+	svc := &Service{}
+	raw := &User{ID: 7, StuPwd: "secret"}
+
+	sanitized := svc.sanitizeUser(raw)
+	if sanitized == nil {
+		t.Fatal("expected sanitized user")
+	}
+	if sanitized.StuPwd != "" {
+		t.Fatalf("expected empty password, got %q", sanitized.StuPwd)
+	}
+	if raw.StuPwd != "secret" {
+		t.Fatalf("expected raw password to stay unchanged, got %q", raw.StuPwd)
+	}
+	if raw.RootUserID != 0 || raw.AccountType != "" || raw.LastSwitchID != nil {
+		t.Fatalf("expected sanitize to avoid mutating raw user defaults, got %+v", raw)
+	}
+}

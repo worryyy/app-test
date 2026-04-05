@@ -17,18 +17,17 @@ func NewAdminHandler(svc *Service) *AdminHandler {
 }
 
 func (h *AdminHandler) SetPublic(c *gin.Context) {
-	ids := c.QueryArray("img_list")
-	if len(ids) == 0 {
-		responses.ParamErr.RespMessage(c, "img_list不能为空")
+	var query fileSetPublicQuery
+	if !bindQuery(c, &query) {
 		return
 	}
 
-	modified, err := h.svc.SetPublic(c.Request.Context(), ids, true)
+	modified, err := h.svc.SetPublic(c.Request.Context(), query.ImgList, true)
 	if err != nil {
 		responses.Fail(c, err)
 		return
 	}
-	responses.Success.RespMessage(c, fmt.Sprintf("更改 %d 条记录", modified))
+	responses.Success.RespMessage(c, fmt.Sprintf("修改 %d 条记录", modified))
 }
 
 func (h *AdminHandler) List(c *gin.Context) {

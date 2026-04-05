@@ -29,7 +29,12 @@ func (h *AdminHandler) AddTerm(c *gin.Context) {
 }
 
 func (h *AdminHandler) DeleteTerm(c *gin.Context) {
-	if err := h.svc.DeleteTerm(c.Request.Context(), c.Param("id")); err != nil {
+	var uri termIDURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	if err := h.svc.DeleteTerm(c.Request.Context(), uri.ID); err != nil {
 		responses.Fail(c, err)
 		return
 	}

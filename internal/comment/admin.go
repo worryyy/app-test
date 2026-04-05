@@ -15,7 +15,12 @@ func NewAdminHandler(svc *Service) *AdminHandler {
 }
 
 func (h *AdminHandler) Delete(c *gin.Context) {
-	if err := h.svc.DeleteComment(c.Request.Context(), c.Param("topic_id"), c.Param("comment_id"), 0, true); err != nil {
+	var uri topicCommentURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	if err := h.svc.DeleteComment(c.Request.Context(), uri.TopicID, uri.CommentID, 0, true); err != nil {
 		responses.Fail(c, err)
 		return
 	}

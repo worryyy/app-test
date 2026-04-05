@@ -53,7 +53,12 @@ func (h *Handler) ConversationEnter(c *gin.Context) {
 }
 
 func (h *Handler) ConversationUnreadCount(c *gin.Context) {
-	data, err := h.svc.GetUnreadCount(c.Request.Context(), middleware.GetUserID(c), c.Param("id"))
+	var uri conversationIDURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	data, err := h.svc.GetUnreadCount(c.Request.Context(), middleware.GetUserID(c), uri.ID)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -62,7 +67,12 @@ func (h *Handler) ConversationUnreadCount(c *gin.Context) {
 }
 
 func (h *Handler) ConversationQuery(c *gin.Context) {
-	data, err := h.svc.QueryConversation(c.Request.Context(), middleware.GetUserID(c), c.Query("target_user_id"))
+	var query conversationQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
+	data, err := h.svc.QueryConversation(c.Request.Context(), middleware.GetUserID(c), query.TargetUserID)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -71,7 +81,12 @@ func (h *Handler) ConversationQuery(c *gin.Context) {
 }
 
 func (h *Handler) ProfileByConversationID(c *gin.Context) {
-	peerID, err := h.svc.GetPeerUserID(c.Request.Context(), c.Query("conversation_id"), middleware.GetUserID(c))
+	var query conversationProfileQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
+	peerID, err := h.svc.GetPeerUserID(c.Request.Context(), query.ConversationID, middleware.GetUserID(c))
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -108,7 +123,12 @@ func (h *Handler) ProfileByConversationID(c *gin.Context) {
 }
 
 func (h *Handler) DeleteConversation(c *gin.Context) {
-	if err := h.svc.DeleteConversation(c.Request.Context(), middleware.GetUserID(c), c.Param("id")); err != nil {
+	var uri conversationIDURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	if err := h.svc.DeleteConversation(c.Request.Context(), middleware.GetUserID(c), uri.ID); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -116,7 +136,12 @@ func (h *Handler) DeleteConversation(c *gin.Context) {
 }
 
 func (h *Handler) OfflineMessages(c *gin.Context) {
-	lastMessageID, err := strconv.ParseInt(c.Param("last_message_id"), 10, 64)
+	var uri lastMessageURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	lastMessageID, err := strconv.ParseInt(uri.LastMessageID, 10, 64)
 	if err != nil {
 		responses.ParamErr.RespMessage(c, "last_message_id格式错误")
 		return
@@ -131,8 +156,13 @@ func (h *Handler) OfflineMessages(c *gin.Context) {
 }
 
 func (h *Handler) HistoryMessages(c *gin.Context) {
+	var query historyMessagesQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
 	page, size := pageSize(c)
-	oldestMessageID, err := parseOptionalPositiveInt64(c.Query("oldest_message_id"))
+	oldestMessageID, err := parseOptionalPositiveInt64(query.OldestMessageID)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -141,7 +171,7 @@ func (h *Handler) HistoryMessages(c *gin.Context) {
 	data, err := h.svc.GetHistoryMessages(
 		c.Request.Context(),
 		middleware.GetUserID(c),
-		c.Query("conversation_id"),
+		query.ConversationID,
 		oldestMessageID,
 		page,
 		size,
@@ -163,8 +193,13 @@ func (h *Handler) UnreadMessages(c *gin.Context) {
 }
 
 func (h *Handler) NotifyList(c *gin.Context) {
+	var query notificationListQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
 	page, size := pageSize(c)
-	data, err := h.svc.ListNotifications(c.Request.Context(), middleware.GetUserID(c), c.Query("type"), page, size)
+	data, err := h.svc.ListNotifications(c.Request.Context(), middleware.GetUserID(c), query.Type, page, size)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -173,7 +208,12 @@ func (h *Handler) NotifyList(c *gin.Context) {
 }
 
 func (h *Handler) NotifyHaveUnread(c *gin.Context) {
-	ok, err := h.svc.HaveUnreadNotification(c.Request.Context(), middleware.GetUserID(c), c.Param("type"))
+	var uri notificationTypeURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	ok, err := h.svc.HaveUnreadNotification(c.Request.Context(), middleware.GetUserID(c), uri.Type)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -182,7 +222,12 @@ func (h *Handler) NotifyHaveUnread(c *gin.Context) {
 }
 
 func (h *Handler) NotifyLatest(c *gin.Context) {
-	data, err := h.svc.LatestNotification(c.Request.Context(), middleware.GetUserID(c), c.Param("type"))
+	var uri notificationTypeURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	data, err := h.svc.LatestNotification(c.Request.Context(), middleware.GetUserID(c), uri.Type)
 	if err != nil {
 		responses.Fail(c, err)
 		return

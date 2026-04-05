@@ -34,7 +34,12 @@ func (h *Handler) Create(c *gin.Context) {
 }
 
 func (h *Handler) Delete(c *gin.Context) {
-	if err := h.svc.Delete(c.Request.Context(), c.Param("id"), middleware.GetUserID(c), false); err != nil {
+	var uri resourceIDURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	if err := h.svc.Delete(c.Request.Context(), uri.ID, middleware.GetUserID(c), false); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -42,8 +47,13 @@ func (h *Handler) Delete(c *gin.Context) {
 }
 
 func (h *Handler) GetByID(c *gin.Context) {
+	var uri topicURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
 	queryUserID := userIDString(middleware.GetUserID(c))
-	data, err := h.svc.GetByID(c.Request.Context(), c.Param("topic_id"), queryUserID)
+	data, err := h.svc.GetByID(c.Request.Context(), uri.TopicID, queryUserID)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -52,12 +62,17 @@ func (h *Handler) GetByID(c *gin.Context) {
 }
 
 func (h *Handler) Update(c *gin.Context) {
+	var uri topicURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
 	var req UpdateTopicReq
 	if !bindJSON(c, &req) {
 		return
 	}
 
-	if err := h.svc.Update(c.Request.Context(), c.Param("topic_id"), middleware.GetUserID(c), &req); err != nil {
+	if err := h.svc.Update(c.Request.Context(), uri.TopicID, middleware.GetUserID(c), &req); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -65,22 +80,24 @@ func (h *Handler) Update(c *gin.Context) {
 }
 
 func (h *Handler) Search(c *gin.Context) {
-	page, size := pageSize(c)
-	themeIDs := splitThemeIDs(firstNonEmpty(c.Query("themeIds"), c.Query("themeId")))
-	content := firstNonEmpty(c.Query("content"), c.Query("keyword"))
-	rawOrdCreated := strings.TrimSpace(c.Query("ord_created"))
-	if rawOrdCreated == "" {
-		rawOrdCreated = strings.TrimSpace(c.Query("orderBy"))
+	var query topicSearchQuery
+	if !bindQuery(c, &query) {
+		return
 	}
+
+	page, size := pageSize(c)
+	themeIDs := splitThemeIDs(query.ResolvedThemeInput())
+	content := query.ResolvedContent()
+	rawOrdCreated := strings.TrimSpace(query.ResolvedOrdCreated())
 	if rawOrdCreated == "" {
 		rawOrdCreated = "0"
 	}
 
 	ordCreated, _ := strconv.Atoi(rawOrdCreated)
-	if strings.EqualFold(c.Query("orderBy"), "created") {
+	if strings.EqualFold(query.OrderBy, "created") {
 		ordCreated = 1
 	}
-	if strings.EqualFold(c.Query("orderBy"), "hot") {
+	if strings.EqualFold(query.OrderBy, "hot") {
 		ordCreated = 0
 	}
 
@@ -103,8 +120,13 @@ func (h *Handler) Mine(c *gin.Context) {
 }
 
 func (h *Handler) ThemeMine(c *gin.Context) {
+	var query themeMineQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
 	page, size := pageSize(c)
-	data, err := h.svc.ListByTheme(c.Request.Context(), middleware.GetUserID(c), firstNonEmpty(c.Query("theme_id"), c.Query("themeId")), page, size)
+	data, err := h.svc.ListByTheme(c.Request.Context(), middleware.GetUserID(c), query.ResolvedThemeID(), page, size)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -113,8 +135,13 @@ func (h *Handler) ThemeMine(c *gin.Context) {
 }
 
 func (h *Handler) TargetUserTopics(c *gin.Context) {
+	var query targetUserTopicsQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
 	page, size := pageSize(c)
-	targetUserID, err := parsePositiveInt64(firstNonEmpty(c.Query("target_user_id"), c.Query("targetUserId")))
+	targetUserID, err := parsePositiveInt64(query.ResolvedTargetUserID())
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -139,7 +166,12 @@ func (h *Handler) FollowTopics(c *gin.Context) {
 }
 
 func (h *Handler) Like(c *gin.Context) {
-	if err := h.svc.LikeTopic(c.Request.Context(), middleware.GetClaims(c), c.Param("topic_id")); err != nil {
+	var uri topicURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	if err := h.svc.LikeTopic(c.Request.Context(), middleware.GetClaims(c), uri.TopicID); err != nil {
 		if errors.Is(err, ErrTopicAlreadyLiked) {
 			responses.Success.RespMessage(c, ErrTopicAlreadyLiked.Error())
 			return
@@ -151,7 +183,12 @@ func (h *Handler) Like(c *gin.Context) {
 }
 
 func (h *Handler) Unlike(c *gin.Context) {
-	if err := h.svc.UnlikeTopic(c.Request.Context(), middleware.GetUserID(c), c.Param("topic_id")); err != nil {
+	var uri topicURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	if err := h.svc.UnlikeTopic(c.Request.Context(), middleware.GetUserID(c), uri.TopicID); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -169,7 +206,12 @@ func (h *Handler) LikedTopics(c *gin.Context) {
 }
 
 func (h *Handler) Collect(c *gin.Context) {
-	if err := h.svc.CollectTopic(c.Request.Context(), middleware.GetClaims(c), c.Param("topic_id")); err != nil {
+	var uri topicURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	if err := h.svc.CollectTopic(c.Request.Context(), middleware.GetClaims(c), uri.TopicID); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -177,7 +219,12 @@ func (h *Handler) Collect(c *gin.Context) {
 }
 
 func (h *Handler) Uncollect(c *gin.Context) {
-	if err := h.svc.UncollectTopic(c.Request.Context(), middleware.GetUserID(c), c.Param("topic_id")); err != nil {
+	var uri topicURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	if err := h.svc.UncollectTopic(c.Request.Context(), middleware.GetUserID(c), uri.TopicID); err != nil {
 		responses.Fail(c, err)
 		return
 	}

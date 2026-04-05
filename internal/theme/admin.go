@@ -15,12 +15,17 @@ func NewAdminHandler(svc *Service) *AdminHandler {
 }
 
 func (h *AdminHandler) Update(c *gin.Context) {
+	var uri themeIDURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
 	var req ThemeUpdateReq
 	if !bindJSON(c, &req) {
 		return
 	}
 
-	data, err := h.svc.UpdateTheme(c.Request.Context(), c.Param("id"), &req)
+	data, err := h.svc.UpdateTheme(c.Request.Context(), uri.ID, &req)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -29,7 +34,12 @@ func (h *AdminHandler) Update(c *gin.Context) {
 }
 
 func (h *AdminHandler) List(c *gin.Context) {
-	data, err := h.svc.ListThemes(c.Request.Context(), c.Query("name"))
+	var query themeListQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
+	data, err := h.svc.ListThemes(c.Request.Context(), query.Name)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -79,7 +89,12 @@ func (h *AdminHandler) AddCampusTheme(c *gin.Context) {
 }
 
 func (h *AdminHandler) DeleteCampusTheme(c *gin.Context) {
-	if err := h.svc.DeleteCampusTheme(c.Request.Context(), c.Param("themeId")); err != nil {
+	var uri campusThemeURI
+	if !bindURI(c, &uri) {
+		return
+	}
+
+	if err := h.svc.DeleteCampusTheme(c.Request.Context(), uri.ThemeID); err != nil {
 		responses.Fail(c, err)
 		return
 	}

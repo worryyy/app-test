@@ -16,14 +16,12 @@ const (
 )
 
 func (s *Service) sanitizeUser(user *User) *User {
-	if user == nil {
+	normalized := s.normalizedUser(user)
+	if normalized == nil {
 		return nil
 	}
-	s.ensureUserDefaults(user)
-
-	copyUser := *user
-	copyUser.StuPwd = ""
-	return &copyUser
+	normalized.StuPwd = ""
+	return normalized
 }
 
 func (s *Service) sanitizeUsers(users []User) []User {
@@ -33,9 +31,12 @@ func (s *Service) sanitizeUsers(users []User) []User {
 
 	out := make([]User, 0, len(users))
 	for i := range users {
-		s.ensureUserDefaults(&users[i])
-		users[i].StuPwd = ""
-		out = append(out, users[i])
+		normalized := s.normalizedUser(&users[i])
+		if normalized == nil {
+			continue
+		}
+		normalized.StuPwd = ""
+		out = append(out, *normalized)
 	}
 	return out
 }
@@ -75,12 +76,22 @@ func (s *Service) ensureUserDefaults(user *User) {
 	}
 }
 
+func (s *Service) normalizedUser(user *User) *User {
+	if user == nil {
+		return nil
+	}
+
+	copyUser := *user
+	s.ensureUserDefaults(&copyUser)
+	return &copyUser
+}
+
 func (s *Service) getRootUser(ctx context.Context, user *User) (*User, error) {
+	user = s.normalizedUser(user)
 	if user == nil {
 		return nil, nil
 	}
-	s.ensureUserDefaults(user)
-	if user.RootUserID == 0 || user.RootUserID == user.ID {
+	if user.RootUserID == user.ID {
 		return user, nil
 	}
 
@@ -91,16 +102,14 @@ func (s *Service) getRootUser(ctx context.Context, user *User) (*User, error) {
 	if rootUser == nil {
 		return user, nil
 	}
-
-	s.ensureUserDefaults(rootUser)
 	return rootUser, nil
 }
 
 func (s *Service) resolveActiveIdentity(ctx context.Context, rootUser *User) (*User, error) {
+	rootUser = s.normalizedUser(rootUser)
 	if rootUser == nil {
 		return nil, nil
 	}
-	s.ensureUserDefaults(rootUser)
 	if rootUser.LastSwitchID == nil || *rootUser.LastSwitchID == rootUser.ID {
 		return rootUser, s.persistLastSwitch(ctx, rootUser.ID, rootUser.ID)
 	}
@@ -112,8 +121,6 @@ func (s *Service) resolveActiveIdentity(ctx context.Context, rootUser *User) (*U
 	if target == nil {
 		return rootUser, s.persistLastSwitch(ctx, rootUser.ID, rootUser.ID)
 	}
-
-	s.ensureUserDefaults(target)
 	if rootUserID(target) != rootUser.ID {
 		return rootUser, s.persistLastSwitch(ctx, rootUser.ID, rootUser.ID)
 	}
@@ -125,8 +132,7 @@ func (s *Service) getIdentityByType(ctx context.Context, rootUserID int64, accou
 	if err != nil {
 		return nil, err
 	}
-	s.ensureUserDefaults(user)
-	return user, nil
+	return s.normalizedUser(user), nil
 }
 
 func (s *Service) persistLastSwitch(ctx context.Context, rootUserID, targetUserID int64) error {
@@ -146,12 +152,11 @@ func (s *Service) buildAdminTokenUser(identity, rootUser *User) *jwtutil.TokenUs
 }
 
 func (s *Service) buildTokenUserWithPower(identity, rootUser *User, power int) *jwtutil.TokenUser {
+	identity = s.normalizedUser(identity)
+	rootUser = s.normalizedUser(rootUser)
 	if identity == nil || rootUser == nil {
 		return nil
 	}
-
-	s.ensureUserDefaults(identity)
-	s.ensureUserDefaults(rootUser)
 	return &jwtutil.TokenUser{
 		ID:          identity.ID,
 		OpenID:      rootUser.OpenID,

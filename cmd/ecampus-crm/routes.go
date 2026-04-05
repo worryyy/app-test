@@ -1,8 +1,6 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -18,11 +16,11 @@ import (
 )
 
 type AdminHandlers struct {
-	User      *user.AdminHandler
-	Comment   *comment.AdminHandler
-	Theme     *theme.AdminHandler
-	File      *file.AdminHandler
-	School    *school.AdminHandler
+	User    *user.AdminHandler
+	Comment *comment.AdminHandler
+	Theme   *theme.AdminHandler
+	File    *file.AdminHandler
+	School  *school.AdminHandler
 }
 
 func registerAdminRoutes(
@@ -69,8 +67,4 @@ func registerAdminRoutes(
 		admin.POST("/term/cur", handlers.School.SetCurrentTerm)
 
 	}
-
-	engine.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "UP"})
-	})
 }
