@@ -3,7 +3,6 @@ package mq
 import (
 	"time"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -23,8 +22,31 @@ type TopicCheckMsg struct {
 	TopicID string `json:"topicId"`
 }
 
+type AddCommentUser struct {
+	UserID      string `json:"userId"`
+	Avatar      string `json:"avatar"`
+	NickName    string `json:"nickName"`
+	AccountType string `json:"accountType"`
+	Signature   string `json:"signature"`
+}
+
+type AddCommentPayload struct {
+	ID          primitive.ObjectID `json:"id"`
+	TopicID     string             `json:"topicId"`
+	Comment     string             `json:"comment"`
+	CreatedTime time.Time          `json:"createdTime"`
+	User        AddCommentUser     `json:"user"`
+	Parent      *AddCommentUser    `json:"parent,omitempty"`
+	ParentCmtID string             `json:"parentCmtId,omitempty"`
+	RootCmtID   string             `json:"rootCmtId,omitempty"`
+	IsAuthor    bool               `json:"isAuthor"`
+	LikeNum     int64              `json:"likeNum"`
+	CommentNum  int64              `json:"commentNum"`
+	HasCheck    bool               `json:"hasCheck"`
+}
+
 type AddCommentMsg struct {
-	Comment comment.Comment `json:"comment"`
+	Comment AddCommentPayload `json:"comment"`
 }
 
 type CourseMsg struct {

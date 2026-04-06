@@ -1,10 +1,6 @@
 package topic
 
-import (
-	"time"
-
-	"go.mongodb.org/mongo-driver/bson/primitive"
-)
+import "go.mongodb.org/mongo-driver/bson/primitive"
 
 type Topic struct {
 	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
@@ -22,7 +18,7 @@ type Topic struct {
 	AccountType   string             `bson:"accountType" json:"accountType"`
 	NickName      string             `bson:"nickName" json:"nickName"`
 	Avatar        string             `bson:"avatar" json:"avatar"`
-	CreatedTime   *time.Time         `bson:"-" json:"createdTime"`
+	CreatedTime   string             `bson:"-" json:"createdTime"`
 	HasLike       bool               `bson:"-" json:"hasLike"`
 	HasCollection bool               `bson:"-" json:"hasCollection"`
 }

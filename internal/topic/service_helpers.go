@@ -86,8 +86,7 @@ func (s *Service) prepareTopic(topic *Topic) {
 		return
 	}
 	topic.Imgs = ensureSlice(topic.Imgs)
-	createdAt := topic.ID.Timestamp()
-	topic.CreatedTime = &createdAt
+	topic.CreatedTime = topic.ID.Timestamp().Format("2006-01-02 15:04:05")
 }
 
 func (s *Service) prepareTopics(topics []Topic) {

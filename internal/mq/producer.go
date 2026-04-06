@@ -191,7 +191,7 @@ func (p *Producer) SendTopicCheck(ctx context.Context, msg TopicCheckMsg) error 
 }
 
 func (p *Producer) SendAddComment(ctx context.Context, cmt comment.Comment) error {
-	return p.sendByKey(ctx, KeyAddComment, AddCommentMsg{Comment: cmt})
+	return p.sendByKey(ctx, KeyAddComment, buildAddCommentMsg(cmt))
 }
 
 func (p *Producer) SendGetCourse(ctx context.Context, msg CourseMsg) error {
@@ -220,4 +220,37 @@ func (p *Producer) SendDeleteTopic(ctx context.Context, msg TopicDeleteMsg) erro
 
 func (p *Producer) SendDeleteComment(ctx context.Context, topicID, commentID string) error {
 	return p.sendByKey(ctx, KeyDeleteComment, CommentDeleteMsg{TopicID: topicID, CommentID: commentID})
+}
+
+func buildAddCommentMsg(cmt comment.Comment) AddCommentMsg {
+	msg := AddCommentMsg{
+		Comment: AddCommentPayload{
+			ID:          cmt.ID,
+			TopicID:     cmt.TopicID,
+			Comment:     cmt.Comment,
+			CreatedTime: cmt.CreatedTime,
+			User:        buildAddCommentUser(cmt.User),
+			ParentCmtID: cmt.ParentCmtID,
+			RootCmtID:   cmt.RootCmtID,
+			IsAuthor:    cmt.IsAuthor,
+			LikeNum:     cmt.LikeNum,
+			CommentNum:  cmt.CommentNum,
+			HasCheck:    cmt.HasCheck,
+		},
+	}
+	if cmt.Parent != nil {
+		parent := buildAddCommentUser(*cmt.Parent)
+		msg.Comment.Parent = &parent
+	}
+	return msg
+}
+
+func buildAddCommentUser(user comment.CommentUser) AddCommentUser {
+	return AddCommentUser{
+		UserID:      user.UserID,
+		Avatar:      user.Avatar,
+		NickName:    user.NickName,
+		AccountType: user.AccountType,
+		Signature:   user.Signature,
+	}
 }
