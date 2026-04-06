@@ -1,9 +1,13 @@
 package bizerr
 
+import "net/http"
+
 const (
-	CodeSuccess     = 0
-	CodeParamErr    = 40001
-	CodeBizErr      = 40002
-	CodeNotFound    = 40004
-	CodeInternalErr = 50000
+	CodeSuccess      = http.StatusOK
+	CodeParamErr     = http.StatusBadRequest
+	CodeBizErr       = http.StatusBadRequest
+	CodeUnauthorized = http.StatusUnauthorized
+	CodeForbidden    = http.StatusForbidden
+	CodeNotFound     = http.StatusNotFound
+	CodeInternalErr  = http.StatusInternalServerError
 )

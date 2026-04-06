@@ -6,12 +6,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
 )
 
-var adminForbiddenResp = responses.New(false,bizerr.CodeBizErr, "权限不足", http.StatusForbidden)
+var adminForbiddenResp = responses.New(false, http.StatusForbidden, "权限不足")
 
 func AdminCheck(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {

@@ -31,7 +31,7 @@ func writeJWCommonResponse(c *gin.Context, resp *JWCommonResp) {
 		responses.Fail(c, bizerr.Biz("获取失败"))
 		return
 	}
-	responses.New(false, resp.Code, resp.Message, http.StatusOK).RespData(c, resp.Data)
+	responses.New(resp.Code == http.StatusOK, resp.Code, resp.Message).RespData(c, resp.Data)
 }
 
 func (h *Handler) currentUser(c *gin.Context) (*campusUser, bool) {

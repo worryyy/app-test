@@ -28,7 +28,7 @@ var (
 	ErrUserNotFound   = bizerr.NotFound("用户不存在")
 	ErrRTKNotExisted  = bizerr.NotFound("refresh_token 不存在, 或已过期")
 	ErrRTKUsed        = bizerr.Biz("refresh_token 已使用")
-	ErrIdentityDenied = bizerr.Biz("身份切换无权限")
+	ErrIdentityDenied = bizerr.Forbidden("身份切换无权限")
 )
 
 type Service struct {

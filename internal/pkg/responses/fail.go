@@ -2,9 +2,10 @@ package responses
 
 import (
 	"errors"
+	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+	"github.com/gin-gonic/gin"
 )
 
 func FromError(err error) Response {
@@ -14,21 +15,29 @@ func FromError(err error) Response {
 
 	var be *bizerr.Error
 	if errors.As(err, &be) {
-		switch be.Code {
-		case bizerr.CodeParamErr:
-			return ParamErr.withMessage(be.Message)
-		case bizerr.CodeBizErr:
-			return BizErr.withMessage(be.Message)
-		case bizerr.CodeNotFound:
-			return NotFound.withMessage(be.Message)
-		case bizerr.CodeInternalErr:
-			return InternalErr.withMessage(be.Message)
-		default:
-			return InternalErr.withMessage(be.Message)
+		resp := defaultResponseForStatus(be.Code)
+		if strings.TrimSpace(be.Message) != "" {
+			return resp.withMessage(be.Message)
 		}
+		return resp
 	}
 
 	return InternalErr
+}
+
+func defaultResponseForStatus(code int) Response {
+	switch normalizeHTTPStatus(code) {
+	case HTTPStatusUnauthorized:
+		return Unauthorized
+	case HTTPStatusForbidden:
+		return Forbidden
+	case HTTPStatusNotFound:
+		return NotFound
+	case HTTPStatusInternalErr:
+		return InternalErr
+	default:
+		return BizErr
+	}
 }
 
 func Fail(ctx *gin.Context, err error) {

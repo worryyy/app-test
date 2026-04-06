@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
 )
@@ -15,8 +14,8 @@ import (
 const authPermissionMsg = "当前接口需要进行认证后，方可使用"
 
 var (
-	authPermissionResp = responses.New(false,bizerr.CodeBizErr, authPermissionMsg, http.StatusForbidden)
-	authInternalResp   = responses.New(false,bizerr.CodeInternalErr, "系统错误", http.StatusInternalServerError)
+	authPermissionResp = responses.New(false, http.StatusForbidden, authPermissionMsg)
+	authInternalResp   = responses.New(false, http.StatusInternalServerError, "系统错误")
 )
 
 var authPermissionExcludes = map[string]struct{}{

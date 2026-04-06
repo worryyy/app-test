@@ -7,15 +7,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 )
 
 var (
-	authNotFoundResp  = responses.New(false,bizerr.CodeBizErr, "authorization 找不到", http.StatusUnauthorized)
-	tokenNotFoundResp = responses.New(false,bizerr.CodeBizErr, "token 不存在,或已过期", http.StatusUnauthorized)
-	tokenInvalidResp  = responses.New(false,bizerr.CodeBizErr, "token invalid", http.StatusUnauthorized)
+	authNotFoundResp  = responses.New(false, http.StatusUnauthorized, "authorization 找不到")
+	tokenNotFoundResp = responses.New(false, http.StatusUnauthorized, "token 不存在,或已过期")
+	tokenInvalidResp  = responses.New(false, http.StatusUnauthorized, "token invalid")
 )
 
 func JWTAuth(helper *jwtutil.Helper, rds *redis.Client) gin.HandlerFunc {

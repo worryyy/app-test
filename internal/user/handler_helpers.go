@@ -70,7 +70,7 @@ func parsePositiveInt64(raw string) (int64, error) {
 func (h *Handler) currentUser(c *gin.Context) (*User, bool) {
 	userID := currentUserID(c)
 	if userID <= 0 {
-		responses.Fail(c, bizerr.Biz(errMsgUserNotLogin))
+		responses.Fail(c, bizerr.Unauthorized(errMsgUserNotLogin))
 		return nil, false
 	}
 
@@ -92,7 +92,7 @@ func (h *Handler) requireCertifiedUser(c *gin.Context) (*User, bool) {
 		return nil, false
 	}
 	if !user.StuIsCheck {
-		responses.Fail(c, bizerr.Biz(errMsgNeedCampusAuth))
+		responses.Fail(c, bizerr.Forbidden(errMsgNeedCampusAuth))
 		return nil, false
 	}
 	return user, true

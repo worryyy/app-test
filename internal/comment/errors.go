@@ -14,6 +14,6 @@ var (
 	ErrCommentLikeFailed            = bizerr.Biz("点赞失败")
 	ErrCommentUnlikeFailed          = bizerr.Biz("取消点赞失败")
 	ErrCommentLikeNotFound          = bizerr.Biz("还没有对该评论进行点赞")
-	ErrAnonymousCommentForbidden    = bizerr.Biz("匿名用户禁止评论非匿名帖")
-	ErrCommentSelfRolePlayForbidden = bizerr.Biz("禁止左右脑互搏和自导自演")
+	ErrAnonymousCommentForbidden    = bizerr.Forbidden("匿名用户禁止评论非匿名帖")
+	ErrCommentSelfRolePlayForbidden = bizerr.Forbidden("禁止左右脑互搏和自导自演")
 )

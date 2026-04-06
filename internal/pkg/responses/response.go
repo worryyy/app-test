@@ -2,6 +2,7 @@ package responses
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -9,39 +10,56 @@ import (
 type Response struct {
 	Success    bool   `json:"success"`
 	Code       int    `json:"code"`
+	HTTPStatus int    `json:"httpstatus"`
 	Message    string `json:"message"`
 	Data       any    `json:"data,omitempty"`
 	RequestID  string `json:"requestId,omitempty"`
-	HTTPStatus int    `json:"-"`
 }
 
-func New(success bool,code int, message string, httpStatus int) Response {
+func New(success bool, httpStatus int, message string) Response {
+	_ = success
+
+	normalizedHTTPStatus := normalizeHTTPStatus(httpStatus)
+	normalizedCode := normalizeCode(normalizedHTTPStatus)
+
 	return Response{
-		Success:	success,
-		Code:       code,
+		Success:    normalizedCode == CodeSuccess,
+		Code:       normalizedCode,
+		HTTPStatus: normalizedHTTPStatus,
 		Message:    message,
-		HTTPStatus: httpStatus,
 	}
 }
 
 func (r Response) Resp(ctx *gin.Context) {
-	ctx.JSON(r.httpStatus(), r.build(ctx, r.Message, nil))
+	r.write(ctx, r.Message, nil)
 }
 
 func (r Response) RespData(ctx *gin.Context, data any) {
-	ctx.JSON(r.httpStatus(), r.build(ctx, r.Message, data))
+	r.write(ctx, r.Message, data)
 }
 
 func (r Response) RespMessage(ctx *gin.Context, message string) {
-	ctx.JSON(r.httpStatus(), r.build(ctx, message, nil))
+	r.write(ctx, message, nil)
 }
 
 func (r Response) RespMessageData(ctx *gin.Context, message string, data any) {
-	ctx.JSON(r.httpStatus(), r.build(ctx, message, data))
+	r.write(ctx, message, data)
+}
+
+func (r Response) write(ctx *gin.Context, message string, data any) {
+	resp := r.build(ctx, message, data)
+	ctx.JSON(resp.Code, resp)
 }
 
 func (r Response) build(ctx *gin.Context, message string, data any) Response {
 	resp := r
+	httpStatus := resp.HTTPStatus
+	if httpStatus == 0 {
+		httpStatus = resp.Code
+	}
+	resp.HTTPStatus = normalizeHTTPStatus(httpStatus)
+	resp.Code = normalizeCode(resp.HTTPStatus)
+	resp.Success = resp.Code == CodeSuccess
 	resp.Message = message
 	resp.Data = data
 	resp.RequestID = requestIDFromContext(ctx)
@@ -53,11 +71,18 @@ func (r Response) withMessage(message string) Response {
 	return r
 }
 
-func (r Response) httpStatus() int {
-	if r.HTTPStatus == 0 {
-		return 200
+func normalizeHTTPStatus(code int) int {
+	if code >= http.StatusContinue && code <= 999 {
+		return code
 	}
-	return r.HTTPStatus
+	return http.StatusInternalServerError
+}
+
+func normalizeCode(httpStatus int) int {
+	if httpStatus >= http.StatusOK && httpStatus < http.StatusMultipleChoices {
+		return CodeSuccess
+	}
+	return CodeFail
 }
 
 func requestIDFromContext(ctx *gin.Context) string {

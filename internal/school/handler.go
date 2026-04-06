@@ -3,8 +3,8 @@ package school
 import (
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 
-	"github.com/gin-gonic/gin"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
@@ -58,7 +58,7 @@ func (h *Handler) ReAuthenticate(c *gin.Context) {
 		return
 	}
 	if !currentUser.StuIsCheck {
-		responses.Fail(c, bizerr.Biz("当前用户未认证，请先认证"))
+		responses.Fail(c, bizerr.Forbidden("当前用户未认证，请先认证"))
 		return
 	}
 

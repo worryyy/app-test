@@ -16,6 +16,22 @@ func BizWrap(message string, cause error) *Error {
 	return Wrap(CodeBizErr, message, cause)
 }
 
+func Unauthorized(message string) *Error {
+	return New(CodeUnauthorized, message)
+}
+
+func UnauthorizedWrap(message string, cause error) *Error {
+	return Wrap(CodeUnauthorized, message, cause)
+}
+
+func Forbidden(message string) *Error {
+	return New(CodeForbidden, message)
+}
+
+func ForbiddenWrap(message string, cause error) *Error {
+	return Wrap(CodeForbidden, message, cause)
+}
+
 func NotFound(message string) *Error {
 	return New(CodeNotFound, message)
 }

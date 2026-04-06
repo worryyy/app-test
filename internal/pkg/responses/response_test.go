@@ -2,6 +2,7 @@ package responses
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -27,6 +28,12 @@ func TestRespMessageData(t *testing.T) {
 	if body.Code != CodeSuccess {
 		t.Fatalf("code = %d, want %d", body.Code, CodeSuccess)
 	}
+	if body.HTTPStatus != HTTPStatusOK {
+		t.Fatalf("httpstatus = %d, want %d", body.HTTPStatus, HTTPStatusOK)
+	}
+	if body.Code != recorder.Code {
+		t.Fatalf("body code = %d, want status %d", body.Code, recorder.Code)
+	}
 	if body.Message != "login ok" {
 		t.Fatalf("message = %q, want login ok", body.Message)
 	}
@@ -48,7 +55,40 @@ func TestRespUsesRequestID(t *testing.T) {
 	if body.RequestID != "req-123" {
 		t.Fatalf("requestId = %q, want req-123", body.RequestID)
 	}
-	if body.Code != CodeParamErr {
-		t.Fatalf("code = %d, want %d", body.Code, CodeParamErr)
+	if recorder.Code != CodeFail {
+		t.Fatalf("status = %d, want %d", recorder.Code, CodeFail)
+	}
+	if body.Code != CodeFail {
+		t.Fatalf("code = %d, want %d", body.Code, CodeFail)
+	}
+	if body.HTTPStatus != HTTPStatusBadRequest {
+		t.Fatalf("httpstatus = %d, want %d", body.HTTPStatus, HTTPStatusBadRequest)
+	}
+	if body.Code != recorder.Code {
+		t.Fatalf("body code = %d, want status %d", body.Code, recorder.Code)
+	}
+}
+
+func TestErrorHTTPStatusUsesDetailedStatus(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+
+	New(false, http.StatusUnauthorized, "token invalid").Resp(ctx)
+
+	if recorder.Code != CodeFail {
+		t.Fatalf("status = %d, want %d", recorder.Code, CodeFail)
+	}
+
+	var body Response
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if body.Code != CodeFail {
+		t.Fatalf("code = %d, want %d", body.Code, CodeFail)
+	}
+	if body.HTTPStatus != http.StatusUnauthorized {
+		t.Fatalf("httpstatus = %d, want %d", body.HTTPStatus, http.StatusUnauthorized)
 	}
 }

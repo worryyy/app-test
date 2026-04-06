@@ -1,11 +1,15 @@
 package responses
 
-import "github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+import "net/http"
 
 const (
-	CodeSuccess     = bizerr.CodeSuccess
-	CodeParamErr    = bizerr.CodeParamErr
-	CodeBizErr      = bizerr.CodeBizErr
-	CodeNotFound    = bizerr.CodeNotFound
-	CodeInternalErr = bizerr.CodeInternalErr
+	CodeSuccess = http.StatusOK
+	CodeFail    = http.StatusBadRequest
+
+	HTTPStatusOK           = http.StatusOK
+	HTTPStatusBadRequest   = http.StatusBadRequest
+	HTTPStatusUnauthorized = http.StatusUnauthorized
+	HTTPStatusForbidden    = http.StatusForbidden
+	HTTPStatusNotFound     = http.StatusNotFound
+	HTTPStatusInternalErr  = http.StatusInternalServerError
 )
