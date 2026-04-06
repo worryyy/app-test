@@ -5,7 +5,12 @@ type LoginReq struct {
 }
 
 type RefreshTokenReq struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
+	RefreshToken       string `json:"refresh_token"`
+	LegacyRefreshToken string `json:"refreshToken"`
+}
+
+func (r RefreshTokenReq) ResolvedRefreshToken() string {
+	return firstNonBlank(r.RefreshToken, r.LegacyRefreshToken)
 }
 
 type IdentitySwitchReq struct {

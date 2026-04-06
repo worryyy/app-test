@@ -1,6 +1,5 @@
 package user
 
-
 type Identity struct {
 	UserID      int64  `json:"userId"`
 	AccountType string `json:"accountType"`
@@ -10,31 +9,35 @@ type Identity struct {
 }
 
 type LoginResp struct {
-	Token           string    `json:"token"`
-	RefreshToken    string    `json:"refresh_token"`
-	User            *User     `json:"user"`
-	IsNew           bool      `json:"is_new"`
-	CurrentIdentity *Identity `json:"currentIdentity"`
-	RootUserID      int64     `json:"rootUserId"`
+	Token              string    `json:"token"`
+	RefreshToken       string    `json:"refresh_token"`
+	LegacyRefreshToken string    `json:"refreshToken,omitempty"`
+	User               *User     `json:"user"`
+	IsNew              bool      `json:"is_new"`
+	CurrentIdentity    *Identity `json:"currentIdentity"`
+	RootUserID         int64     `json:"rootUserId"`
 }
 
 type AdminLoginResp struct {
-	Token        string `json:"token"`
-	RefreshToken string `json:"refresh_token"`
-	User         *User  `json:"user"`
+	Token              string `json:"token"`
+	RefreshToken       string `json:"refresh_token"`
+	LegacyRefreshToken string `json:"refreshToken,omitempty"`
+	User               *User  `json:"user"`
 }
 
 type RefreshTokenResp struct {
-	Token           string    `json:"token"`
-	RefreshToken    string    `json:"refresh_token"`
-	CurrentIdentity *Identity `json:"currentIdentity"`
+	Token              string    `json:"token"`
+	RefreshToken       string    `json:"refresh_token"`
+	LegacyRefreshToken string    `json:"refreshToken,omitempty"`
+	CurrentIdentity    *Identity `json:"currentIdentity"`
 }
 
 type SwitchIdentityResp struct {
-	Token           string    `json:"token"`
-	RefreshToken    string    `json:"refreshToken"`
-	CurrentIdentity *Identity `json:"currentIdentity"`
-	RootUserID      int64     `json:"rootUserId"`
+	Token              string    `json:"token"`
+	RefreshToken       string    `json:"refresh_token"`
+	LegacyRefreshToken string    `json:"refreshToken,omitempty"`
+	CurrentIdentity    *Identity `json:"currentIdentity"`
+	RootUserID         int64     `json:"rootUserId"`
 }
 
 type IdentityListResp struct {
@@ -50,9 +53,6 @@ type UserProfile struct {
 	StuCla    string `json:"stuCla"`
 	Signature string `json:"signature"`
 }
-
-
-
 
 func buildIdentity(u *User) *Identity {
 	if u == nil {

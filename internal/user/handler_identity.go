@@ -61,9 +61,10 @@ func (h *Handler) SwitchIdentity(c *gin.Context) {
 	}
 
 	responses.Success.RespData(c, &SwitchIdentityResp{
-		Token:           token,
-		RefreshToken:    refreshToken,
-		CurrentIdentity: buildIdentity(target),
-		RootUserID:      rootUserID,
+		Token:              token,
+		RefreshToken:       refreshToken,
+		LegacyRefreshToken: refreshToken,
+		CurrentIdentity:    buildIdentity(target),
+		RootUserID:         rootUserID,
 	})
 }

@@ -1,7 +1,7 @@
 package responses
 
 var (
-	Success      = New(true, HTTPStatusOK, "success")
+	Success      = New(true, HTTPStatusOK, "成功")
 	ParamErr     = New(false, HTTPStatusBadRequest, "invalid parameters")
 	BizErr       = New(false, HTTPStatusBadRequest, "business error")
 	Unauthorized = New(false, HTTPStatusUnauthorized, "unauthorized")

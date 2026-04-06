@@ -3,6 +3,7 @@ package middleware
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -24,7 +25,10 @@ func JWTAuth(helper *jwtutil.Helper, rds *redis.Client) gin.HandlerFunc {
 			return
 		}
 
-		token := c.GetHeader("Authorization")
+		token := strings.TrimSpace(c.GetHeader("Authorization"))
+		if len(token) >= 7 && strings.EqualFold(token[:7], "Bearer ") {
+			token = strings.TrimSpace(token[7:])
+		}
 		if token == "" {
 			authNotFoundResp.Resp(c)
 			c.Abort()

@@ -17,6 +17,24 @@ func (q userProfileQuery) ResolvedTargetUserID() string {
 	return firstNonBlank(q.TargetUserID, q.LegacyTargetUserID)
 }
 
+type followActionQuery struct {
+	FollowingID       string `form:"following_id"`
+	LegacyFollowingID string `form:"followingId"`
+}
+
+func (q followActionQuery) ResolvedFollowingID() string {
+	return firstNonBlank(q.FollowingID, q.LegacyFollowingID)
+}
+
+type userStatsQuery struct {
+	UserID       string `form:"user_id"`
+	LegacyUserID string `form:"userId"`
+}
+
+func (q userStatsQuery) ResolvedUserID() string {
+	return firstNonBlank(q.UserID, q.LegacyUserID)
+}
+
 type adminListUsersQuery struct {
 	Page     int    `form:"page"`
 	Size     int    `form:"size"`

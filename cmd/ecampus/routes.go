@@ -36,6 +36,7 @@ func registerUserRoutes(
 	handlers UserHandlers,
 ) {
 	registerUserPublicRoutes(engine, handlers)
+	registerSchoolPublicRoutes(engine, handlers.School)
 	registerFileAuthRoutes(engine, jwtHelper, rds, handlers.File)
 	registerUserInfraRoutes(engine, handlers)
 
@@ -47,6 +48,7 @@ func registerUserRoutes(
 	)
 
 	registerUserProfileRoutes(api, handlers.User)
+	registerUserFollowRoutes(api, handlers.User)
 	registerUserIdentityRoutes(api, handlers.User)
 	registerTopicRoutes(api, handlers.Topic)
 	registerTopicLikeRoutes(api, handlers.Topic)
@@ -67,6 +69,13 @@ func registerUserPublicRoutes(engine *gin.Engine, handlers UserHandlers) {
 
 		pub.GET("/file/:md5", handlers.File.Download)
 		pub.GET("/file", handlers.File.ListPublic)
+	}
+}
+
+func registerSchoolPublicRoutes(engine *gin.Engine, handler *school.Handler) {
+	pub := engine.Group("")
+	{
+		pub.GET("/api/term", handler.CurTerm)
 	}
 }
 
@@ -101,6 +110,12 @@ func registerUserIdentityRoutes(api *gin.RouterGroup, handler *user.Handler) {
 	api.PUT("/user/identity/anonymous/nickname", handler.UpdateAnonymousNickname)
 	api.GET("/user/identity/list", handler.ListIdentity)
 	api.POST("/user/identity/switch", handler.SwitchIdentity)
+}
+
+func registerUserFollowRoutes(api *gin.RouterGroup, handler *user.Handler) {
+	api.POST("/user/follow", handler.Follow)
+	api.DELETE("/user/follow", handler.Unfollow)
+	api.GET("/user/stats", handler.GetUserStats)
 }
 
 func registerTopicRoutes(api *gin.RouterGroup, handler *topic.Handler) {

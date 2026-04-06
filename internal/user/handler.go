@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 )
@@ -30,12 +31,13 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	responses.Success.RespData(c, &LoginResp{
-		Token:           token,
-		RefreshToken:    refreshToken,
-		User:            user,
-		IsNew:           isNew,
-		CurrentIdentity: buildIdentity(activeIdentity),
-		RootUserID:      rootUserID(user),
+		Token:              token,
+		RefreshToken:       refreshToken,
+		LegacyRefreshToken: refreshToken,
+		User:               user,
+		IsNew:              isNew,
+		CurrentIdentity:    buildIdentity(activeIdentity),
+		RootUserID:         rootUserID(user),
 	})
 }
 
@@ -45,16 +47,23 @@ func (h *Handler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	token, refreshToken, user, err := h.svc.RefreshToken(c.Request.Context(), req.RefreshToken)
+	refreshTokenValue := req.ResolvedRefreshToken()
+	if refreshTokenValue == "" {
+		responses.Fail(c, bizerr.Param(errMsgInvalidParam))
+		return
+	}
+
+	token, refreshToken, user, err := h.svc.RefreshToken(c.Request.Context(), refreshTokenValue)
 	if err != nil {
 		responses.Fail(c, err)
 		return
 	}
 
 	responses.Success.RespData(c, &RefreshTokenResp{
-		Token:           token,
-		RefreshToken:    refreshToken,
-		CurrentIdentity: buildIdentity(user),
+		Token:              token,
+		RefreshToken:       refreshToken,
+		LegacyRefreshToken: refreshToken,
+		CurrentIdentity:    buildIdentity(user),
 	})
 }
 
