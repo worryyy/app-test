@@ -37,15 +37,6 @@ func declareTopology(ch *amqp.Channel) error {
 	if err := declareQueueAndBind(ch, QueueCommentAdd, Exchange, KeyAddComment, deadArgs); err != nil {
 		return err
 	}
-	if err := declareQueueAndBind(ch, QueueTopicSearchAdd, Exchange, KeyAddTopicSearch, deadArgs); err != nil {
-		return err
-	}
-	if err := declareQueueAndBind(ch, QueueTopicSearchUpdate, Exchange, KeyUpdateTopicSearch, deadArgs); err != nil {
-		return err
-	}
-	if err := declareQueueAndBind(ch, QueueTopicSearchDel, Exchange, KeyDelTopicSearch, deadArgs); err != nil {
-		return err
-	}
 	if err := declareQueueAndBind(ch, QueueTopicCheck, Exchange, KeyTopicCheck, deadArgs); err != nil {
 		return err
 	}

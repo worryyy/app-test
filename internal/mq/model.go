@@ -27,10 +27,6 @@ type AddCommentMsg struct {
 	Comment comment.Comment `json:"comment"`
 }
 
-type AddTopicSearchMsg struct {
-	TopicID string `json:"topicId"`
-}
-
 type CourseMsg struct {
 	UserID int64  `json:"userId"`
 	StuNum string `json:"stuNum"`

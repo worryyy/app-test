@@ -11,7 +11,7 @@ type Response struct {
 	Success    bool   `json:"success"`
 	Code       int    `json:"code"`
 	HTTPStatus int    `json:"httpstatus"`
-	Message    string `json:"message"`
+	Msg        string `json:"msg"`
 	Data       any    `json:"data,omitempty"`
 	RequestID  string `json:"requestId,omitempty"`
 }
@@ -26,16 +26,16 @@ func New(success bool, httpStatus int, message string) Response {
 		Success:    normalizedCode == CodeSuccess,
 		Code:       normalizedCode,
 		HTTPStatus: normalizedHTTPStatus,
-		Message:    message,
+		Msg:        message,
 	}
 }
 
 func (r Response) Resp(ctx *gin.Context) {
-	r.write(ctx, r.Message, nil)
+	r.write(ctx, r.Msg, nil)
 }
 
 func (r Response) RespData(ctx *gin.Context, data any) {
-	r.write(ctx, r.Message, data)
+	r.write(ctx, r.Msg, data)
 }
 
 func (r Response) RespMessage(ctx *gin.Context, message string) {
@@ -60,14 +60,14 @@ func (r Response) build(ctx *gin.Context, message string, data any) Response {
 	resp.HTTPStatus = normalizeHTTPStatus(httpStatus)
 	resp.Code = normalizeCode(resp.HTTPStatus)
 	resp.Success = resp.Code == CodeSuccess
-	resp.Message = message
+	resp.Msg = message
 	resp.Data = data
 	resp.RequestID = requestIDFromContext(ctx)
 	return resp
 }
 
 func (r Response) withMessage(message string) Response {
-	r.Message = message
+	r.Msg = message
 	return r
 }
 

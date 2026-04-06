@@ -100,9 +100,6 @@ func NewProducer(conn *amqp.Connection, rds *redis.Client, mongoDB *mongo.Databa
 		producer: map[string]*BaseProducer{
 			KeyTopicCheck:        NewBaseProducer(ch, Exchange, KeyTopicCheck, rds, logger),
 			KeyAddComment:        NewBaseProducer(ch, Exchange, KeyAddComment, rds, logger),
-			KeyAddTopicSearch:    NewBaseProducer(ch, Exchange, KeyAddTopicSearch, rds, logger),
-			KeyUpdateTopicSearch: NewBaseProducer(ch, Exchange, KeyUpdateTopicSearch, rds, logger),
-			KeyDelTopicSearch:    NewBaseProducer(ch, Exchange, KeyDelTopicSearch, rds, logger),
 			KeyGetCourse:         NewBaseProducer(ch, Exchange, KeyGetCourse, rds, logger),
 			KeyNotifyUser:        NewBaseProducer(ch, Exchange, KeyNotifyUser, rds, logger),
 			KeyUpdateTopicUser:   NewBaseProducer(ch, Exchange, KeyUpdateTopicUser, rds, logger),
@@ -195,18 +192,6 @@ func (p *Producer) SendTopicCheck(ctx context.Context, msg TopicCheckMsg) error 
 
 func (p *Producer) SendAddComment(ctx context.Context, cmt comment.Comment) error {
 	return p.sendByKey(ctx, KeyAddComment, AddCommentMsg{Comment: cmt})
-}
-
-func (p *Producer) SendAddTopicSearch(ctx context.Context, msg AddTopicSearchMsg) error {
-	return p.sendByKey(ctx, KeyAddTopicSearch, msg)
-}
-
-func (p *Producer) SendUpdateTopicSearch(ctx context.Context, msg AddTopicSearchMsg) error {
-	return p.sendByKey(ctx, KeyUpdateTopicSearch, msg)
-}
-
-func (p *Producer) SendDelTopicSearch(ctx context.Context, msg AddTopicSearchMsg) error {
-	return p.sendByKey(ctx, KeyDelTopicSearch, msg)
 }
 
 func (p *Producer) SendGetCourse(ctx context.Context, msg CourseMsg) error {

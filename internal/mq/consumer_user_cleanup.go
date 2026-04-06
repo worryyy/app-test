@@ -123,7 +123,6 @@ func (c *Consumers) handleTopicDelete(ctx context.Context, data json.RawMessage)
 		return nil
 	}
 
-	_, _ = c.mongoDB.Collection("campus_topic_search").DeleteOne(ctx, bson.M{"topicId": msg.TopicID})
 	_, _ = c.mongoDB.Collection("campus_topic_like").UpdateMany(ctx, bson.M{}, bson.M{"$pull": bson.M{"topicIds": msg.TopicID}})
 	_, _ = c.mongoDB.Collection("campus_topic_collection").UpdateMany(ctx, bson.M{}, bson.M{"$pull": bson.M{"topicIds": msg.TopicID}})
 	if _, err := c.mongoDB.Collection("campus_comment").UpdateMany(

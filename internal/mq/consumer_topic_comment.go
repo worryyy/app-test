@@ -10,7 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 )
 
@@ -23,12 +22,6 @@ type topicDoc struct {
 	Imgs       []string           `bson:"imgs"`
 	HasCheck   bool               `bson:"hasCheck"`
 	CommentNum int64              `bson:"commentNum"`
-}
-
-type themeDoc struct {
-	ID         primitive.ObjectID `bson:"_id,omitempty"`
-	Name       string             `bson:"name"`
-	NeedSearch bool               `bson:"needSearch"`
 }
 
 type commentUserDoc struct {
@@ -103,11 +96,6 @@ func (c *Consumers) handleTopicCheck(ctx context.Context, data json.RawMessage) 
 		return fmt.Errorf("update checked topic: %w", err)
 	}
 
-	if c.producer != nil {
-		if err := c.producer.SendAddTopicSearch(ctx, AddTopicSearchMsg(msg)); err != nil {
-			c.logger.Warn("send add topic search failed", zap.Error(err), zap.String("topicID", msg.TopicID))
-		}
-	}
 	_ = c.wxClient.SendSubscribeMsg(ctx, topic.UserID, "您的帖子已发布", filteredTitle)
 	return nil
 }
@@ -252,72 +240,4 @@ func (c *Consumers) notifyCommentUsers(ctx context.Context, cmt commentDoc, filt
 			CreatedTime:  createdTime,
 		})
 	}
-}
-
-func (c *Consumers) handleTopicSearchAdd(ctx context.Context, data json.RawMessage) error {
-	return c.upsertTopicSearch(ctx, data)
-}
-
-func (c *Consumers) handleTopicSearchUpdate(ctx context.Context, data json.RawMessage) error {
-	return c.upsertTopicSearch(ctx, data)
-}
-
-func (c *Consumers) handleTopicSearchDel(ctx context.Context, data json.RawMessage) error {
-	var msg AddTopicSearchMsg
-	if err := decodeData(data, &msg); err != nil {
-		return err
-	}
-	if _, err := c.mongoDB.Collection("campus_topic_search").DeleteOne(ctx, bson.M{"topicId": msg.TopicID}); err != nil {
-		return fmt.Errorf("delete topic search index: %w", err)
-	}
-	return nil
-}
-
-func (c *Consumers) upsertTopicSearch(ctx context.Context, data json.RawMessage) error {
-	var msg AddTopicSearchMsg
-	if err := decodeData(data, &msg); err != nil {
-		return err
-	}
-
-	oid, err := primitive.ObjectIDFromHex(msg.TopicID)
-	if err != nil {
-		return fmt.Errorf("invalid topic id for search: %w", err)
-	}
-	var topic topicDoc
-	if err := c.mongoDB.Collection("campus_topic").FindOne(ctx, bson.M{"_id": oid}).Decode(&topic); err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil
-		}
-		return fmt.Errorf("find topic for search: %w", err)
-	}
-
-	themeOID, err := primitive.ObjectIDFromHex(topic.ThemeID)
-	if err != nil {
-		return fmt.Errorf("invalid theme id for search: %w", err)
-	}
-	var theme themeDoc
-	if err := c.mongoDB.Collection("campus_theme").FindOne(ctx, bson.M{"_id": themeOID}).Decode(&theme); err != nil {
-		return fmt.Errorf("find theme for search: %w", err)
-	}
-	if !theme.NeedSearch {
-		return nil
-	}
-
-	update := bson.M{
-		"$set": bson.M{
-			"topicId":   msg.TopicID,
-			"themeName": theme.Name,
-			"title":     tokenizeText(topic.Title),
-			"content":   tokenizeText(topic.Content),
-		},
-	}
-	if _, err := c.mongoDB.Collection("campus_topic_search").UpdateOne(
-		ctx,
-		bson.M{"topicId": msg.TopicID},
-		update,
-		options.Update().SetUpsert(true),
-	); err != nil {
-		return fmt.Errorf("upsert topic search index: %w", err)
-	}
-	return nil
 }

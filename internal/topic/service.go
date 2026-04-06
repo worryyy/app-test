@@ -114,9 +114,6 @@ func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAd
 	}
 
 	if s.producer != nil {
-		if err := s.producer.SendDeleteTopicSearch(ctx, TopicSearchMsg{TopicID: topicID}); err != nil {
-			s.logger.Warn("send delete search mq failed", zap.Error(err), zap.String("topicID", topicID))
-		}
 		if err := s.producer.SendDeleteTopic(ctx, TopicDeleteMsg{TopicID: topicID}); err != nil {
 			s.logger.Warn("send delete topic mq failed", zap.Error(err), zap.String("topicID", topicID))
 		}
@@ -185,11 +182,6 @@ func (s *Service) Update(ctx context.Context, topicID string, userID int64, req 
 		return ErrTopicNotFound
 	}
 
-	if s.producer != nil {
-		if err := s.producer.SendUpdateTopicSearch(ctx, TopicSearchMsg{TopicID: topicID}); err != nil {
-			s.logger.Warn("send update search mq failed", zap.Error(err), zap.String("topicID", topicID))
-		}
-	}
 	return nil
 }
 

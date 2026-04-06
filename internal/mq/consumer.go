@@ -84,18 +84,15 @@ func (c *Consumers) Start() error {
 	}
 
 	handlers := map[string]func(ctx context.Context, data json.RawMessage) error{
-		QueueTopicCheck:        c.handleTopicCheck,
-		QueueCommentAdd:        c.handleCommentAdd,
-		QueueTopicSearchAdd:    c.handleTopicSearchAdd,
-		QueueTopicSearchUpdate: c.handleTopicSearchUpdate,
-		QueueTopicSearchDel:    c.handleTopicSearchDel,
-		QueueTopicUpdate:       c.handleTopicUpdate,
-		QueueTopicDelete:       c.handleTopicDelete,
-		QueueCommentUpdate:     c.handleCommentUpdate,
-		QueueCommentDelete:     c.handleCommentDelete,
-		QueueGetCourse:         c.handleGetCourse,
-		QueueNotifyUser:        c.handleNotifyUser,
-		QueueDie:               c.handleDie,
+		QueueTopicCheck:    c.handleTopicCheck,
+		QueueCommentAdd:    c.handleCommentAdd,
+		QueueTopicUpdate:   c.handleTopicUpdate,
+		QueueTopicDelete:   c.handleTopicDelete,
+		QueueCommentUpdate: c.handleCommentUpdate,
+		QueueCommentDelete: c.handleCommentDelete,
+		QueueGetCourse:     c.handleGetCourse,
+		QueueNotifyUser:    c.handleNotifyUser,
+		QueueDie:           c.handleDie,
 	}
 
 	for queue, handler := range handlers {
@@ -160,12 +157,6 @@ func dedupPrefix(queue string) string {
 		return rediskey.TopicCreateCache
 	case QueueCommentAdd:
 		return rediskey.AddMsgCache
-	case QueueTopicSearchAdd:
-		return rediskey.AddTopicSearch
-	case QueueTopicSearchUpdate:
-		return rediskey.UpdateTopicSearch
-	case QueueTopicSearchDel:
-		return rediskey.DeleteTopicCache
 	case QueueTopicUpdate, QueueCommentUpdate:
 		return rediskey.UpdateMsgCache
 	case QueueTopicDelete, QueueCommentDelete:

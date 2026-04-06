@@ -22,14 +22,6 @@ func (a *topicProducerAdapter) SendTopicCheck(ctx context.Context, msg topic.Top
 	return a.producer.SendTopicCheck(ctx, mq.TopicCheckMsg(msg))
 }
 
-func (a *topicProducerAdapter) SendUpdateTopicSearch(ctx context.Context, msg topic.TopicSearchMsg) error {
-	return a.producer.SendUpdateTopicSearch(ctx, mq.AddTopicSearchMsg(msg))
-}
-
-func (a *topicProducerAdapter) SendDeleteTopicSearch(ctx context.Context, msg topic.TopicSearchMsg) error {
-	return a.producer.SendDelTopicSearch(ctx, mq.AddTopicSearchMsg(msg))
-}
-
 func (a *topicProducerAdapter) SendDeleteTopic(ctx context.Context, msg topic.TopicDeleteMsg) error {
 	return a.producer.SendDeleteTopic(ctx, mq.TopicDeleteMsg(msg))
 }

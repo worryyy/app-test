@@ -34,8 +34,8 @@ func TestRespMessageData(t *testing.T) {
 	if body.Code != recorder.Code {
 		t.Fatalf("body code = %d, want status %d", body.Code, recorder.Code)
 	}
-	if body.Message != "login ok" {
-		t.Fatalf("message = %q, want login ok", body.Message)
+	if body.Msg != "login ok" {
+		t.Fatalf("msg = %q, want login ok", body.Msg)
 	}
 }
 

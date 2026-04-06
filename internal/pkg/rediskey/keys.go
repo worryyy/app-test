@@ -21,37 +21,31 @@ const (
 )
 
 const (
-	UserPrefix      = "campus:user:"
-	UserSignPrefix  = "campus:userSign:"
+	UserPrefix     = "campus:user:"
+	UserSignPrefix = "campus:userSign:"
 )
 
 func User(id int64) string {
 	return fmt.Sprintf("%s%d", UserPrefix, id)
 }
 
-
 func UserSign(yearMonth string) string {
 	return UserSignPrefix + yearMonth
 }
 
 const (
-	AddMsgCache       = "campus:AMC:"
-	DeleteMsgCache    = "campus:DMC:"
-	UpdateMsgCache    = "campus:UMC:"
-	TopicCreateCache  = "campus:TCC:"
-	TopicInfoCache    = "campus:TIC:"
-	DeleteTopicCache  = "campus:DTC:"
-	UpdateTopicSearch = "campus:UTS:"
-	AddTopicSearch    = "campus:ATS:"
-	GetAllCourse      = "campus:GAC:"
-	NotifyCache       = "campus:NOTIFY:"
+	AddMsgCache      = "campus:AMC:"
+	DeleteMsgCache   = "campus:DMC:"
+	UpdateMsgCache   = "campus:UMC:"
+	TopicCreateCache = "campus:TCC:"
+	TopicInfoCache   = "campus:TIC:"
+	DeleteTopicCache = "campus:DTC:"
+	GetAllCourse     = "campus:GAC:"
+	NotifyCache      = "campus:NOTIFY:"
 )
 
-
-
-
 const (
-	UserCoursePrefix    = "campus:userCourse:"
+	UserCoursePrefix = "campus:userCourse:"
 )
 
 func UserCourse(userID int64, term string, week int) string {
