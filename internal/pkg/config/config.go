@@ -80,8 +80,10 @@ type CustomConfig struct {
 }
 
 type JWConfig struct {
-	BaseURL string `mapstructure:"base_url"`
-	APIKey  string `mapstructure:"api_key"`
+	BaseURL  string `mapstructure:"base_url"`
+	APIKey   string `mapstructure:"api_key"`
+	AuthURL  string `mapstructure:"auth_url"`
+	JSXSDURL string `mapstructure:"jsxsd_url"`
 }
 
 type EncryptionConfig struct {

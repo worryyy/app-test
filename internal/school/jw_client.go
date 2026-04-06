@@ -2,9 +2,6 @@ package school
 
 import (
 	"context"
-	"net/http"
-	"net/url"
-	"strconv"
 
 	"go.uber.org/zap"
 
@@ -51,10 +48,10 @@ func NewJWClient(cfg *config.Config, logger *zap.Logger) *JWClient {
 }
 
 func (j *JWClient) CheckLogin(ctx context.Context, schoolID, password string) (*JWCommonResp, error) {
-	return j.doJSON(ctx, http.MethodPost, "/check_login", nil, JWLoginReq{
-		SchoolID: schoolID,
-		Password: password,
-	})
+	if j == nil || j.helper == nil {
+		return nil, ErrJWHelperUnavailable
+	}
+	return j.helper.CheckLogin(ctx, schoolID, password)
 }
 
 func (j *JWClient) GetCourseByWeeks(
@@ -63,29 +60,22 @@ func (j *JWClient) GetCourseByWeeks(
 	week int,
 	req JWGetCourseReq,
 ) (*JWCommonResp, error) {
-	query := url.Values{}
-	query.Set("date", startDate)
-	query.Set("weeks", strconv.Itoa(week))
-	return j.doJSON(ctx, http.MethodPost, "/get_course_by_weeks", query, req)
-}
-
-func (j *JWClient) GetExam(ctx context.Context, req JWGetExamReq) (*JWCommonResp, error) {
-	return j.doJSON(ctx, http.MethodPost, "/get_exam", nil, req)
-}
-
-func (j *JWClient) GetExamScore(ctx context.Context, req JWGetExamScoreReq) (*JWCommonResp, error) {
-	return j.doJSON(ctx, http.MethodPost, "/get_exam_score", nil, req)
-}
-
-func (j *JWClient) doJSON(
-	ctx context.Context,
-	method string,
-	path string,
-	query url.Values,
-	payload any,
-) (*JWCommonResp, error) {
 	if j == nil || j.helper == nil {
 		return nil, ErrJWHelperUnavailable
 	}
-	return j.helper.DoJSON(ctx, method, path, query, payload)
+	return j.helper.GetCourseByWeeks(ctx, startDate, week, req)
+}
+
+func (j *JWClient) GetExam(ctx context.Context, req JWGetExamReq) (*JWCommonResp, error) {
+	if j == nil || j.helper == nil {
+		return nil, ErrJWHelperUnavailable
+	}
+	return j.helper.GetExam(ctx, req)
+}
+
+func (j *JWClient) GetExamScore(ctx context.Context, req JWGetExamScoreReq) (*JWCommonResp, error) {
+	if j == nil || j.helper == nil {
+		return nil, ErrJWHelperUnavailable
+	}
+	return j.helper.GetExamScore(ctx, req)
 }
