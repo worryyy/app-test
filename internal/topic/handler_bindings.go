@@ -9,40 +9,30 @@ type topicURI struct {
 }
 
 type topicSearchQuery struct {
-	ThemeIDs      string `form:"themeIds"`
-	LegacyThemeID string `form:"themeId"`
-	Content       string `form:"content"`
-	LegacyKeyword string `form:"keyword"`
-	OrdCreated    string `form:"ord_created"`
-	OrderBy       string `form:"orderBy"`
+	ThemeIDs   string `form:"theme_ids"`
+	ThemeID    string `form:"theme_id"`
+	Content    string `form:"content"`
+	Keyword    string `form:"keyword"`
+	OrdCreated string `form:"ord_created"`
+	OrderBy    string `form:"order_by"`
 }
 
 func (q topicSearchQuery) ResolvedThemeInput() string {
-	return firstNonEmpty(q.ThemeIDs, q.LegacyThemeID)
+	return firstNonEmpty(q.ThemeIDs, q.ThemeID)
 }
 
 func (q topicSearchQuery) ResolvedContent() string {
-	return firstNonEmpty(q.Content, q.LegacyKeyword)
+	return firstNonEmpty(q.Content, q.Keyword)
 }
 
 func (q topicSearchQuery) ResolvedOrdCreated() string {
 	return firstNonEmpty(q.OrdCreated, q.OrderBy)
 }
 
-type themeMineQuery struct {
-	ThemeID       string `form:"theme_id"`
-	LegacyThemeID string `form:"themeId"`
-}
-
-func (q themeMineQuery) ResolvedThemeID() string {
-	return firstNonEmpty(q.ThemeID, q.LegacyThemeID)
-}
-
 type targetUserTopicsQuery struct {
-	TargetUserID       string `form:"target_user_id"`
-	LegacyTargetUserID string `form:"targetUserId"`
+	TargetUserID string `form:"target_user_id"`
 }
 
 func (q targetUserTopicsQuery) ResolvedTargetUserID() string {
-	return firstNonEmpty(q.TargetUserID, q.LegacyTargetUserID)
+	return q.TargetUserID
 }

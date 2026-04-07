@@ -12,7 +12,6 @@ import (
 const (
 	mongoCollTopic           = "campus_topic"
 	mongoCollThemeID         = "campus_theme_id"
-	mongoCollFollow          = "campus_follow"
 	mongoCollTopicLike       = "campus_topic_like"
 	mongoCollTopicCollection = "campus_topic_collection"
 )
@@ -42,10 +41,6 @@ type campusThemeID struct {
 
 type topicStateDoc struct {
 	TopicIDs []string `bson:"topicIds"`
-}
-
-type followDoc struct {
-	FollowingID int64 `bson:"followingId"`
 }
 
 func NewRepository(db *gorm.DB, mongoDB *mongo.Database) *Repository {

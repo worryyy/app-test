@@ -11,7 +11,7 @@ type CreateTopicReq struct {
 
 type UpdateTopicReq struct {
 	Title    string   `json:"title" binding:"omitempty,max=20"`
-	Content  string   `json:"content" binding:"omitempty,max=65535"`
+	Content  string   `json:"content" binding:"omitempty,max=6000"`
 	Imgs     []string `json:"imgs" binding:"omitempty,max=9"`
 	Ext      *string  `json:"ext"`
 	HasCheck *bool    `json:"hasCheck"`

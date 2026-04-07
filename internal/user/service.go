@@ -275,9 +275,7 @@ func sha1Hex(s string) string {
 }
 
 func mapAccountType(accountType string) int {
-	switch accountType {
-	case accountTypeOfficial:
-		return 2
+	switch strings.TrimSpace(accountType) {
 	case accountTypeAnonymous:
 		return 3
 	default:

@@ -15,7 +15,7 @@ func (s *Service) RandomNickname(accountType string) (string, error) {
 	case accountTypeAnonymous:
 		return randomAnonymousID(), nil
 	default:
-		return "", bizerr.Param("account_type 非法")
+		return "", bizerr.Param("accountType 非法")
 	}
 }
 
@@ -30,4 +30,3 @@ func (s *Service) GenerateUnlimitedWXACode(ctx context.Context, scene, page stri
 	}
 	return base64.StdEncoding.EncodeToString(data), nil
 }
-

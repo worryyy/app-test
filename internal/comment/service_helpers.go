@@ -121,8 +121,6 @@ func buildCommentUser(user *userRecord) CommentUser {
 
 func normalizeCommentAccountType(accountType string) string {
 	switch strings.ToLower(strings.TrimSpace(accountType)) {
-	case "official":
-		return "official"
 	case "anonymous":
 		return "anonymous"
 	default:

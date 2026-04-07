@@ -119,21 +119,6 @@ func (h *Handler) Mine(c *gin.Context) {
 	responses.Success.RespData(c, data)
 }
 
-func (h *Handler) ThemeMine(c *gin.Context) {
-	var query themeMineQuery
-	if !bindQuery(c, &query) {
-		return
-	}
-
-	page, size := pageSize(c)
-	data, err := h.svc.ListByTheme(c.Request.Context(), middleware.GetUserID(c), query.ResolvedThemeID(), page, size)
-	if err != nil {
-		responses.Fail(c, err)
-		return
-	}
-	writeTopicListResult(c, data, true)
-}
-
 func (h *Handler) TargetUserTopics(c *gin.Context) {
 	var query targetUserTopicsQuery
 	if !bindQuery(c, &query) {
@@ -153,16 +138,6 @@ func (h *Handler) TargetUserTopics(c *gin.Context) {
 		return
 	}
 	writeTopicListResult(c, data, true)
-}
-
-func (h *Handler) FollowTopics(c *gin.Context) {
-	page, size := pageSize(c)
-	data, err := h.svc.ListFollowTopics(c.Request.Context(), middleware.GetUserID(c), page, size)
-	if err != nil {
-		responses.Fail(c, err)
-		return
-	}
-	responses.Success.RespData(c, data)
 }
 
 func (h *Handler) Like(c *gin.Context) {

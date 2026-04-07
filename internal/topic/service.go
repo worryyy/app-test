@@ -2,7 +2,6 @@ package topic
 
 import (
 	"context"
-	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -83,7 +82,7 @@ func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *Creat
 	}
 
 	if _, err := s.repo.CreateTopic(ctx, topic); err != nil {
-		return nil, bizerr.InternalWrap("创建帖子失败", err)
+		return nil, bizerr.InternalWrap("", err)
 	}
 	s.prepareTopic(topic)
 
@@ -107,7 +106,7 @@ func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAd
 
 	ok, err := s.repo.HideTopic(ctx, oid, userIDString(userID), isAdmin)
 	if err != nil {
-		return bizerr.InternalWrap("删除帖子失败", err)
+		return bizerr.InternalWrap("鍒犻櫎甯栧瓙澶辫触", err)
 	}
 	if !ok {
 		return ErrTopicNotFound
@@ -176,7 +175,7 @@ func (s *Service) Update(ctx context.Context, topicID string, userID int64, req 
 
 	ok, err := s.repo.UpdateTopic(ctx, oid, userIDString(userID), update)
 	if err != nil {
-		return bizerr.InternalWrap("更新帖子失败", err)
+		return bizerr.InternalWrap("鏇存柊甯栧瓙澶辫触", err)
 	}
 	if !ok {
 		return ErrTopicNotFound
@@ -200,28 +199,6 @@ func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*
 	)
 }
 
-func (s *Service) ListByTheme(ctx context.Context, userID int64, themeID string, page, size int) (*PageResult[Topic], error) {
-	if userID <= 0 {
-		return nil, bizerr.Param(errMsgInvalidParam)
-	}
-	if err := s.ensureThemeExists(ctx, themeID); err != nil {
-		return nil, err
-	}
-
-	return s.listByFilter(
-		ctx,
-		bson.M{
-			"userId":   userIDString(userID),
-			"themeId":  themeID,
-			"hasCheck": true,
-		},
-		page,
-		size,
-		userIDString(userID),
-		bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}},
-	)
-}
-
 func (s *Service) ListTargetUserTopics(
 	ctx context.Context,
 	currentUserID, targetUserID int64,
@@ -233,7 +210,7 @@ func (s *Service) ListTargetUserTopics(
 
 	author, err := s.repo.FindUserByID(ctx, targetUserID)
 	if err != nil {
-		return nil, bizerr.InternalWrap("查询目标用户失败", err)
+		return nil, bizerr.InternalWrap("鏌ヨ鐩爣鐢ㄦ埛澶辫触", err)
 	}
 	if author == nil {
 		return nil, ErrTargetUserNotFound
@@ -252,39 +229,6 @@ func (s *Service) ListTargetUserTopics(
 	)
 }
 
-func (s *Service) ListFollowTopics(ctx context.Context, currentUserID int64, page, size int) (*PageResult[Topic], error) {
-	if currentUserID <= 0 {
-		return nil, bizerr.Param(errMsgInvalidParam)
-	}
-
-	followingIDs, err := s.repo.FindFollowingUserIDs(ctx, currentUserID)
-	if err != nil {
-		return nil, bizerr.InternalWrap("查询关注列表失败", err)
-	}
-
-	ids := make([]string, 0, len(followingIDs))
-	for _, followingID := range followingIDs {
-		if followingID != 0 {
-			ids = append(ids, strconv.FormatInt(followingID, 10))
-		}
-	}
-	if len(ids) == 0 {
-		return NewPageResult([]Topic{}, 0, page, size), nil
-	}
-
-	return s.listByFilter(
-		ctx,
-		bson.M{
-			"userId":   bson.M{"$in": ids},
-			"hasCheck": true,
-		},
-		page,
-		size,
-		userIDString(currentUserID),
-		bson.D{{Key: "_id", Value: -1}, {Key: "visitedNum", Value: -1}},
-	)
-}
-
 func (s *Service) listByFilter(
 	ctx context.Context,
 	filter bson.M,
@@ -294,7 +238,7 @@ func (s *Service) listByFilter(
 ) (*PageResult[Topic], error) {
 	topics, total, err := s.repo.FindTopicsPage(ctx, filter, sort, page, size)
 	if err != nil {
-		return nil, bizerr.InternalWrap("查询帖子列表失败", err)
+		return nil, bizerr.InternalWrap("鏌ヨ甯栧瓙鍒楄〃澶辫触", err)
 	}
 
 	s.prepareTopics(topics)

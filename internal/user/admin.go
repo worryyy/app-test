@@ -31,10 +31,9 @@ func (h *AdminHandler) Login(c *gin.Context) {
 	}
 
 	responses.Success.RespData(c, &AdminLoginResp{
-		Token:              token,
-		RefreshToken:       refreshToken,
-		LegacyRefreshToken: refreshToken,
-		User:               user,
+		Token:        token,
+		RefreshToken: refreshToken,
+		User:         user,
 	})
 }
 

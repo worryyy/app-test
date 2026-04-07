@@ -164,31 +164,3 @@ func (r *Repository) FindTopicsPage(
 	}
 	return topics, total, nil
 }
-
-func (r *Repository) FindFollowingUserIDs(ctx context.Context, followerID int64) ([]int64, error) {
-	coll, err := r.mongoCollection(mongoCollFollow)
-	if err != nil {
-		return nil, err
-	}
-
-	cur, err := coll.Find(ctx, bson.M{"followerId": followerID})
-	if err != nil {
-		return nil, fmt.Errorf("find followings: %w", err)
-	}
-	defer func() {
-		_ = cur.Close(ctx)
-	}()
-
-	var docs []followDoc
-	if err := cur.All(ctx, &docs); err != nil {
-		return nil, fmt.Errorf("decode followings: %w", err)
-	}
-
-	ids := make([]int64, 0, len(docs))
-	for _, doc := range docs {
-		if doc.FollowingID != 0 {
-			ids = append(ids, doc.FollowingID)
-		}
-	}
-	return ids, nil
-}

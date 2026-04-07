@@ -174,7 +174,7 @@ func (s *Service) targetIdentityByAccountType(ctx context.Context, rootUser *Use
 	switch accountType {
 	case accountTypeBase:
 		return rootUser, nil
-	case accountTypeAnonymous, accountTypeOfficial:
+	case accountTypeAnonymous:
 		targetUser, err := s.getIdentityByType(ctx, rootUser.ID, accountType)
 		if err != nil {
 			return nil, err
@@ -184,7 +184,7 @@ func (s *Service) targetIdentityByAccountType(ctx context.Context, rootUser *Use
 		}
 		return targetUser, nil
 	default:
-		return nil, bizerr.Biz("account_type 非法")
+		return nil, bizerr.Biz("accountType 非法")
 	}
 }
 

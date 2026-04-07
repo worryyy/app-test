@@ -174,8 +174,6 @@ func (c *Consumers) handleCommentDelete(ctx context.Context, data json.RawMessag
 
 func accountTypeName(accountType int) string {
 	switch accountType {
-	case 2:
-		return "official"
 	case 3:
 		return "anonymous"
 	default:

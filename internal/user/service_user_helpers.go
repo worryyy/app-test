@@ -9,7 +9,6 @@ import (
 const (
 	accountTypeBase      = "base"
 	accountTypeAnonymous = "anonymous"
-	accountTypeOfficial  = "official"
 
 	anonymousNicknameUpdateHourLimit = 72
 	defaultAdminSecondaryPassword    = "pyhtip-nyxqen-6rigvE"

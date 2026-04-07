@@ -125,9 +125,7 @@ func registerTopicRoutes(api *gin.RouterGroup, handler *topic.Handler) {
 	api.PUT("/topic/:topic_id", handler.Update)
 	api.GET("/topic/search", handler.Search)
 	api.GET("/topic", handler.Mine)
-	api.GET("/topic/theme", handler.ThemeMine)
 	api.GET("/topic/target_user_topics", handler.TargetUserTopics)
-	api.GET("/topic/follow_topics", handler.FollowTopics)
 }
 
 func registerTopicLikeRoutes(api *gin.RouterGroup, handler *topic.Handler) {
