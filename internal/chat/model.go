@@ -39,7 +39,10 @@ type Message struct {
 	ReceiverID     string             `bson:"receiver_id" json:"receiverId"`
 	SenderID       string             `bson:"sender_id" json:"senderId"`
 	Content        string             `bson:"content" json:"content"`
+	MessageType    *int               `bson:"message_type,omitempty" json:"messageType,omitempty"`
 	SentAt         time.Time          `bson:"sentAt" json:"sentAt"`
+	Metadata       map[string]any     `bson:"metadata,omitempty" json:"metadata,omitempty"`
+	HandleType     string             `bson:"-" json:"handleType,omitempty"`
 }
 
 type Notification struct {

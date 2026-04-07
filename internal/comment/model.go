@@ -1,6 +1,7 @@
 package comment
 
 import (
+	"encoding/json"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -62,4 +63,40 @@ type CommentTopic struct {
 type MyCommentItem struct {
 	Comment Comment      `json:"comment"`
 	Topic   CommentTopic `json:"topic"`
+}
+
+func (c Comment) MarshalJSON() ([]byte, error) {
+	type alias Comment
+	return json.Marshal(struct {
+		alias
+		CreatedTime string `json:"createdTime"`
+	}{
+		alias:       alias(c),
+		CreatedTime: formatCommentDate(c.CreatedTime),
+	})
+}
+
+func (t CommentTopic) MarshalJSON() ([]byte, error) {
+	type alias CommentTopic
+	return json.Marshal(struct {
+		alias
+		CreatedTime string `json:"createdTime"`
+	}{
+		alias:       alias(t),
+		CreatedTime: formatCommentDatePtr(t.CreatedTime),
+	})
+}
+
+func formatCommentDate(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+	return value.Format("2006-01-02")
+}
+
+func formatCommentDatePtr(value *time.Time) string {
+	if value == nil {
+		return ""
+	}
+	return formatCommentDate(*value)
 }
