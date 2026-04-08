@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 )
@@ -43,11 +42,6 @@ func (h *Handler) Login(c *gin.Context) {
 func (h *Handler) RefreshToken(c *gin.Context) {
 	var req RefreshTokenReq
 	if !bindJSON(c, &req) {
-		return
-	}
-
-	if req.RefreshToken == "" {
-		responses.Fail(c, bizerr.Param(errMsgInvalidParam))
 		return
 	}
 
@@ -107,13 +101,7 @@ func (h *Handler) GetUserProfile(c *gin.Context) {
 		return
 	}
 
-	targetUserID, err := parsePositiveInt64(query.TargetUserID)
-	if err != nil {
-		responses.Fail(c, err)
-		return
-	}
-
-	profile, err := h.svc.GetUserProfile(c.Request.Context(), targetUserID)
+	profile, err := h.svc.GetUserProfile(c.Request.Context(), query.TargetUserID)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -142,17 +130,6 @@ func currentUserID(c *gin.Context) int64 {
 	claims := currentClaims(c)
 	if claims == nil {
 		return 0
-	}
-	return claims.UserID
-}
-
-func currentRootUserID(c *gin.Context) int64 {
-	claims := currentClaims(c)
-	if claims == nil {
-		return 0
-	}
-	if claims.RootUserID > 0 {
-		return claims.RootUserID
 	}
 	return claims.UserID
 }

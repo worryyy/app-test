@@ -18,10 +18,11 @@ import (
 )
 
 var (
-	ErrTokenEmpty      = errors.New("authorization 找不到")
-	ErrTokenNotExisted = errors.New("token 不存在,或已过期")
-	ErrTokenInvalid    = errors.New("token invalid")
-	ErrUserNotExisted  = errors.New("user not existed")
+	ErrTokenEmpty       = errors.New("authorization not found")
+	ErrTokenNotExisted  = errors.New("token not existed or expired")
+	ErrTokenInvalid     = errors.New("token invalid")
+	ErrTokenUserInvalid = errors.New("token user invalid")
+	ErrUserNotExisted   = errors.New("user not existed")
 )
 
 type Claims struct {
@@ -54,19 +55,17 @@ func (h *Helper) GenerateTokenPair(u *TokenUser) (token, refreshToken string, er
 	if u == nil {
 		return "", "", ErrUserNotExisted
 	}
-
-	now := time.Now()
-	rootUserID := u.RootUserID
-	if rootUserID == 0 {
-		rootUserID = u.ID
+	if u.ID <= 0 || u.RootUserID <= 0 {
+		return "", "", ErrTokenUserInvalid
 	}
 
+	now := time.Now()
 	claims := &Claims{
 		UserID:      u.ID,
 		OpenID:      u.OpenID,
 		Power:       u.Power,
 		AccountType: u.AccountType,
-		RootUserID:  rootUserID,
+		RootUserID:  u.RootUserID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    h.cfg.Issue,
 			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(h.cfg.TokenMinutes) * time.Minute)),

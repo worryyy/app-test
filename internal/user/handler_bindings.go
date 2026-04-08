@@ -9,15 +9,15 @@ type randomNicknameQuery struct {
 }
 
 type userProfileQuery struct {
-	TargetUserID string `form:"target_user_id"`
+	TargetUserID int64 `form:"target_user_id" binding:"required,gt=0"`
 }
 
 type followActionQuery struct {
-	FollowingID string `form:"following_id"`
+	FollowingID int64 `form:"following_id" binding:"required,gt=0"`
 }
 
 type userStatsQuery struct {
-	UserID string `form:"user_id"`
+	UserID int64 `form:"user_id" binding:"required,gt=0"`
 }
 
 type adminListUsersQuery struct {

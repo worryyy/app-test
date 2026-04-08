@@ -2,8 +2,6 @@ package user
 
 import (
 	"errors"
-	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -12,9 +10,9 @@ import (
 )
 
 const (
-	errMsgInvalidParam   = "参数错误"
-	errMsgUserNotLogin   = "用户未登录"
-	errMsgNeedCampusAuth = "请先进行校园认证"
+	errMsgInvalidParam   = "invalid param"
+	errMsgUserNotLogin   = "user not logged in"
+	errMsgNeedCampusAuth = "campus auth required"
 )
 
 func bindJSON(c *gin.Context, req any) bool {
@@ -39,32 +37,6 @@ func bindURI(c *gin.Context, req any) bool {
 		return false
 	}
 	return true
-}
-
-func queryPositiveInt64(c *gin.Context, key string) (int64, bool) {
-	value, err := parsePositiveInt64(c.Query(key))
-	if err != nil {
-		responses.Fail(c, err)
-		return 0, false
-	}
-	return value, true
-}
-
-func pathPositiveInt64(c *gin.Context, key string) (int64, bool) {
-	value, err := parsePositiveInt64(c.Param(key))
-	if err != nil {
-		responses.Fail(c, err)
-		return 0, false
-	}
-	return value, true
-}
-
-func parsePositiveInt64(raw string) (int64, error) {
-	value, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
-	if err != nil || value <= 0 {
-		return 0, bizerr.Param(errMsgInvalidParam)
-	}
-	return value, nil
 }
 
 func (h *Handler) currentUser(c *gin.Context) (*User, bool) {
@@ -96,6 +68,15 @@ func (h *Handler) requireCertifiedUser(c *gin.Context) (*User, bool) {
 		return nil, false
 	}
 	return user, true
+}
+
+func requireCurrentRootUserID(c *gin.Context) (int64, bool) {
+	claims := currentClaims(c)
+	if claims == nil || claims.RootUserID <= 0 {
+		responses.Fail(c, bizerr.Unauthorized(errMsgUserNotLogin))
+		return 0, false
+	}
+	return claims.RootUserID, true
 }
 
 func isBizErrCode(err error, code int) bool {

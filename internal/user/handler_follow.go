@@ -17,12 +17,7 @@ func (h *Handler) Follow(c *gin.Context) {
 		return
 	}
 
-	followingID, err := parsePositiveInt64(query.FollowingID)
-	if err != nil {
-		responses.Fail(c, err)
-		return
-	}
-	if err := h.svc.Follow(c.Request.Context(), currentUserID(c), followingID); err != nil {
+	if err := h.svc.Follow(c.Request.Context(), currentUserID(c), query.FollowingID); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -40,12 +35,7 @@ func (h *Handler) Unfollow(c *gin.Context) {
 		return
 	}
 
-	followingID, err := parsePositiveInt64(query.FollowingID)
-	if err != nil {
-		responses.Fail(c, err)
-		return
-	}
-	if err := h.svc.Unfollow(c.Request.Context(), currentUserID(c), followingID); err != nil {
+	if err := h.svc.Unfollow(c.Request.Context(), currentUserID(c), query.FollowingID); err != nil {
 		responses.Fail(c, err)
 		return
 	}
@@ -58,12 +48,7 @@ func (h *Handler) GetUserStats(c *gin.Context) {
 		return
 	}
 
-	userID, err := parsePositiveInt64(query.UserID)
-	if err != nil {
-		responses.Fail(c, err)
-		return
-	}
-	data, err := h.svc.GetUserStats(c.Request.Context(), userID)
+	data, err := h.svc.GetUserStats(c.Request.Context(), query.UserID)
 	if err != nil {
 		responses.Fail(c, err)
 		return

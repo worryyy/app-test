@@ -6,7 +6,7 @@ type CreateTopicReq struct {
 	Content     string      `json:"content" binding:"omitempty,max=6000"`
 	Imgs        []string    `json:"imgs" binding:"omitempty,max=9"`
 	Ext         interface{} `json:"ext"`
-	AccountType string      `json:"accountType"`
+	AccountType string      `json:"accountType" binding:"required,oneof=base anonymous"`
 }
 
 type UpdateTopicReq struct {

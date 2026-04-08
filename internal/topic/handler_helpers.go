@@ -34,14 +34,6 @@ func bindURI(c *gin.Context, req any) bool {
 	return true
 }
 
-func parsePositiveInt64(raw string) (int64, error) {
-	value, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
-	if err != nil || value <= 0 {
-		return 0, bizerr.Param(errMsgInvalidParam)
-	}
-	return value, nil
-}
-
 func pageSize(c *gin.Context) (int, int) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "15"))
@@ -60,15 +52,6 @@ func writeTopicListResult(c *gin.Context, data *PageResult[Topic], emptyAsList b
 		return
 	}
 	responses.Success.RespData(c, data)
-}
-
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return value
-		}
-	}
-	return ""
 }
 
 func splitThemeIDs(raw string) []string {

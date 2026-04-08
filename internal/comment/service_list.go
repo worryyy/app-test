@@ -2,7 +2,6 @@ package comment
 
 import (
 	"context"
-	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 
@@ -95,16 +94,15 @@ func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*
 	return NewPageResult(items, total, page, size), nil
 }
 
-func (s *Service) ListTargetUserComments(ctx context.Context, targetUserID string, page, size int) (*PageResult[Comment], error) {
+func (s *Service) ListTargetUserComments(ctx context.Context, targetUserID int64, page, size int) (*PageResult[Comment], error) {
 	page, size = s.normalizePage(page, size)
-	targetUserID = strings.TrimSpace(targetUserID)
-	if targetUserID == "" {
+	if targetUserID <= 0 {
 		return nil, ErrTargetUserIDRequired
 	}
 
 	comments, _, err := s.repo.FindCommentsPage(
 		ctx,
-		bson.M{"user.userId": targetUserID, "hasCheck": bson.M{"$ne": false}},
+		bson.M{"user.userId": userIDString(targetUserID), "hasCheck": bson.M{"$ne": false}},
 		bson.D{{Key: "_id", Value: -1}},
 		page,
 		size,

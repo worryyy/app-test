@@ -37,7 +37,7 @@ func (s *Service) loadUser(ctx context.Context, userID int64) (*userRecord, erro
 func (s *Service) loadUserByStringID(ctx context.Context, userID string) (*userRecord, error) {
 	id, err := strconv.ParseInt(strings.TrimSpace(userID), 10, 64)
 	if err != nil {
-		return nil, nil
+		return nil, bizerr.Internal("invalid topic author data")
 	}
 	return s.loadUser(ctx, id)
 }

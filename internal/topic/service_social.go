@@ -14,7 +14,7 @@ import (
 
 func (s *Service) LikeTopic(ctx context.Context, claims *jwtutil.Claims, topicID string) error {
 	if claims == nil {
-		return bizerr.Param(errMsgInvalidParam)
+		return ErrInvalidAuthClaims
 	}
 
 	topic, err := s.getTopicByID(ctx, topicID, true)
@@ -70,7 +70,7 @@ func (s *Service) ListLikedTopics(ctx context.Context, userID int64, page, size 
 
 func (s *Service) CollectTopic(ctx context.Context, claims *jwtutil.Claims, topicID string) error {
 	if claims == nil {
-		return bizerr.Param(errMsgInvalidParam)
+		return ErrInvalidAuthClaims
 	}
 
 	topic, err := s.getTopicByID(ctx, topicID, true)

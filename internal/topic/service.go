@@ -45,7 +45,10 @@ func (s *Service) SetProducer(producer EventProducer) {
 }
 
 func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *CreateTopicReq) (*Topic, error) {
-	if claims == nil || req == nil {
+	if claims == nil {
+		return nil, ErrInvalidAuthClaims
+	}
+	if req == nil {
 		return nil, bizerr.Param(errMsgInvalidParam)
 	}
 	if err := s.ensureThemeExists(ctx, req.ThemeID); err != nil {

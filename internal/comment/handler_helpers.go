@@ -2,7 +2,6 @@ package comment
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -44,15 +43,6 @@ func pageSize(c *gin.Context) (int, int) {
 		size = 15
 	}
 	return page, size
-}
-
-func firstNonEmpty(values ...string) string {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return value
-		}
-	}
-	return ""
 }
 
 func writeCommentListResult(c *gin.Context, data *PageResult[Comment], emptyAsList bool) {

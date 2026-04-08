@@ -3,12 +3,16 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
 )
 
 func (h *Handler) CreateAnonymous(c *gin.Context) {
-	data, err := h.svc.CreateAnonymousIdentity(c.Request.Context(), currentRootUserID(c))
+	rootUserID, ok := requireCurrentRootUserID(c)
+	if !ok {
+		return
+	}
+
+	data, err := h.svc.CreateAnonymousIdentity(c.Request.Context(), rootUserID)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -22,15 +26,25 @@ func (h *Handler) UpdateAnonymousNickname(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.UpdateAnonymousNickname(c.Request.Context(), currentRootUserID(c), req.Nickname); err != nil {
+	rootUserID, ok := requireCurrentRootUserID(c)
+	if !ok {
+		return
+	}
+
+	if err := h.svc.UpdateAnonymousNickname(c.Request.Context(), rootUserID, req.Nickname); err != nil {
 		responses.Fail(c, err)
 		return
 	}
-	responses.Success.RespMessage(c, "昵称修改成功")
+	responses.Success.RespMessage(c, "nickname updated")
 }
 
 func (h *Handler) ListIdentity(c *gin.Context) {
-	data, err := h.svc.ListIdentities(c.Request.Context(), currentRootUserID(c))
+	rootUserID, ok := requireCurrentRootUserID(c)
+	if !ok {
+		return
+	}
+
+	data, err := h.svc.ListIdentities(c.Request.Context(), rootUserID)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -44,16 +58,15 @@ func (h *Handler) SwitchIdentity(c *gin.Context) {
 		return
 	}
 
-	accountType := req.NormalizedAccountType()
-	if accountType == "" {
-		responses.Fail(c, bizerr.Param(errMsgInvalidParam))
+	rootUserID, ok := requireCurrentRootUserID(c)
+	if !ok {
 		return
 	}
 
 	token, refreshToken, target, rootUserID, err := h.svc.SwitchIdentityByAccountType(
 		c.Request.Context(),
-		currentRootUserID(c),
-		accountType,
+		rootUserID,
+		req.AccountType,
 	)
 	if err != nil {
 		responses.Fail(c, err)

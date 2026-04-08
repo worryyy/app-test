@@ -2,8 +2,6 @@ package topic
 
 import (
 	"errors"
-	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -86,22 +84,15 @@ func (h *Handler) Search(c *gin.Context) {
 	}
 
 	page, size := pageSize(c)
-	themeIDs := splitThemeIDs(query.ResolvedThemeInput())
-	content := query.ResolvedContent()
-	rawOrdCreated := strings.TrimSpace(query.ResolvedOrdCreated())
-	if rawOrdCreated == "" {
-		rawOrdCreated = "0"
-	}
-
-	ordCreated, _ := strconv.Atoi(rawOrdCreated)
-	if strings.EqualFold(query.OrderBy, "created") {
-		ordCreated = 1
-	}
-	if strings.EqualFold(query.OrderBy, "hot") {
-		ordCreated = 0
-	}
-
-	data, err := h.svc.Search(c.Request.Context(), userIDString(middleware.GetUserID(c)), themeIDs, content, page, size, ordCreated)
+	data, err := h.svc.Search(
+		c.Request.Context(),
+		userIDString(middleware.GetUserID(c)),
+		splitThemeIDs(query.ThemeIDs),
+		query.Content,
+		page,
+		size,
+		query.OrdCreated,
+	)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -126,13 +117,7 @@ func (h *Handler) TargetUserTopics(c *gin.Context) {
 	}
 
 	page, size := pageSize(c)
-	targetUserID, err := parsePositiveInt64(query.ResolvedTargetUserID())
-	if err != nil {
-		responses.Fail(c, err)
-		return
-	}
-
-	data, err := h.svc.ListTargetUserTopics(c.Request.Context(), middleware.GetUserID(c), targetUserID, page, size)
+	data, err := h.svc.ListTargetUserTopics(c.Request.Context(), middleware.GetUserID(c), query.TargetUserID, page, size)
 	if err != nil {
 		responses.Fail(c, err)
 		return

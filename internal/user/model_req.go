@@ -1,21 +1,15 @@
 package user
 
-import "strings"
-
 type LoginReq struct {
 	Code string `json:"code" binding:"required"`
 }
 
 type RefreshTokenReq struct {
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
 type IdentitySwitchReq struct {
-	AccountType string `json:"accountType"`
-}
-
-func (r IdentitySwitchReq) NormalizedAccountType() string {
-	return strings.TrimSpace(r.AccountType)
+	AccountType string `json:"accountType" binding:"required,oneof=base anonymous"`
 }
 
 type UpdateAnonymousNicknameReq struct {

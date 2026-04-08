@@ -3,93 +3,82 @@ package topic
 import (
 	"testing"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 )
 
-func TestResolveTopicAuthorTargetUsesRequestedAnonymousAccount(t *testing.T) {
-	target, err := resolveTopicAuthorTarget(&jwtutil.Claims{
-		UserID:      11,
-		AccountType: topicAccountTypeBase,
-		RootUserID:  11,
-	}, topicAccountTypeAnonymous)
-	if err != nil {
-		t.Fatalf("resolve target failed: %v", err)
+func TestNormalizeTopicAccountType(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "base", input: "base", want: topicAccountTypeBase},
+		{name: "anonymous", input: "anonymous", want: topicAccountTypeAnonymous},
+		{name: "trimmed", input: " anonymous ", want: topicAccountTypeAnonymous},
 	}
 
-	if target.AccountType != topicAccountTypeAnonymous {
-		t.Fatalf("unexpected account type: %q", target.AccountType)
-	}
-	if target.RootUserID != 11 {
-		t.Fatalf("unexpected root user id: %d", target.RootUserID)
-	}
-	if target.UserID != 0 {
-		t.Fatalf("anonymous target should not set direct user id, got %d", target.UserID)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := normalizeTopicAccountType(tt.input)
+			if err != nil {
+				t.Fatalf("normalizeTopicAccountType returned error: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("normalizeTopicAccountType = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 
-func TestResolveTopicAuthorTargetUsesRequestedBaseAccountFromAnonymousIdentity(t *testing.T) {
-	target, err := resolveTopicAuthorTarget(&jwtutil.Claims{
-		UserID:      22,
-		AccountType: topicAccountTypeAnonymous,
-		RootUserID:  11,
-	}, topicAccountTypeBase)
-	if err != nil {
-		t.Fatalf("resolve target failed: %v", err)
-	}
-
-	if target.AccountType != topicAccountTypeBase {
-		t.Fatalf("unexpected account type: %q", target.AccountType)
-	}
-	if target.RootUserID != 11 {
-		t.Fatalf("unexpected root user id: %d", target.RootUserID)
-	}
-	if target.UserID != 11 {
-		t.Fatalf("expected base identity user id 11, got %d", target.UserID)
-	}
-}
-
-func TestResolveTopicAuthorTargetDefaultsToCurrentAnonymousIdentity(t *testing.T) {
-	target, err := resolveTopicAuthorTarget(&jwtutil.Claims{
-		UserID:      22,
-		AccountType: topicAccountTypeAnonymous,
-		RootUserID:  11,
-	}, "")
-	if err != nil {
-		t.Fatalf("resolve target failed: %v", err)
-	}
-
-	if target.AccountType != topicAccountTypeAnonymous {
-		t.Fatalf("unexpected account type: %q", target.AccountType)
-	}
-	if target.RootUserID != 11 {
-		t.Fatalf("unexpected root user id: %d", target.RootUserID)
-	}
-}
-
-func TestResolveTopicAuthorTargetInfersBaseWhenClaimsAccountTypeMissing(t *testing.T) {
-	target, err := resolveTopicAuthorTarget(&jwtutil.Claims{
-		UserID:     11,
-		RootUserID: 11,
-	}, "")
-	if err != nil {
-		t.Fatalf("resolve target failed: %v", err)
-	}
-
-	if target.AccountType != topicAccountTypeBase {
-		t.Fatalf("unexpected inferred account type: %q", target.AccountType)
-	}
-	if target.UserID != 11 {
-		t.Fatalf("unexpected inferred user id: %d", target.UserID)
-	}
-}
-
-func TestResolveTopicAuthorTargetRejectsInvalidRequestedAccountType(t *testing.T) {
-	_, err := resolveTopicAuthorTarget(&jwtutil.Claims{
-		UserID:      11,
-		AccountType: topicAccountTypeBase,
-		RootUserID:  11,
-	}, "merchant")
+func TestNormalizeTopicAccountTypeRejectsInvalidValue(t *testing.T) {
+	_, err := normalizeTopicAccountType("merchant")
 	if err == nil {
 		t.Fatal("expected invalid account type error")
+	}
+}
+
+func TestValidateTopicClaimsAcceptsValidClaims(t *testing.T) {
+	err := validateTopicClaims(&jwtutil.Claims{
+		UserID:      22,
+		RootUserID:  11,
+		AccountType: topicAccountTypeAnonymous,
+	})
+	if err != nil {
+		t.Fatalf("validateTopicClaims returned error: %v", err)
+	}
+}
+
+func TestValidateTopicClaimsRejectsNilClaimsAsUnauthorized(t *testing.T) {
+	err := validateTopicClaims(nil)
+	if err == nil {
+		t.Fatal("expected nil claims error")
+	}
+
+	bizErr, ok := err.(*bizerr.Error)
+	if !ok {
+		t.Fatalf("expected bizerr.Error, got %T", err)
+	}
+	if bizErr.Code != bizerr.CodeUnauthorized {
+		t.Fatalf("unexpected error code: got %d want %d", bizErr.Code, bizerr.CodeUnauthorized)
+	}
+}
+
+func TestValidateTopicClaimsRejectsMissingRootUserIDAsUnauthorized(t *testing.T) {
+	err := validateTopicClaims(&jwtutil.Claims{
+		UserID:      11,
+		RootUserID:  0,
+		AccountType: topicAccountTypeBase,
+	})
+	if err == nil {
+		t.Fatal("expected missing root user id error")
+	}
+
+	bizErr, ok := err.(*bizerr.Error)
+	if !ok {
+		t.Fatalf("expected bizerr.Error, got %T", err)
+	}
+	if bizErr.Code != bizerr.CodeUnauthorized {
+		t.Fatalf("unexpected error code: got %d want %d", bizErr.Code, bizerr.CodeUnauthorized)
 	}
 }

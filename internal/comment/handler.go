@@ -51,13 +51,14 @@ func (h *Handler) ListByTopic(c *gin.Context) {
 	if !bindURI(c, &uri) {
 		return
 	}
+
 	var query commentListQuery
 	if !bindQuery(c, &query) {
 		return
 	}
 
 	page, size := pageSize(c)
-	data, err := h.svc.ListByTopic(c.Request.Context(), uri.TopicID, query.ResolvedRootID(), middleware.GetUserID(c), page, size)
+	data, err := h.svc.ListByTopic(c.Request.Context(), uri.TopicID, query.RootID, middleware.GetUserID(c), page, size)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -82,7 +83,7 @@ func (h *Handler) TargetUserComments(c *gin.Context) {
 	}
 
 	page, size := pageSize(c)
-	data, err := h.svc.ListTargetUserComments(c.Request.Context(), query.ResolvedTargetUserID(), page, size)
+	data, err := h.svc.ListTargetUserComments(c.Request.Context(), query.TargetUserID, page, size)
 	if err != nil {
 		responses.Fail(c, err)
 		return

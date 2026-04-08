@@ -14,19 +14,9 @@ type commentURI struct {
 }
 
 type commentListQuery struct {
-	RootID       string `form:"root_id"`
-	LegacyRootID string `form:"rootId"`
-}
-
-func (q commentListQuery) ResolvedRootID() string {
-	return firstNonEmpty(q.RootID, q.LegacyRootID)
+	RootID string `form:"root_id"`
 }
 
 type targetUserCommentsQuery struct {
-	TargetUserID       string `form:"target_user_id"`
-	LegacyTargetUserID string `form:"targetUserId"`
-}
-
-func (q targetUserCommentsQuery) ResolvedTargetUserID() string {
-	return firstNonEmpty(q.TargetUserID, q.LegacyTargetUserID)
+	TargetUserID int64 `form:"target_user_id" binding:"required,gt=0"`
 }
