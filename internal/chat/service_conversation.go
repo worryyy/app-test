@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 )
 
 func (s *Service) ListConversations(ctx context.Context, userID int64) ([]Conversation, error) {

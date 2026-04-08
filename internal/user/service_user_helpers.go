@@ -3,7 +3,7 @@ package user
 import (
 	"context"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
 )
 
 const (

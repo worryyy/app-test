@@ -7,8 +7,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/encrypt"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/encrypt"
 )
 
 func (s *Service) GetUserByID(ctx context.Context, id int64) (*campusUser, error) {

@@ -12,9 +12,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/snowflake"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/rediskey"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/snowflake"
 )
 
 var (

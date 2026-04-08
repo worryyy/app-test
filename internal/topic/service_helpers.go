@@ -7,8 +7,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
 )
 
 const (

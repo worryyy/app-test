@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 )
 
 var (

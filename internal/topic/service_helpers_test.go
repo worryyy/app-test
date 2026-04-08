@@ -3,8 +3,8 @@ package topic
 import (
 	"testing"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
 )
 
 func TestNormalizeTopicAccountType(t *testing.T) {

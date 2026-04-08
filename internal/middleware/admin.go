@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/responses"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
 )
 

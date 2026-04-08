@@ -9,7 +9,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
 )
 
 const (

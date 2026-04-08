@@ -8,8 +8,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
 )
 
 func (s *Service) LikeTopic(ctx context.Context, claims *jwtutil.Claims, topicID string) error {

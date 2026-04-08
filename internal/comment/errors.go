@@ -1,6 +1,6 @@
 package comment
 
-import "github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+import "github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 
 const errMsgInvalidParam = "参数错误"
 
@@ -15,5 +15,5 @@ var (
 	ErrCommentUnlikeFailed          = bizerr.Biz("取消点赞失败")
 	ErrCommentLikeNotFound          = bizerr.Biz("还没有对该评论进行点赞")
 	ErrAnonymousCommentForbidden    = bizerr.Forbidden("匿名用户禁止评论非匿名帖")
-	ErrCommentSelfRolePlayForbidden = bizerr.Forbidden("禁止左右脑互搏和自导自演")
+	ErrCommentSelfRolePlayForbidden = bizerr.Forbidden("不能自己评论自己的帖子")
 )

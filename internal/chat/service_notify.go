@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 )
 
 func (s *Service) ListNotifications(

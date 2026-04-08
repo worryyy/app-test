@@ -6,7 +6,7 @@ import (
 	"mime/multipart"
 	"strings"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 )
 
 func (s *Service) GetByMD5(ctx context.Context, md5Value string) (*File, error) {

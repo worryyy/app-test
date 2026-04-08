@@ -3,7 +3,7 @@ package school
 import (
 	"errors"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 )
 
 const errMsgInvalidParam = "参数错误"

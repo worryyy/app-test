@@ -1,11 +1,8 @@
 package school
 
-
-
 type CurTermReq struct {
 	TermID string `json:"termId" binding:"required"`
 }
-
 
 type AuthenticationReq struct {
 	SchoolID string `json:"schoolId" binding:"required"`

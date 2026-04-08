@@ -1,9 +1,9 @@
 package school
 
 import (
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/responses"
 	"github.com/gin-gonic/gin"
 )
 

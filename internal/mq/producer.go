@@ -13,7 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/rediskey"
 )
 
 type BaseProducer struct {

@@ -2,12 +2,12 @@ package topic
 
 import (
 	"context"
-	"strings"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
+	"strings"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 )
 
 func (s *Service) Search(
@@ -57,5 +57,3 @@ func (s *Service) searchHot(
 	}
 	return NewPageResult(topics, total, page, size), nil
 }
-
-

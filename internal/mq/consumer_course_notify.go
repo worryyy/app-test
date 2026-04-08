@@ -15,7 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/encrypt"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/encrypt"
 )
 
 type userCourseRow struct {

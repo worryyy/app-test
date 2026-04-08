@@ -16,8 +16,8 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/snowflake"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/snowflake"
 )
 
 type Options struct {

@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
 )
 
 const maxPageSize = 100

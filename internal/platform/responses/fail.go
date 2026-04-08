@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 	"github.com/gin-gonic/gin"
 )
 

@@ -13,9 +13,9 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/wxutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/integration/wxutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/rediskey"
 )
 
 type Consumers struct {

@@ -17,11 +17,11 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/wxutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/integration/wxutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/rediskey"
 )
 
 var (

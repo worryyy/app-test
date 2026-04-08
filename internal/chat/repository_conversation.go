@@ -97,7 +97,7 @@ func (r *Repository) UpdateConversationMemberReadState(
 	tx := db.Model(&ConversationMember{}).
 		Where("conversation_id = ? AND user_id = ?", conversationID, userID).
 		Updates(map[string]any{
-			"unread_count":          0,
+			"unread_count":         0,
 			"last_read_message_id": lastReadMessageID,
 		})
 	if tx.Error != nil {

@@ -1,6 +1,6 @@
 package theme
 
-import "github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+import "github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 
 const errMsgInvalidParam = "参数错误"
 

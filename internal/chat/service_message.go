@@ -11,8 +11,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/snowflake"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/snowflake"
 )
 
 func (s *Service) GetOfflineMessages(ctx context.Context, userID int64, lastMessageID int64) ([]Message, error) {

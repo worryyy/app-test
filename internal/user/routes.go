@@ -2,7 +2,6 @@ package user
 
 import "github.com/gin-gonic/gin"
 
-
 func RegisterProtectedRoutes(api *gin.RouterGroup, handler *Handler) {
 	registerProfileRoutes(api, handler)
 	registerFollowRoutes(api, handler)

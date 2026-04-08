@@ -12,8 +12,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/mq"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
 )
 
 type Service struct {

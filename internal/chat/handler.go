@@ -7,8 +7,8 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/responses"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
 )
 

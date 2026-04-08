@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/responses"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/responses"
 )
 
 type Handler struct {

@@ -11,7 +11,7 @@ import (
 	"github.com/tencentyun/cos-go-sdk-v5"
 	"go.uber.org/zap"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
 )
 
 type Client struct {

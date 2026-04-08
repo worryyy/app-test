@@ -3,7 +3,7 @@ package school
 import (
 	"context"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 )
 
 func (s *Service) AddTerm(ctx context.Context, term *Term) (*Term, error) {

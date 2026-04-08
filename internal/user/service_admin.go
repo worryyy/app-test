@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/bizerr"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/encrypt"
-	"github.com/Milchstrassse/Ecampus-go/internal/pkg/rediskey"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/encrypt"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/rediskey"
 )
 
 func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, string, *User, error) {

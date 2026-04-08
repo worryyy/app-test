@@ -2,8 +2,6 @@ package school
 
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
-
-
 type Term struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Term       string             `bson:"term" json:"term"`
