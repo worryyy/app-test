@@ -21,18 +21,18 @@ func (s *Service) ListNotifications(
 	}
 	page, size = normalizePage(page, size, s.defaultPageSize())
 
-	list, err := s.repo.FindNotificationsPage(ctx, userIDString(userID), typ, page, size)
+	list, total, err := s.repo.FindNotificationsPage(ctx, userIDString(userID), typ, page, size)
 	if err != nil {
 		return nil, bizerr.InternalWrap("查询通知失败", err)
 	}
 	if len(list) == 0 {
-		return NewPageResult([]Notification{}, 0, page, size), nil
+		return NewPageResult([]Notification{}, total, page, size), nil
 	}
 
 	if err := s.repo.MarkLatestNotificationRead(ctx, userIDString(userID), typ); err != nil {
 		return nil, bizerr.InternalWrap("更新通知已读状态失败", err)
 	}
-	return NewPageResult(list, int64(len(list)), page, size), nil
+	return NewPageResult(list, total, page, size), nil
 }
 
 func (s *Service) HaveUnreadNotification(ctx context.Context, userID int64, typ string) (bool, error) {

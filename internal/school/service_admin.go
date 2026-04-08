@@ -13,14 +13,14 @@ func (s *Service) AddTerm(ctx context.Context, term *Term) (*Term, error) {
 
 	exists, err := s.repo.CountTermsByValue(ctx, term.Term)
 	if err != nil {
-		return nil, bizerr.InternalWrap("检查学期失败", err)
+		return nil, bizerr.InternalWrap("check term failed", err)
 	}
 	if exists > 0 {
-		return nil, bizerr.Biz("term: " + term.Term + "已存在")
+		return nil, bizerr.Biz("term already exists: " + term.Term)
 	}
 
 	if err := s.repo.CreateTerm(ctx, term); err != nil {
-		return nil, bizerr.InternalWrap("新增学期失败", err)
+		return nil, bizerr.InternalWrap("create term failed", err)
 	}
 	return term, nil
 }
@@ -31,17 +31,17 @@ func (s *Service) DeleteTerm(ctx context.Context, termID string) error {
 		return err
 	}
 
-	current, err := s.repo.FindCurrentTerm(ctx)
+	current, err := s.currentTermRecord(ctx)
 	if err != nil {
-		return bizerr.InternalWrap("查询当前学期失败", err)
+		return err
 	}
 	if current != nil && current.Term == term.Term {
-		return bizerr.Param("请先更新当前学期为其他学期后重新删除")
+		return bizerr.Param("switch current term before deleting it")
 	}
 
 	deleted, err := s.repo.DeleteTermByID(ctx, term.ID)
 	if err != nil {
-		return bizerr.InternalWrap("删除学期失败", err)
+		return bizerr.InternalWrap("delete term failed", err)
 	}
 	if !deleted {
 		return ErrTermNotFound
@@ -55,14 +55,14 @@ func (s *Service) SetCurrentTerm(ctx context.Context, termID string) (*CurTerm, 
 		return nil, err
 	}
 
-	current, err := s.repo.FindCurrentTerm(ctx)
+	current, err := s.currentTermRecord(ctx)
 	if err != nil {
-		return nil, bizerr.InternalWrap("查询当前学期失败", err)
+		return nil, err
 	}
 	if current == nil {
 		current = &CurTerm{Term: term.Term}
 		if err := s.repo.CreateCurrentTerm(ctx, current); err != nil {
-			return nil, bizerr.InternalWrap("设置当前学期失败", err)
+			return nil, bizerr.InternalWrap("set current term failed", err)
 		}
 		return current, nil
 	}
@@ -71,7 +71,7 @@ func (s *Service) SetCurrentTerm(ctx context.Context, termID string) (*CurTerm, 
 	}
 
 	if err := s.repo.UpdateCurrentTerm(ctx, current.ID, term.Term); err != nil {
-		return nil, bizerr.InternalWrap("设置当前学期失败", err)
+		return nil, bizerr.InternalWrap("set current term failed", err)
 	}
 	current.Term = term.Term
 	return current, nil

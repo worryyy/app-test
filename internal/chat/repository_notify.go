@@ -14,23 +14,28 @@ func (r *Repository) FindNotificationsPage(
 	ctx context.Context,
 	receiverID, typ string,
 	page, size int,
-) ([]Notification, error) {
+) ([]Notification, int64, error) {
 	coll, err := r.mongoCollection(mongoCollNotify)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	filter := bson.M{
 		"receiver_id": receiverID,
 		"type":        typ,
 	}
+	total, err := coll.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count notifications: %w", err)
+	}
+
 	opts := options.Find().
 		SetSort(bson.D{{Key: "_id", Value: -1}}).
 		SetSkip(int64((page - 1) * size)).
 		SetLimit(int64(size))
 	cur, err := coll.Find(ctx, filter, opts)
 	if err != nil {
-		return nil, fmt.Errorf("find notifications: %w", err)
+		return nil, 0, fmt.Errorf("find notifications: %w", err)
 	}
 	defer func() {
 		_ = cur.Close(ctx)
@@ -38,12 +43,12 @@ func (r *Repository) FindNotificationsPage(
 
 	var notifications []Notification
 	if err := cur.All(ctx, &notifications); err != nil {
-		return nil, fmt.Errorf("decode notifications: %w", err)
+		return nil, 0, fmt.Errorf("decode notifications: %w", err)
 	}
 	if notifications == nil {
-		return []Notification{}, nil
+		return []Notification{}, total, nil
 	}
-	return notifications, nil
+	return notifications, total, nil
 }
 
 func (r *Repository) MarkLatestNotificationRead(ctx context.Context, receiverID, typ string) error {

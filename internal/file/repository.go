@@ -27,13 +27,3 @@ func (r *Repository) fileCollection() (*mongo.Collection, error) {
 	}
 	return r.mongoDB.Collection(mongoCollFile), nil
 }
-
-func normalizePage(page, size int) (int, int) {
-	if page <= 0 {
-		page = 1
-	}
-	if size <= 0 {
-		size = 15
-	}
-	return page, size
-}

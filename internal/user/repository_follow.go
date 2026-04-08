@@ -2,7 +2,6 @@ package user
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -15,13 +14,6 @@ const (
 	mongoCollFollow = "campus_follow"
 	mongoCollTopic  = "campus_topic"
 )
-
-func (r *Repository) mongoCollection(name string) (*mongo.Collection, error) {
-	if r.mongoDB == nil {
-		return nil, errors.New("mongo db not initialized")
-	}
-	return r.mongoDB.Collection(name), nil
-}
 
 func (r *Repository) IsFollowing(ctx context.Context, followerID, followingID int64) (bool, error) {
 	coll, err := r.mongoCollection(mongoCollFollow)

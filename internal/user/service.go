@@ -118,22 +118,14 @@ func (s *Service) Edit(ctx context.Context, userID int64, req UserEditReq) (*Use
 		return nil, ErrUserNotFound
 	}
 
-	if s.producer != nil {
-		msg := TopicUserUpdateMsg{
-			UserID:      fmt.Sprintf("%d", userID),
-			NickName:    req.Nickname,
-			Avatar:      req.Avatar,
-			Gender:      req.Gender,
-			Signature:   req.Signature,
-			AccountType: mapAccountType(user.AccountType),
-		}
-		if err := s.producer.SendTopicUserUpdate(ctx, msg); err != nil {
-			s.logger.Warn("send topic user update mq failed", zap.Error(err), zap.Int64("userID", userID))
-		}
-		if err := s.producer.SendCommentUserUpdate(ctx, CommentUserUpdateMsg(msg)); err != nil {
-			s.logger.Warn("send comment user update mq failed", zap.Error(err), zap.Int64("userID", userID))
-		}
-	}
+	s.publishUserUpdate(ctx, userID, buildUserUpdateMsg(
+		userID,
+		user.AccountType,
+		req.Nickname,
+		req.Avatar,
+		req.Gender,
+		req.Signature,
+	), "edit_profile")
 	return s.sanitizeUser(user), nil
 }
 

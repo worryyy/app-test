@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"go.uber.org/zap"
+	"golang.org/x/text/encoding/simplifiedchinese"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/encrypt"
@@ -216,6 +217,124 @@ func TestJWRequestHelperGetExamUsesCandidatePage(t *testing.T) {
 	}
 }
 
+func TestJWRequestHelperGetExamScoreRetriesTransientFailure(t *testing.T) {
+	scoreAttempts := 0
+	server := newJWTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/idp/authcenter/ActionAuthChain":
+			_, _ = w.Write([]byte(`<html>login</html>`))
+		case r.Method == http.MethodPost && r.URL.Path == "/idp/authcenter/ActionAuthChain":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"loginFailed":false}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/idp/AuthnEngine":
+			http.Redirect(w, r, "/jsxsd/framework/xsMain.htmlx", http.StatusFound)
+		case r.Method == http.MethodGet && r.URL.Path == "/jsxsd/framework/xsMain.htmlx":
+			_, _ = w.Write([]byte(`<html><body>欢迎您：张三</body></html>`))
+		case r.Method == http.MethodGet && r.URL.Path == "/jsxsd/xsgrxx/xsxx":
+			_, _ = w.Write([]byte(`<table><tr><td>姓名</td><td>张三</td></tr></table>`))
+		case r.Method == http.MethodPost && r.URL.Path == "/jsxsd/kscj/cjcx_list":
+			scoreAttempts++
+			if scoreAttempts == 1 {
+				http.Error(w, "temporary upstream error", http.StatusBadGateway)
+				return
+			}
+			_, _ = w.Write([]byte(`<table><tr><th>课程名称</th><th>成绩</th></tr><tr><td>高等数学</td><td>95</td></tr></table>`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+	})
+	defer server.Close()
+
+	helper := newTestJWHelper(server.URL)
+	resp, err := helper.GetExamScore(context.Background(), JWGetExamScoreReq{
+		SchoolID: "2023001",
+		Password: "jw-pass",
+		SS:       "2025-2026-1",
+	})
+	if err != nil {
+		t.Fatalf("GetExamScore returned error: %v", err)
+	}
+
+	items, ok := resp.Data.([]map[string]string)
+	if !ok || len(items) != 1 {
+		t.Fatalf("unexpected score payload: %#v", resp.Data)
+	}
+	if scoreAttempts != 2 {
+		t.Fatalf("expected 2 score attempts, got %d", scoreAttempts)
+	}
+}
+
+func TestJWRequestHelperCheckLoginFallsBackToAlternateMainPage(t *testing.T) {
+	server := newJWTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/idp/authcenter/ActionAuthChain":
+			_, _ = w.Write([]byte(`<html>login</html>`))
+		case r.Method == http.MethodPost && r.URL.Path == "/idp/authcenter/ActionAuthChain":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"loginFailed":false}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/idp/AuthnEngine":
+			http.Redirect(w, r, "/jsxsd/framework/xsMain.jsp", http.StatusFound)
+		case r.Method == http.MethodGet && r.URL.Path == "/jsxsd/framework/xsMain.htmlx":
+			http.NotFound(w, r)
+		case r.Method == http.MethodGet && r.URL.Path == "/jsxsd/framework/xsMain.jsp":
+			_, _ = w.Write([]byte(`<html><body>欢迎您：张三</body></html>`))
+		case r.Method == http.MethodGet && r.URL.Path == "/jsxsd/xsgrxx/xsxx":
+			_, _ = w.Write([]byte(`<table><tr><td>姓名</td><td>张三</td></tr><tr><td>专业</td><td>计算机科学与技术</td></tr></table>`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+	})
+	defer server.Close()
+
+	helper := newTestJWHelper(server.URL)
+	resp, err := helper.CheckLogin(context.Background(), "2023001", "jw-pass")
+	if err != nil {
+		t.Fatalf("CheckLogin returned error: %v", err)
+	}
+	data, ok := resp.Data.(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected data type: %T", resp.Data)
+	}
+	if data["name"] != "张三" || data["major"] != "计算机科学与技术" {
+		t.Fatalf("unexpected login data: %#v", data)
+	}
+}
+
+func TestJWRequestHelperCheckLoginDecodesGBKProfilePage(t *testing.T) {
+	server := newJWTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/idp/authcenter/ActionAuthChain":
+			_, _ = w.Write([]byte(`<html>login</html>`))
+		case r.Method == http.MethodPost && r.URL.Path == "/idp/authcenter/ActionAuthChain":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"loginFailed":false}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/idp/AuthnEngine":
+			http.Redirect(w, r, "/jsxsd/framework/xsMain.htmlx", http.StatusFound)
+		case r.Method == http.MethodGet && r.URL.Path == "/jsxsd/framework/xsMain.htmlx":
+			_, _ = w.Write([]byte(`<html><body>欢迎您：张三</body></html>`))
+		case r.Method == http.MethodGet && r.URL.Path == "/jsxsd/xsgrxx/xsxx":
+			w.Header().Set("Content-Type", "text/html; charset=gbk")
+			_, _ = w.Write(mustEncodeGBK(t, `<table><tr><td>姓名</td><td>张三</td></tr><tr><td>专业</td><td>计算机科学与技术</td></tr></table>`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+	})
+	defer server.Close()
+
+	helper := newTestJWHelper(server.URL)
+	resp, err := helper.CheckLogin(context.Background(), "2023001", "jw-pass")
+	if err != nil {
+		t.Fatalf("CheckLogin returned error: %v", err)
+	}
+	data, ok := resp.Data.(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected data type: %T", resp.Data)
+	}
+	if data["name"] != "张三" || data["major"] != "计算机科学与技术" {
+		t.Fatalf("unexpected login data: %#v", data)
+	}
+}
+
 func newTestJWHelper(serverURL string) *JWRequestHelper {
 	return NewJWRequestHelper(&config.Config{
 		JW: config.JWConfig{
@@ -245,4 +364,13 @@ func mustEncryptDES(t *testing.T, raw string) string {
 		t.Fatalf("DESECBEncrypt returned error: %v", err)
 	}
 	return base64.StdEncoding.EncodeToString(out)
+}
+
+func mustEncodeGBK(t *testing.T, raw string) []byte {
+	t.Helper()
+	out, err := simplifiedchinese.GBK.NewEncoder().Bytes([]byte(raw))
+	if err != nil {
+		t.Fatalf("encode gbk returned error: %v", err)
+	}
+	return out
 }

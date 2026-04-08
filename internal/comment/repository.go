@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 )
@@ -54,11 +53,4 @@ func (r *Repository) mongoCollection(name string) (*mongo.Collection, error) {
 		return nil, errors.New("mongo db not initialized")
 	}
 	return r.mongoDB.Collection(name), nil
-}
-
-func commentIDString(id primitive.ObjectID) string {
-	if id.IsZero() {
-		return ""
-	}
-	return id.Hex()
 }

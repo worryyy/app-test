@@ -143,6 +143,17 @@ func (s *Service) SwitchIdentityByAccountType(
 	return s.switchToIdentity(ctx, rootUser, targetUser)
 }
 
+func (s *Service) RandomNickname(accountType string) (string, error) {
+	switch strings.TrimSpace(accountType) {
+	case accountTypeBase:
+		return randomHumorousID(), nil
+	case accountTypeAnonymous:
+		return randomAnonymousID(), nil
+	default:
+		return "", bizerr.Param("accountType 非法")
+	}
+}
+
 func (s *Service) requireRootIdentity(ctx context.Context, rootUserID int64) (*User, error) {
 	rootUser, err := s.GetByID(ctx, rootUserID)
 	if err != nil {

@@ -44,24 +44,25 @@ func NewService(
 }
 
 func (s *Service) CurTerm(ctx context.Context) (*CurDateAndTerm, error) {
-	current, err := s.repo.FindCurrentTerm(ctx)
+	current, err := s.currentTermRecord(ctx)
 	if err != nil {
-		return nil, bizerr.InternalWrap("查询当前学期失败", err)
+		return nil, err
 	}
+
 	termValue := ""
 	if current != nil {
 		termValue = strings.TrimSpace(current.Term)
 	}
 	if termValue == "" {
-		return nil, bizerr.NotFound("请联系管理员设置当前学期")
+		return nil, bizerr.NotFound("current term is not configured")
 	}
 
 	term, err := s.repo.FindTermByValue(ctx, termValue)
 	if err != nil {
-		return nil, bizerr.InternalWrap("查询学期失败", err)
+		return nil, bizerr.InternalWrap("query term failed", err)
 	}
 	if term == nil {
-		return nil, bizerr.NotFound("请联系管理员检查学期")
+		return nil, bizerr.NotFound("current term record is invalid")
 	}
 
 	return &CurDateAndTerm{
@@ -84,7 +85,7 @@ func (s *Service) Authenticate(ctx context.Context, userID int64, req Authentica
 
 	_, name, major, err := decodeJWLoginMeta(loginResp.Data)
 	if err != nil {
-		return nil, bizerr.InternalWrap("解析认证结果失败", err)
+		return nil, bizerr.InternalWrap("decode authentication result failed", err)
 	}
 
 	encPwd, err := s.encryptAES(req.Password)
@@ -93,7 +94,7 @@ func (s *Service) Authenticate(ctx context.Context, userID int64, req Authentica
 	}
 
 	if err := s.repo.SaveAuthentication(ctx, userID, req, encPwd, name, major); err != nil {
-		return nil, bizerr.InternalWrap("保存校园认证信息失败", err)
+		return nil, bizerr.InternalWrap("save authentication failed", err)
 	}
 	return loginResp, nil
 }
@@ -109,9 +110,9 @@ func (s *Service) GetCourseByWeeks(ctx context.Context, req UserCourseReq) (*JWC
 		Password: req.Password,
 	})
 	if err != nil {
-		return nil, bizerr.InternalWrap("查询课表失败", err)
+		return nil, bizerr.InternalWrap("query course failed", err)
 	}
-	if err := ensureJWRespSuccess(resp, "查询课表失败"); err != nil {
+	if err := ensureJWRespSuccess(resp, "query course failed"); err != nil {
 		return nil, err
 	}
 	return resp, nil
@@ -124,9 +125,9 @@ func (s *Service) GetExam(ctx context.Context, req ExamReq) (*JWCommonResp, erro
 		XNXQID:   req.XNXQID,
 	})
 	if err != nil {
-		return nil, bizerr.InternalWrap("查询考试失败", err)
+		return nil, bizerr.InternalWrap("query exam failed", err)
 	}
-	if err := ensureJWRespSuccess(resp, "查询考试失败"); err != nil {
+	if err := ensureJWRespSuccess(resp, "query exam failed"); err != nil {
 		return nil, err
 	}
 	return resp, nil
@@ -139,9 +140,9 @@ func (s *Service) GetExamScore(ctx context.Context, req ExamScoreReq) (*JWCommon
 		SS:       req.SS,
 	})
 	if err != nil {
-		return nil, bizerr.InternalWrap("查询成绩失败", err)
+		return nil, bizerr.InternalWrap("query exam score failed", err)
 	}
-	if err := ensureJWRespSuccess(resp, "查询成绩失败"); err != nil {
+	if err := ensureJWRespSuccess(resp, "query exam score failed"); err != nil {
 		return nil, err
 	}
 	return resp, nil

@@ -51,26 +51,30 @@ func (r *Repository) FindConversationMessagesBefore(
 	conversationID string,
 	oldestMessageID *int64,
 	limit int64,
-) ([]Message, error) {
+) ([]Message, int64, error) {
 	if limit <= 0 {
 		limit = 15
 	}
 
 	coll, err := r.mongoCollection(mongoCollMessage)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	filter := bson.M{"conversation_id": conversationID}
 	if oldestMessageID != nil {
 		filter["message_id"] = bson.M{"$lt": *oldestMessageID}
 	}
+	total, err := coll.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count history messages: %w", err)
+	}
 
 	cur, err := coll.Find(ctx, filter, options.Find().
 		SetSort(bson.M{"message_id": 1}).
 		SetLimit(limit))
 	if err != nil {
-		return nil, fmt.Errorf("find history messages: %w", err)
+		return nil, 0, fmt.Errorf("find history messages: %w", err)
 	}
 	defer func() {
 		_ = cur.Close(ctx)
@@ -78,12 +82,12 @@ func (r *Repository) FindConversationMessagesBefore(
 
 	var messages []Message
 	if err := cur.All(ctx, &messages); err != nil {
-		return nil, fmt.Errorf("decode history messages: %w", err)
+		return nil, 0, fmt.Errorf("decode history messages: %w", err)
 	}
 	if messages == nil {
-		return []Message{}, nil
+		return []Message{}, total, nil
 	}
-	return messages, nil
+	return messages, total, nil
 }
 
 func (r *Repository) InsertMessage(ctx context.Context, message *Message) error {
