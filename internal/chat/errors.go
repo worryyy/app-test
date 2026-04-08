@@ -7,7 +7,7 @@ const errMsgInvalidParam = "参数错误"
 var (
 	ErrConversationNotFound     = bizerr.NotFound("会话不存在")
 	ErrConversationPeerNotFound = bizerr.NotFound("会话中未找到聊天对象")
-	ErrConversationUserNotFound = bizerr.NotFound("会话中用户信息未找到")
+	ErrConversationUserNotFound = bizerr.NotFound("会话中的用户信息未找到")
 	ErrConversationAccessDenied = bizerr.Forbidden("无权访问该会话")
 	ErrConversationDeleteDenied = bizerr.Forbidden("无权删除该会话")
 	ErrConversationUpdateFailed = bizerr.Biz("更新会话失败")

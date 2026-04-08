@@ -58,7 +58,7 @@ func (s *Service) GetHistoryMessages(
 		return nil, ErrConversationAccessDenied
 	}
 
-	messages, err := s.repo.FindConversationMessagesBefore(ctx, conversationID, oldestMessageID, int64(size))
+	messages, err := s.repo.FindConversationMessagesBefore(ctx, conversationID, oldestMessageID, historyMessageFetchLimit)
 	if err != nil {
 		return nil, bizerr.InternalWrap("查询历史消息失败", err)
 	}
@@ -256,6 +256,7 @@ func normalizeTimeValue(v any) time.Time {
 		layouts := []string{
 			time.RFC3339,
 			time.RFC3339Nano,
+			chatDateLayout,
 			"2006-01-02T15:04:05",
 			"2006-01-02T15:04:05.999",
 			"2006-01-02T15:04:05.999999999",

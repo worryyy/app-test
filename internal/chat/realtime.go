@@ -65,17 +65,13 @@ type realtimeNotification struct {
 	Content     string `json:"content"`
 	TopicID     string `json:"topicId"`
 	CommentID   string `json:"commentId"`
-	CreatedTime int64  `json:"createdTime"`
+	CreatedTime string `json:"createdTime"`
 	IsRead      bool   `json:"isRead"`
 }
 
 func newRealtimeNotification(notification *Notification) realtimeNotification {
 	if notification == nil {
 		return realtimeNotification{}
-	}
-	createdTime := int64(0)
-	if !notification.CreatedTime.IsZero() {
-		createdTime = notification.CreatedTime.UnixMilli()
 	}
 	return realtimeNotification{
 		ID:          objectIDString(notification.ID),
@@ -85,7 +81,7 @@ func newRealtimeNotification(notification *Notification) realtimeNotification {
 		Content:     notification.Content,
 		TopicID:     notification.TopicID,
 		CommentID:   notification.CommentID,
-		CreatedTime: createdTime,
+		CreatedTime: formatChatDate(notification.CreatedTime),
 		IsRead:      notification.IsRead,
 	}
 }

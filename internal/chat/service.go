@@ -12,7 +12,10 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/config"
 )
 
-const maxPageSize = 100
+const (
+	maxPageSize              = 100
+	historyMessageFetchLimit = 50
+)
 
 type Service struct {
 	repo   *Repository

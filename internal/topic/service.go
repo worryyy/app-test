@@ -82,7 +82,7 @@ func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *Creat
 	}
 
 	if _, err := s.repo.CreateTopic(ctx, topic); err != nil {
-		return nil, bizerr.InternalWrap("", err)
+		return nil, bizerr.InternalWrap("创建帖子失败", err)
 	}
 	s.prepareTopic(topic)
 
@@ -106,7 +106,7 @@ func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAd
 
 	ok, err := s.repo.HideTopic(ctx, oid, userIDString(userID), isAdmin)
 	if err != nil {
-		return bizerr.InternalWrap("鍒犻櫎甯栧瓙澶辫触", err)
+		return bizerr.InternalWrap("删除帖子失败", err)
 	}
 	if !ok {
 		return ErrTopicNotFound
@@ -175,7 +175,7 @@ func (s *Service) Update(ctx context.Context, topicID string, userID int64, req 
 
 	ok, err := s.repo.UpdateTopic(ctx, oid, userIDString(userID), update)
 	if err != nil {
-		return bizerr.InternalWrap("鏇存柊甯栧瓙澶辫触", err)
+		return bizerr.InternalWrap("更新帖子失败", err)
 	}
 	if !ok {
 		return ErrTopicNotFound
@@ -210,7 +210,7 @@ func (s *Service) ListTargetUserTopics(
 
 	author, err := s.repo.FindUserByID(ctx, targetUserID)
 	if err != nil {
-		return nil, bizerr.InternalWrap("鏌ヨ鐩爣鐢ㄦ埛澶辫触", err)
+		return nil, bizerr.InternalWrap("查询目标用户失败", err)
 	}
 	if author == nil {
 		return nil, ErrTargetUserNotFound
@@ -238,7 +238,7 @@ func (s *Service) listByFilter(
 ) (*PageResult[Topic], error) {
 	topics, total, err := s.repo.FindTopicsPage(ctx, filter, sort, page, size)
 	if err != nil {
-		return nil, bizerr.InternalWrap("鏌ヨ甯栧瓙鍒楄〃澶辫触", err)
+		return nil, bizerr.InternalWrap("查询帖子列表失败", err)
 	}
 
 	s.prepareTopics(topics)

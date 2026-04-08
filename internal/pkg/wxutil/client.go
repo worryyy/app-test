@@ -84,7 +84,7 @@ func (c *Client) Jscode2Session(ctx context.Context, code string) (*Jscode2Sessi
 	return &out, nil
 }
 
-func (c *Client) MsgSecCheck(ctx context.Context, content, userID string) (*MsgSecCheckResp, error) {
+func (c *Client) MsgSecCheck(ctx context.Context, content, openID string) (*MsgSecCheckResp, error) {
 	token, err := c.getStableAccessToken(ctx)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (c *Client) MsgSecCheck(ctx context.Context, content, userID string) (*MsgS
 		"content": content,
 		"version": 2,
 		"scene":   1,
-		"openid":  userID,
+		"openid":  openID,
 	}
 	endpoint := "https://api.weixin.qq.com/wxa/msg_sec_check?access_token=" + token
 	resp, err := c.doJSONRequest(ctx, http.MethodPost, endpoint, payload)
@@ -106,8 +106,8 @@ func (c *Client) MsgSecCheck(ctx context.Context, content, userID string) (*MsgS
 		ErrCode int    `json:"errcode"`
 		ErrMsg  string `json:"errmsg"`
 		Result  struct {
-			Suggest string `json:"suggest"`
-			Label   string `json:"label"`
+			Suggest string      `json:"suggest"`
+			Label   interface{} `json:"label"`
 		} `json:"result"`
 		Detail []struct {
 			FilteredContent string `json:"filtered_content"`
@@ -126,22 +126,23 @@ func (c *Client) MsgSecCheck(ctx context.Context, content, userID string) (*MsgS
 	}
 	return &MsgSecCheckResp{
 		Suggest:         raw.Result.Suggest,
-		Label:           raw.Result.Label,
+		Label:           stringifyWXLabel(raw.Result.Label),
 		FilteredContent: filtered,
 	}, nil
 }
 
-func (c *Client) SendSubscribeMsg(ctx context.Context, userID, title, content string) error {
+func (c *Client) SendSubscribeMsg(ctx context.Context, openID, title, content string) error {
+	if strings.TrimSpace(c.cfg.SubscribeTemplateID) == "" {
+		return nil
+	}
+
 	token, err := c.getStableAccessToken(ctx)
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(c.cfg.SubscribeTemplateID) == "" {
-		return errors.New("wx subscribe template id is empty")
-	}
 
 	payload := map[string]interface{}{
-		"touser":      userID,
+		"touser":      openID,
 		"template_id": c.cfg.SubscribeTemplateID,
 		"data": map[string]interface{}{
 			"thing1": map[string]string{"value": title},
@@ -282,4 +283,17 @@ func (c *Client) LogMaskedSubscribeFailure(userID string, err error) {
 		zap.String("userID", userID),
 		zap.Error(err),
 	)
+}
+
+func stringifyWXLabel(value interface{}) string {
+	switch v := value.(type) {
+	case nil:
+		return ""
+	case string:
+		return v
+	case float64:
+		return fmt.Sprintf("%.0f", v)
+	default:
+		return fmt.Sprint(v)
+	}
 }

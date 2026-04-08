@@ -17,7 +17,7 @@ func TestRealtimeNotificationMarshal(t *testing.T) {
 		Content:     "x",
 		TopicID:     "t1",
 		CommentID:   "c1",
-		CreatedTime: time.UnixMilli(1710000000000),
+		CreatedTime: time.UnixMilli(1710000000000).UTC(),
 		IsRead:      false,
 	}
 
@@ -26,7 +26,7 @@ func TestRealtimeNotificationMarshal(t *testing.T) {
 		t.Fatalf("marshal realtime notification: %v", err)
 	}
 
-	want := "{\"id\":\"" + notification.ID.Hex() + "\",\"receiverId\":\"42\",\"senderId\":\"7\",\"type\":\"TOPIC_LIKE\",\"content\":\"x\",\"topicId\":\"t1\",\"commentId\":\"c1\",\"createdTime\":1710000000000,\"isRead\":false}"
+	want := "{\"id\":\"" + notification.ID.Hex() + "\",\"receiverId\":\"42\",\"senderId\":\"7\",\"type\":\"TOPIC_LIKE\",\"content\":\"x\",\"topicId\":\"t1\",\"commentId\":\"c1\",\"createdTime\":\"2024-03-09\",\"isRead\":false}"
 	if string(raw) != want {
 		t.Fatalf("unexpected json: got %s want %s", raw, want)
 	}

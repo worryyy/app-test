@@ -11,6 +11,17 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/pkg/jwtutil"
 )
 
+const (
+	topicAccountTypeBase      = "base"
+	topicAccountTypeAnonymous = "anonymous"
+)
+
+type topicAuthorTarget struct {
+	UserID      int64
+	RootUserID  int64
+	AccountType string
+}
+
 func (s *Service) ensureThemeExists(ctx context.Context, themeID string) error {
 	if strings.TrimSpace(themeID) == "" {
 		return bizerr.Param(errMsgInvalidParam)
@@ -35,17 +46,13 @@ func (s *Service) resolveThemeName(ctx context.Context, themeID string) string {
 }
 
 func (s *Service) resolveTopicAuthor(ctx context.Context, claims *jwtutil.Claims, accountType string) (*topicAuthor, error) {
-	if claims == nil {
-		return nil, bizerr.Param(errMsgInvalidParam)
+	target, err := resolveTopicAuthorTarget(claims, accountType)
+	if err != nil {
+		return nil, err
 	}
 
-	targetAccountType := strings.TrimSpace(accountType)
-	if targetAccountType == "" {
-		targetAccountType = claims.AccountType
-	}
-
-	if targetAccountType != "" && targetAccountType != claims.AccountType {
-		author, err := s.repo.FindUserByRootAndAccountType(ctx, claims.RootUserID, targetAccountType)
+	if target.AccountType == topicAccountTypeAnonymous {
+		author, err := s.repo.FindUserByRootAndAccountType(ctx, target.RootUserID, topicAccountTypeAnonymous)
 		if err != nil {
 			return nil, bizerr.InternalWrap("查询匿名身份失败", err)
 		}
@@ -55,7 +62,7 @@ func (s *Service) resolveTopicAuthor(ctx context.Context, claims *jwtutil.Claims
 		return author, nil
 	}
 
-	author, err := s.repo.FindUserByID(ctx, claims.UserID)
+	author, err := s.repo.FindUserByID(ctx, target.UserID)
 	if err != nil {
 		return nil, bizerr.InternalWrap("查询用户失败", err)
 	}
@@ -147,4 +154,57 @@ func parseTopicObjectID(topicID string) (primitive.ObjectID, error) {
 
 func userIDString(userID int64) string {
 	return strconv.FormatInt(userID, 10)
+}
+
+func resolveTopicAuthorTarget(claims *jwtutil.Claims, requestedAccountType string) (*topicAuthorTarget, error) {
+	if claims == nil {
+		return nil, bizerr.Param(errMsgInvalidParam)
+	}
+
+	rootUserID := claims.RootUserID
+	if rootUserID == 0 {
+		rootUserID = claims.UserID
+	}
+	if claims.UserID <= 0 || rootUserID <= 0 {
+		return nil, bizerr.Param(errMsgInvalidParam)
+	}
+
+	accountType, err := normalizeTopicAccountType(claims, requestedAccountType)
+	if err != nil {
+		return nil, err
+	}
+
+	target := &topicAuthorTarget{
+		RootUserID:  rootUserID,
+		AccountType: accountType,
+	}
+	if accountType == topicAccountTypeBase {
+		target.UserID = rootUserID
+	}
+	return target, nil
+}
+
+func normalizeTopicAccountType(claims *jwtutil.Claims, requestedAccountType string) (string, error) {
+	accountType := strings.TrimSpace(requestedAccountType)
+	if accountType == "" && claims != nil {
+		accountType = strings.TrimSpace(claims.AccountType)
+	}
+	if accountType == "" && claims != nil {
+		rootUserID := claims.RootUserID
+		if rootUserID == 0 {
+			rootUserID = claims.UserID
+		}
+		if claims.UserID > 0 && claims.UserID == rootUserID {
+			accountType = topicAccountTypeBase
+		} else if claims.UserID > 0 && rootUserID > 0 {
+			accountType = topicAccountTypeAnonymous
+		}
+	}
+
+	switch accountType {
+	case topicAccountTypeBase, topicAccountTypeAnonymous:
+		return accountType, nil
+	default:
+		return "", bizerr.Param(errMsgInvalidParam)
+	}
 }

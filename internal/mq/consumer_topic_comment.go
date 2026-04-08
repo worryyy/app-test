@@ -25,7 +25,7 @@ type topicDoc struct {
 }
 
 type commentUserDoc struct {
-	UserID string `json:"user_id" bson:"user_id"`
+	UserID string `json:"userId" bson:"userId"`
 }
 
 type commentDoc struct {
@@ -63,17 +63,20 @@ func (c *Consumers) handleTopicCheck(ctx context.Context, data json.RawMessage) 
 	if c.wxClient == nil {
 		return fmt.Errorf("wx client not initialized")
 	}
-	titleResult, err := c.wxClient.MsgSecCheck(ctx, topic.Title, topic.UserID)
+	openID, err := c.resolveWXOpenID(ctx, topic.UserID)
+	if err != nil {
+		return fmt.Errorf("resolve topic wx openid: %w", err)
+	}
+	titleResult, err := c.wxClient.MsgSecCheck(ctx, topic.Title, openID)
 	if err != nil {
 		return fmt.Errorf("wx check topic title: %w", err)
 	}
-	contentResult, err := c.wxClient.MsgSecCheck(ctx, topic.Content, topic.UserID)
+	contentResult, err := c.wxClient.MsgSecCheck(ctx, topic.Content, openID)
 	if err != nil {
 		return fmt.Errorf("wx check topic content: %w", err)
 	}
 
 	if isRisky(titleResult.Suggest) || isRisky(contentResult.Suggest) {
-		_ = c.wxClient.SendSubscribeMsg(ctx, topic.UserID, "您的帖子未通过审核", topic.Title)
 		return nil
 	}
 
@@ -96,7 +99,6 @@ func (c *Consumers) handleTopicCheck(ctx context.Context, data json.RawMessage) 
 		return fmt.Errorf("update checked topic: %w", err)
 	}
 
-	_ = c.wxClient.SendSubscribeMsg(ctx, topic.UserID, "您的帖子已发布", filteredTitle)
 	return nil
 }
 
@@ -121,7 +123,11 @@ func (c *Consumers) handleCommentAdd(ctx context.Context, data json.RawMessage) 
 	if c.wxClient == nil {
 		return fmt.Errorf("wx client not initialized")
 	}
-	checkResult, err := c.wxClient.MsgSecCheck(ctx, cmt.Comment, cmt.User.UserID)
+	openID, err := c.resolveWXOpenID(ctx, cmt.User.UserID)
+	if err != nil {
+		return fmt.Errorf("resolve comment wx openid: %w", err)
+	}
+	checkResult, err := c.wxClient.MsgSecCheck(ctx, cmt.Comment, openID)
 	if err != nil {
 		return fmt.Errorf("wx check comment: %w", err)
 	}
@@ -129,7 +135,6 @@ func (c *Consumers) handleCommentAdd(ctx context.Context, data json.RawMessage) 
 		if err := c.deleteRejectedComment(ctx, cmt.ID); err != nil {
 			return err
 		}
-		_ = c.wxClient.SendSubscribeMsg(ctx, cmt.User.UserID, "您的评论未通过审核", cmt.Comment)
 		return nil
 	}
 

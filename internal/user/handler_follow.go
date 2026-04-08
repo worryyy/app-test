@@ -17,7 +17,7 @@ func (h *Handler) Follow(c *gin.Context) {
 		return
 	}
 
-	followingID, err := parsePositiveInt64(query.ResolvedFollowingID())
+	followingID, err := parsePositiveInt64(query.FollowingID)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -40,7 +40,7 @@ func (h *Handler) Unfollow(c *gin.Context) {
 		return
 	}
 
-	followingID, err := parsePositiveInt64(query.ResolvedFollowingID())
+	followingID, err := parsePositiveInt64(query.FollowingID)
 	if err != nil {
 		responses.Fail(c, err)
 		return
@@ -58,7 +58,7 @@ func (h *Handler) GetUserStats(c *gin.Context) {
 		return
 	}
 
-	userID, err := parsePositiveInt64(query.ResolvedUserID())
+	userID, err := parsePositiveInt64(query.UserID)
 	if err != nil {
 		responses.Fail(c, err)
 		return

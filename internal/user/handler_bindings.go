@@ -9,36 +9,21 @@ type randomNicknameQuery struct {
 }
 
 type userProfileQuery struct {
-	TargetUserID       string `form:"target_user_id"`
-	LegacyTargetUserID string `form:"targetUserId"`
-}
-
-func (q userProfileQuery) ResolvedTargetUserID() string {
-	return firstNonBlank(q.TargetUserID, q.LegacyTargetUserID)
+	TargetUserID string `form:"target_user_id"`
 }
 
 type followActionQuery struct {
-	FollowingID       string `form:"following_id"`
-	LegacyFollowingID string `form:"followingId"`
-}
-
-func (q followActionQuery) ResolvedFollowingID() string {
-	return firstNonBlank(q.FollowingID, q.LegacyFollowingID)
+	FollowingID string `form:"following_id"`
 }
 
 type userStatsQuery struct {
-	UserID       string `form:"user_id"`
-	LegacyUserID string `form:"userId"`
-}
-
-func (q userStatsQuery) ResolvedUserID() string {
-	return firstNonBlank(q.UserID, q.LegacyUserID)
+	UserID string `form:"user_id"`
 }
 
 type adminListUsersQuery struct {
 	Page     int    `form:"page"`
 	Size     int    `form:"size"`
-	NickName string `form:"nickName"`
+	NickName string `form:"nick_name"`
 }
 
 type preAuthQuery struct {

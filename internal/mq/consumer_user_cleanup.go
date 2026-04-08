@@ -183,7 +183,7 @@ func accountTypeName(accountType int) string {
 
 func (c *Consumers) handleDie(ctx context.Context, data json.RawMessage) error {
 	var msg DieMsg
-	if err := decodeData(data, &msg); err != nil {
+	if err := decodeData(data, &msg); err != nil || (msg.Queue == "" && msg.Payload == nil && msg.Reason == "") {
 		msg = DieMsg{Payload: string(data)}
 	}
 	if c.mongoDB == nil {

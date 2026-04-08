@@ -107,7 +107,7 @@ func (h *Handler) GetUserProfile(c *gin.Context) {
 		return
 	}
 
-	targetUserID, err := parsePositiveInt64(query.ResolvedTargetUserID())
+	targetUserID, err := parsePositiveInt64(query.TargetUserID)
 	if err != nil {
 		responses.Fail(c, err)
 		return
