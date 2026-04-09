@@ -49,17 +49,26 @@ go mod tidy
 
 ## 架构规则
 
-**两层架构：Handler → Service，无 Repository 层。** Service 直接操作 GORM/mongo-driver/go-redis。
+**两层架构：Handler → Service。** Service 通过内部 Repository 组织数据访问代码（GORM/mongo-driver/go-redis），但 Repository 不抽象为接口，不用于测试替换——本质上仍然是 Service 直接操作数据库，Repository 只是物理文件拆分。
 
-**Package 结构**（每个业务领域一个 package）：
-- `model.go` / `model_req.go` — 数据结构，两服务共享
-- `service.go` / `service_*.go` — 业务逻辑，两服务共享
-- `handler.go` / `handler_*.go` — 用户端 HTTP handler，仅 ecampus 使用
-- `admin.go` — 管理端 HTTP handler，仅 ecampus-crm 使用
+**Package 结构**（每个业务领域一个 package，详见 `docs/module-layout.md`）：
+- `model.go` / `model_req.go` / `model_resp.go` — 数据结构，两服务共享
+- `service.go` / `service_<业务>.go` — 业务逻辑，按子域拆分，两服务共享
+- `repository.go` / `repository_<业务>.go` — 数据访问，按子域拆分
+- `handler.go` / `handler_<业务>.go` — 用户端 HTTP handler
+- `admin.go` — 管理端 HTTP handler
+- `routes.go` / `routes_admin.go` — 路由自注册
+- `errors.go` — 模块级错误定义
 
 **构造函数注入**：`NewXxxService(db, mongoDB, rds, cfg, logger)` 模式，不用 DI 框架。
 
 **一个实体一个 struct**：同时携带 `gorm:`、`bson:`、`json:` tag，不建 VO/DTO/PO 分层。
+
+**目录划分**：
+- `internal/platform/` — 基础能力（bizerr, config, jwtutil, responses, encrypt, snowflake, pagination）
+- `internal/integration/` — 外部服务集成（cosutil, wxutil）
+- `internal/app/bootstrap/` — 基础设施初始化与 HTTP server
+- `internal/app/ecampus/` / `internal/app/ecampuscrm/` — 服务组装与路由注册
 
 ## 编码规范
 
@@ -78,8 +87,8 @@ go mod tidy
 
 统一响应格式：`{"success": bool, "code": int, "msg": "string", "data": any}`
 
-使用 `result.Success(c, data)` / `result.HandleError(c, err)` / `result.Fail(c, code, msg)` 返回。
-业务错误用 `result.NewBizError(code, msg)` 构造，在 `HandleError` 中自动解析。
+使用 `responses.Success.RespData(c, data)` / `responses.Fail(c, err)` / `responses.Success.Resp(c)` 返回。
+业务错误用 `bizerr.Biz(msg)` / `bizerr.Param(msg)` / `bizerr.NotFound(msg)` 构造，在 `responses.Fail` 中自动解析。
 
 **Null 处理**：JSON 响应不出现 `null`（string→`""`，number→`0`，bool→`false`，array→`[]`）。
 

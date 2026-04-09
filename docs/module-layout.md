@@ -2,57 +2,36 @@
 
 后续各业务模块统一参考 `internal/topic` 的组织方式。
 
-## Core Rule
+## 完整文件清单
 
-每个业务模块内部按“主接口”和“业务子域”拆分：
+每个业务模块可能包含以下文件：
 
-- `service.go`
-  只放该模块的主接口。
-  典型是增删改查、详情、我的列表、面向主流程的核心能力。
-- `service_<业务>.go`
-  放非主接口、扩展能力、子域能力。
-  例如搜索、社交、审核、统计、同步等。
-- `repository.go`
-  只负责持有数据库实例，以及暴露基础访问方法。
-  例如：
-  - `NewRepository(...)`
-  - `gormDB(ctx)`
-  - `mongoCollection(name)`
-  - 模块级常量、基础内部类型
-- `repository_<业务>.go`
-  放具体数据库操作，按子域拆分。
-  例如：
-  - `repository_topic.go`
-  - `repository_search.go`
-  - `repository_social.go`
+| 文件 | 职责 | 备注 |
+|------|------|------|
+| `model.go` | 核心实体（同时携带 gorm/bson/json tag） | 两服务共享 |
+| `model_req.go` | 请求体结构 | |
+| `model_resp.go` | 响应体结构 | 可选，字段少时可放 model.go |
+| `model_<业务>.go` | 子域模型（如 follow） | 可选，量大时拆出 |
+| `errors.go` | 模块级错误定义 | 使用 `bizerr` 包级变量 |
+| `service.go` | 主接口 + `NewService` | |
+| `service_<业务>.go` | 子域能力 | |
+| `repository.go` | 仓储基座（struct + 连接获取） | |
+| `repository_<业务>.go` | 具体数据操作 | |
+| `handler.go` | 主 HTTP handler + `NewHandler` | |
+| `handler_<业务>.go` | 子域 handler | 与 service 拆分对称 |
+| `handler_bindings.go` | 请求绑定结构体 | |
+| `handler_helpers.go` | 模块独有的 handler 辅助函数 | 仅放该模块独有的 |
+| `admin.go` | 管理端 handler | |
+| `routes.go` | `RegisterPublicRoutes` / `RegisterProtectedRoutes` | |
+| `routes_admin.go` | `RegisterAdminRoutes` | |
+| `producer.go` | MQ 事件发送接口 | 可选 |
+| `page_result.go` | 分页结果 | 后续应迁移到 platform/pagination |
 
-## Topic As Template
+## Service 拆分规则
 
-`topic` 模块是后续的标准参考：
+### 什么留在 `service.go`
 
-- [service.go](/d:/EcampusGO/internal/topic/service.go)
-  放主接口：创建帖子、删除帖子、帖子详情、更新帖子、我的帖子、目标用户帖子等。
-- [service_search.go](/d:/EcampusGO/internal/topic/service_search.go)
-  放搜索能力。
-- [service_social.go](/d:/EcampusGO/internal/topic/service_social.go)
-  放点赞、收藏等社交能力。
-- [repository.go](/d:/EcampusGO/internal/topic/repository.go)
-  只放仓储基础结构与数据库实例获取。
-- [repository_topic.go](/d:/EcampusGO/internal/topic/repository_topic.go)
-  放帖子主数据操作。
-- [repository_search.go](/d:/EcampusGO/internal/topic/repository_search.go)
-  放搜索相关数据操作。
-- [repository_social.go](/d:/EcampusGO/internal/topic/repository_social.go)
-  放点赞、收藏相关数据操作。
-
-## Service Split Standard
-
-判断内容是否应留在 `service.go`：
-
-- 属于模块主流程，放 `service.go`
-- 属于扩展能力或子业务，放 `service_<业务>.go`
-
-建议放在 `service.go` 的内容：
+属于模块**主流程**的接口：
 
 - Create
 - Delete
@@ -61,80 +40,127 @@
 - Mine / ListMine
 - 主业务列表接口
 
-建议拆到 `service_<业务>.go` 的内容：
+### 什么拆到 `service_<业务>.go`
 
-- Search
-- Social
-- AdminOps
-- Identity
-- Follow
-- Notify
-- Extra
+属于**扩展能力或子业务**的接口：
 
-## Repository Split Standard
+- Search — `service_search.go`
+- Social（点赞/收藏） — `service_social.go`
+- AdminOps — `service_admin.go`
+- Identity — `service_identity.go`
+- Follow — `service_follow.go`
+- Notify — `service_notify.go`
+- 微信等外部集成 — `service_wx.go`
 
-判断内容是否应留在 `repository.go`：
+## Repository 拆分规则
 
-- 只要是“具体查询、插入、更新、删除逻辑”，都不要放在 `repository.go`
-- `repository.go` 只保留仓储基座能力
+### 什么留在 `repository.go`
 
-建议保留在 `repository.go` 的内容：
+仓储**基座能力**：
 
-- `Repository` 结构体
+- `Repository` 结构体定义
 - `NewRepository`
-- `gormDB`
-- `mongoCollection`
-- 模块范围内通用常量
-- 少量所有子仓储都会复用的基础内部类型
+- `gormDB(ctx)` / `mongoCollection(name)`
+- 模块范围内通用常量（集合名等）
+- 所有子仓储都会复用的基础内部类型
 
-建议拆到 `repository_<业务>.go` 的内容：
+### 什么拆到 `repository_<业务>.go`
 
-- 主实体 CRUD
-- 搜索查询
-- 关系操作
-- 聚合查询
-- 统计更新
-- 审核/状态流转
+所有**具体数据库操作**：
 
-## Naming Rule
+- 主实体 CRUD — `repository_topic.go`
+- 搜索查询 — `repository_search.go`
+- 关系操作（点赞/收藏/关注） — `repository_social.go`
+- 聚合查询 / 统计更新
+- 审核 / 状态流转
 
-命名统一使用下面的形式：
+## Handler 拆分规则
 
-- `service.go`
-- `service_<business>.go`
-- `repository.go`
-- `repository_<business>.go`
+Handler 的拆分与 Service 保持**对称**：
 
+- 主流程 handler 放 `handler.go`
+- 子域 handler 放 `handler_<业务>.go`（如 `handler_follow.go`、`handler_identity.go`）
+- 管理端 handler 统一用 `admin.go`
+- 请求绑定结构体（query/uri struct + Resolved 方法）放 `handler_bindings.go`
 
-新增这类文件的前提: 同一模块下可提炼出复用的方法 
-- `repository_helpers.go`
-- `service_helpers.go`
+### handler_helpers.go 的定位
 
-如果确实只是纯辅助函数，优先判断：
+只放该模块**独有**的 handler 辅助函数（如 `writeTopicListResult`）。
 
-- 能否内聚进对应 `service_<业务>.go` 
-- 能否内聚进对应 `repository_<业务>.go`
-- 只有跨多个子域复用且职责明确时，再保留 `*_helpers.go`
-如果代码不超过10行左右,且代码不可复用 内聚对应service或者repository
-如果转换代码超过 10 行或者逻辑复杂，建议提取为私有函数 仍放在同一文件下
+跨模块通用的 handler 工具函数（如 `bindJSON`、`bindQuery`、`pageSize`）应提取到 `internal/platform/ginutil/`，各模块不再重复定义。
 
-## 具体例子
-简单的 int64(strconv.Atoi(...)) 且错误处理不复杂 → 内联。
+## Routes 规则
 
-需要多处使用的转换（如 string → time.Time 带默认时区） → 。
+每个模块提供路由注册函数，由 `internal/app/ecampus/routes.go` 统一调用：
 
-只在当前 service 内使用的复杂转换 → 私有方法 convertXXX 放在 service 文件末尾
+- `routes.go` — 暴露 `RegisterPublicRoutes` / `RegisterProtectedRoutes`
+- `routes_admin.go` — 暴露 `RegisterAdminRoutes`
+- 路由注册函数只做路由映射，不含业务逻辑
 
-## Migration Rule
+## Errors 规则
+
+模块级错误统一在 `errors.go` 中定义为包级变量：
+
+```go
+var (
+    ErrTopicNotFound = bizerr.NotFound("帖子不存在")
+    ErrTopicAlreadyLiked = bizerr.Biz("已经点赞过该帖子")
+)
+```
+
+使用 `bizerr.NotFound` / `bizerr.Biz` / `bizerr.Param` / `bizerr.Unauthorized` 构造。
+不在 service 函数内部临时创建错误，除非错误信息需要动态拼接。
+
+## 辅助函数规则
+
+基于**使用范围**决定放置位置，而非行数：
+
+| 使用范围 | 放置位置 |
+|---------|---------|
+| 仅在单个函数内使用 | 内联 |
+| 同一文件 2+ 处使用 | 同文件末尾提取为私有函数 |
+| 同模块跨文件使用 | 放入对应的 `service_<业务>.go` 或 `repository_<业务>.go` |
+| 跨模块使用 | 提取到 `internal/platform/` |
+
+**不再使用 `*_helpers.go` 作为默认存放位置。** 只有在辅助函数确实跨多个子域复用、且不适合归入任何一个子域文件时，才保留 helpers 文件。
+
+## 跨模块共享
+
+| 共享内容 | 放置位置 |
+|---------|---------|
+| Handler 工具（bind, pageSize） | `internal/platform/ginutil/` |
+| 分页结果 `PageResult[T]` | `internal/platform/pagination/` |
+| 业务错误构造 | `internal/platform/bizerr/` |
+| JWT 工具 | `internal/platform/jwtutil/` |
+| 加密工具 | `internal/platform/encrypt/` |
+| 外部服务集成（微信、COS） | `internal/integration/<服务>/` |
+
+## Topic 模板参考
+
+`internal/topic` 是标准参考模块：
+
+- [service.go](../internal/topic/service.go) — 主接口：创建、删除、详情、更新、我的帖子、目标用户帖子
+- [service_search.go](../internal/topic/service_search.go) — 搜索能力
+- [service_social.go](../internal/topic/service_social.go) — 点赞、收藏
+- [service_topic.go](../internal/topic/service_topic.go) — 帖子相关辅助逻辑
+- [repository.go](../internal/topic/repository.go) — 仓储基座
+- [repository_topic.go](../internal/topic/repository_topic.go) — 帖子主数据操作
+- [repository_search.go](../internal/topic/repository_search.go) — 搜索数据操作
+- [repository_social.go](../internal/topic/repository_social.go) — 点赞、收藏数据操作
+- [routes.go](../internal/topic/routes.go) — 路由注册
+
+## 迁移顺序
 
 后续模块整理时按下面顺序做：
 
-1. 先确定模块的“主接口”范围
+1. 先确定模块的"主接口"范围
 2. 把主接口留在 `service.go`
 3. 把非主接口按子域拆到 `service_<业务>.go`
 4. 把 `repository.go` 收缩为仓储基座
 5. 把所有具体数据库操作迁到 `repository_<业务>.go`
+6. Handler 拆分与 Service 保持对称
+7. 提取跨模块重复代码到 `internal/platform/`
 
-## Default Expectation
+## 默认约定
 
 从现在开始，除非有特殊说明，新模块和旧模块重构都默认遵守这套规则。
