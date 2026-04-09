@@ -13,13 +13,15 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/sensitive"
 )
 
 type Service struct {
-	repo     *Repository
-	redis    *redis.Client
-	logger   *zap.Logger
-	producer EventProducer
+	repo            *Repository
+	redis           *redis.Client
+	logger          *zap.Logger
+	producer        EventProducer
+	sensitiveFilter sensitive.Filter
 }
 
 func NewService(
@@ -44,6 +46,10 @@ func (s *Service) SetProducer(producer EventProducer) {
 	s.producer = producer
 }
 
+func (s *Service) SetSensitiveFilter(filter sensitive.Filter) {
+	s.sensitiveFilter = filter
+}
+
 func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *CreateTopicReq) (*Topic, error) {
 	if claims == nil {
 		return nil, ErrInvalidAuthClaims
@@ -65,11 +71,20 @@ func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *Creat
 		title = " "
 	}
 
+	filteredTitle, err := s.filterText(ctx, title)
+	if err != nil {
+		return nil, err
+	}
+	filteredContent, err := s.filterText(ctx, req.Content)
+	if err != nil {
+		return nil, err
+	}
+
 	topic := &Topic{
 		ThemeID:       req.ThemeID,
 		UserID:        userIDString(author.ID),
-		Title:         title,
-		Content:       req.Content,
+		Title:         filteredTitle,
+		Content:       filteredContent,
 		Imgs:          ensureSlice(req.Imgs),
 		HasCheck:      false,
 		VisitedNum:    0,
@@ -151,10 +166,18 @@ func (s *Service) Update(ctx context.Context, topicID string, userID int64, req 
 
 	update := bson.M{}
 	if req.Title != "" {
-		update["title"] = req.Title
+		filteredTitle, err := s.filterText(ctx, req.Title)
+		if err != nil {
+			return err
+		}
+		update["title"] = filteredTitle
 	}
 	if req.Content != "" {
-		update["content"] = req.Content
+		filteredContent, err := s.filterText(ctx, req.Content)
+		if err != nil {
+			return err
+		}
+		update["content"] = filteredContent
 	}
 	if len(req.Imgs) > 0 {
 		update["imgs"] = ensureSlice(req.Imgs)

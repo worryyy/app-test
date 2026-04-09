@@ -9,6 +9,7 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
+	"github.com/Milchstrassse/Ecampus-go/internal/sensitive"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
 )
@@ -29,14 +30,16 @@ func Run() error {
 	themeSvc := theme.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
 	fileSvc := file.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
 	schoolSvc := school.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger, nil)
+	sensitiveSvc := sensitive.NewService(infra.MySQL, infra.Logger)
 
 	engine := bootstrap.NewEngine()
 	registerRoutes(engine, infra.Logger, infra.MySQL, jwtHelper, infra.Redis, adminHandlers{
-		User:    user.NewAdminHandler(userSvc),
-		Comment: comment.NewAdminHandler(commentSvc),
-		Theme:   theme.NewAdminHandler(themeSvc),
-		File:    file.NewAdminHandler(fileSvc),
-		School:  school.NewAdminHandler(schoolSvc),
+		User:      user.NewAdminHandler(userSvc),
+		Comment:   comment.NewAdminHandler(commentSvc),
+		Theme:     theme.NewAdminHandler(themeSvc),
+		File:      file.NewAdminHandler(fileSvc),
+		School:    school.NewAdminHandler(schoolSvc),
+		Sensitive: sensitive.NewAdminHandler(sensitiveSvc),
 	})
 
 	server := bootstrap.NewHTTPServer(infra.Config.Server.Port, engine)

@@ -11,16 +11,18 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
+	"github.com/Milchstrassse/Ecampus-go/internal/sensitive"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
 )
 
 type adminHandlers struct {
-	User    *user.AdminHandler
-	Comment *comment.AdminHandler
-	Theme   *theme.AdminHandler
-	File    *file.AdminHandler
-	School  *school.AdminHandler
+	User      *user.AdminHandler
+	Comment   *comment.AdminHandler
+	Theme     *theme.AdminHandler
+	File      *file.AdminHandler
+	School    *school.AdminHandler
+	Sensitive *sensitive.AdminHandler
 }
 
 func registerRoutes(
@@ -46,4 +48,5 @@ func registerRoutes(
 	theme.RegisterAdminRoutes(admin, handlers.Theme)
 	file.RegisterAdminRoutes(admin, handlers.File)
 	school.RegisterAdminRoutes(admin, handlers.School)
+	sensitive.RegisterAdminRoutes(admin, handlers.Sensitive)
 }

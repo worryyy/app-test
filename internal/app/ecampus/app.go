@@ -11,6 +11,7 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/mq"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
+	"github.com/Milchstrassse/Ecampus-go/internal/sensitive"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
 	"github.com/Milchstrassse/Ecampus-go/internal/topic"
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
@@ -44,6 +45,9 @@ func Run() error {
 	topicSvc := topic.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
 	topicSvc.SetProducer(newTopicProducerAdapter(producer))
 	commentSvc := comment.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger, producer)
+	sensitiveSvc := sensitive.NewService(infra.MySQL, infra.Logger)
+	topicSvc.SetSensitiveFilter(sensitiveSvc)
+	commentSvc.SetSensitiveFilter(sensitiveSvc)
 	themeSvc := theme.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
 	fileSvc := file.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
 	chatSvc := chat.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
@@ -68,7 +72,7 @@ func Run() error {
 		School:  schoolH,
 	})
 
-	consumers, err := mq.NewConsumers(infra.RabbitMQ, infra.Redis, infra.Mongo, infra.MySQL, infra.Config, infra.Logger, producer)
+	consumers, err := mq.NewConsumers(infra.RabbitMQ, infra.Redis, infra.Mongo, infra.MySQL, infra.Config, infra.Logger, producer, sensitiveSvc)
 	if err != nil {
 		return err
 	}

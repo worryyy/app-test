@@ -13,15 +13,17 @@ import (
 
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
+	"github.com/Milchstrassse/Ecampus-go/internal/sensitive"
 )
 
 const maxPageSize = 100
 
 type Service struct {
-	repo     *Repository
-	cfg      *config.Config
-	logger   *zap.Logger
-	producer CommentProducer
+	repo            *Repository
+	cfg             *config.Config
+	logger          *zap.Logger
+	producer        CommentProducer
+	sensitiveFilter sensitive.Filter
 }
 
 type CommentProducer interface {
@@ -48,6 +50,10 @@ func NewService(
 	}
 }
 
+func (s *Service) SetSensitiveFilter(filter sensitive.Filter) {
+	s.sensitiveFilter = filter
+}
+
 func (s *Service) AddComment(ctx context.Context, topicID string, currentUserID int64, content, parentCmtID string) (string, error) {
 	topic, err := s.getTopic(ctx, topicID, false)
 	if err != nil {
@@ -65,9 +71,14 @@ func (s *Service) AddComment(ctx context.Context, topicID string, currentUserID 
 		return "", err
 	}
 
+	filteredContent, err := s.filterText(ctx, content)
+	if err != nil {
+		return "", err
+	}
+
 	comment := Comment{
 		TopicID:     topicID,
-		Comment:     content,
+		Comment:     filteredContent,
 		CreatedTime: time.Now(),
 		User:        buildCommentUser(user),
 		ParentCmtID: parentCmtID,

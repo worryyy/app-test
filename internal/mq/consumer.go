@@ -16,6 +16,7 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/integration/wxutil"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/rediskey"
+	"github.com/Milchstrassse/Ecampus-go/internal/sensitive"
 )
 
 type Consumers struct {
@@ -27,6 +28,7 @@ type Consumers struct {
 	logger   *zap.Logger
 	producer *Producer
 	wxClient *wxutil.Client
+	filter   sensitive.Filter
 
 	notifyPusher func(ctx context.Context, targetUserID string, payload interface{}) error
 	wg           sync.WaitGroup
@@ -41,6 +43,7 @@ func NewConsumers(
 	cfg *config.Config,
 	logger *zap.Logger,
 	producer *Producer,
+	filter sensitive.Filter,
 ) (*Consumers, error) {
 	if logger == nil {
 		logger = zap.NewNop()
@@ -66,6 +69,7 @@ func NewConsumers(
 		cfg:      cfg,
 		logger:   logger,
 		producer: producer,
+		filter:   filter,
 		stopCh:   make(chan struct{}),
 	}
 	if cfg != nil {

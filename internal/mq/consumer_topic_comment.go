@@ -67,11 +67,21 @@ func (c *Consumers) handleTopicCheck(ctx context.Context, data json.RawMessage) 
 	if err != nil {
 		return fmt.Errorf("resolve topic wx openid: %w", err)
 	}
-	titleResult, err := c.wxClient.MsgSecCheck(ctx, topic.Title, openID)
+
+	filteredTitle, err := c.filterSensitiveText(ctx, topic.Title)
+	if err != nil {
+		return fmt.Errorf("filter topic title: %w", err)
+	}
+	filteredContent, err := c.filterSensitiveText(ctx, topic.Content)
+	if err != nil {
+		return fmt.Errorf("filter topic content: %w", err)
+	}
+
+	titleResult, err := c.wxClient.MsgSecCheck(ctx, filteredTitle, openID)
 	if err != nil {
 		return fmt.Errorf("wx check topic title: %w", err)
 	}
-	contentResult, err := c.wxClient.MsgSecCheck(ctx, topic.Content, openID)
+	contentResult, err := c.wxClient.MsgSecCheck(ctx, filteredContent, openID)
 	if err != nil {
 		return fmt.Errorf("wx check topic content: %w", err)
 	}
@@ -80,8 +90,8 @@ func (c *Consumers) handleTopicCheck(ctx context.Context, data json.RawMessage) 
 		return nil
 	}
 
-	filteredTitle := pickFiltered(topic.Title, titleResult.FilteredContent)
-	filteredContent := pickFiltered(topic.Content, contentResult.FilteredContent)
+	checkedTitle := pickFiltered(filteredTitle, titleResult.FilteredContent)
+	checkedContent := pickFiltered(filteredContent, contentResult.FilteredContent)
 	filteredImgs, err := c.filterImagesWithQRCode(ctx, topic.Imgs)
 	if err != nil {
 		c.logger.Warn("filter topic qrcode images failed", zap.Error(err), zap.String("topicID", msg.TopicID))
@@ -91,8 +101,8 @@ func (c *Consumers) handleTopicCheck(ctx context.Context, data json.RawMessage) 
 	if _, err := c.mongoDB.Collection("campus_topic").UpdateByID(ctx, topicOID, bson.M{
 		"$set": bson.M{
 			"hasCheck": true,
-			"title":    filteredTitle,
-			"content":  filteredContent,
+			"title":    checkedTitle,
+			"content":  checkedContent,
 			"imgs":     filteredImgs,
 		},
 	}); err != nil {
@@ -127,7 +137,11 @@ func (c *Consumers) handleCommentAdd(ctx context.Context, data json.RawMessage) 
 	if err != nil {
 		return fmt.Errorf("resolve comment wx openid: %w", err)
 	}
-	checkResult, err := c.wxClient.MsgSecCheck(ctx, cmt.Comment, openID)
+	filteredComment, err := c.filterSensitiveText(ctx, cmt.Comment)
+	if err != nil {
+		return fmt.Errorf("filter comment: %w", err)
+	}
+	checkResult, err := c.wxClient.MsgSecCheck(ctx, filteredComment, openID)
 	if err != nil {
 		return fmt.Errorf("wx check comment: %w", err)
 	}
@@ -139,7 +153,7 @@ func (c *Consumers) handleCommentAdd(ctx context.Context, data json.RawMessage) 
 	}
 
 	now := time.Now()
-	filteredComment := pickFiltered(cmt.Comment, checkResult.FilteredContent)
+	filteredComment = pickFiltered(filteredComment, checkResult.FilteredContent)
 	update := bson.M{
 		"$set": bson.M{
 			"comment":     filteredComment,
