@@ -49,14 +49,6 @@ type AddCommentMsg struct {
 	Comment AddCommentPayload `json:"comment"`
 }
 
-type CourseMsg struct {
-	UserID int64  `json:"userId"`
-	StuNum string `json:"stuNum"`
-	StuPwd string `json:"stuPwd"`
-	Term   string `json:"term"`
-	Week   int    `json:"week"`
-}
-
 type NotifyMsg struct {
 	TargetUserID string    `json:"targetUserId"`
 	SenderUserID string    `json:"senderUserId"`

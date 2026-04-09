@@ -9,7 +9,7 @@ import (
 )
 
 type JWClient struct {
-	helper *JWRequestHelper
+	remote *jwRemoteClient
 }
 
 type JWCommonResp struct {
@@ -43,15 +43,15 @@ type JWGetExamScoreReq struct {
 
 func NewJWClient(cfg *config.Config, logger *zap.Logger) *JWClient {
 	return &JWClient{
-		helper: NewJWRequestHelper(cfg, logger),
+		remote: newJWRemoteClient(cfg, logger),
 	}
 }
 
 func (j *JWClient) CheckLogin(ctx context.Context, schoolID, password string) (*JWCommonResp, error) {
-	if j == nil || j.helper == nil {
-		return nil, ErrJWHelperUnavailable
+	if j == nil || j.remote == nil {
+		return nil, ErrJWClientUnavailable
 	}
-	return j.helper.CheckLogin(ctx, schoolID, password)
+	return j.remote.CheckLogin(ctx, schoolID, password)
 }
 
 func (j *JWClient) GetCourseByWeeks(
@@ -60,22 +60,22 @@ func (j *JWClient) GetCourseByWeeks(
 	week int,
 	req JWGetCourseReq,
 ) (*JWCommonResp, error) {
-	if j == nil || j.helper == nil {
-		return nil, ErrJWHelperUnavailable
+	if j == nil || j.remote == nil {
+		return nil, ErrJWClientUnavailable
 	}
-	return j.helper.GetCourseByWeeks(ctx, startDate, week, req)
+	return j.remote.GetCourseByWeeks(ctx, startDate, week, req)
 }
 
 func (j *JWClient) GetExam(ctx context.Context, req JWGetExamReq) (*JWCommonResp, error) {
-	if j == nil || j.helper == nil {
-		return nil, ErrJWHelperUnavailable
+	if j == nil || j.remote == nil {
+		return nil, ErrJWClientUnavailable
 	}
-	return j.helper.GetExam(ctx, req)
+	return j.remote.GetExam(ctx, req)
 }
 
 func (j *JWClient) GetExamScore(ctx context.Context, req JWGetExamScoreReq) (*JWCommonResp, error) {
-	if j == nil || j.helper == nil {
-		return nil, ErrJWHelperUnavailable
+	if j == nil || j.remote == nil {
+		return nil, ErrJWClientUnavailable
 	}
-	return j.helper.GetExamScore(ctx, req)
+	return j.remote.GetExamScore(ctx, req)
 }

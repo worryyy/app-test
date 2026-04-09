@@ -100,7 +100,6 @@ func NewProducer(conn *amqp.Connection, rds *redis.Client, mongoDB *mongo.Databa
 		producer: map[string]*BaseProducer{
 			KeyTopicCheck:        NewBaseProducer(ch, Exchange, KeyTopicCheck, rds, logger),
 			KeyAddComment:        NewBaseProducer(ch, Exchange, KeyAddComment, rds, logger),
-			KeyGetCourse:         NewBaseProducer(ch, Exchange, KeyGetCourse, rds, logger),
 			KeyNotifyUser:        NewBaseProducer(ch, Exchange, KeyNotifyUser, rds, logger),
 			KeyUpdateTopicUser:   NewBaseProducer(ch, Exchange, KeyUpdateTopicUser, rds, logger),
 			KeyUpdateCommentUser: NewBaseProducer(ch, Exchange, KeyUpdateCommentUser, rds, logger),
@@ -192,10 +191,6 @@ func (p *Producer) SendTopicCheck(ctx context.Context, msg TopicCheckMsg) error 
 
 func (p *Producer) SendAddComment(ctx context.Context, cmt comment.Comment) error {
 	return p.sendByKey(ctx, KeyAddComment, buildAddCommentMsg(cmt))
-}
-
-func (p *Producer) SendGetCourse(ctx context.Context, msg CourseMsg) error {
-	return p.sendByKey(ctx, KeyGetCourse, msg)
 }
 
 func (p *Producer) SendNotifyUser(ctx context.Context, msg NotifyMsg) error {

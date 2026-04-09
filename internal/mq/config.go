@@ -12,7 +12,6 @@ const (
 	QueueCommentDelete = "campus.comment_delete"
 	QueueCommentAdd    = "campus.comment_add"
 	QueueTopicCheck    = "campus.topic_check"
-	QueueGetCourse     = "campus.get_course"
 	QueueNotifyUser    = "campus.notify_user"
 	QueueDie           = "campus.die"
 )
@@ -24,7 +23,6 @@ const (
 	KeyDeleteComment     = "delete_comment"
 	KeyAddComment        = "add_comment"
 	KeyTopicCheck        = "topic_check"
-	KeyGetCourse         = "get_course"
 	KeyNotifyUser        = "notify_user"
 	KeyDie               = "die"
 )

@@ -90,7 +90,6 @@ func (c *Consumers) Start() error {
 		QueueTopicDelete:   c.handleTopicDelete,
 		QueueCommentUpdate: c.handleCommentUpdate,
 		QueueCommentDelete: c.handleCommentDelete,
-		QueueGetCourse:     c.handleGetCourse,
 		QueueNotifyUser:    c.handleNotifyUser,
 		QueueDie:           c.handleDie,
 	}
@@ -161,8 +160,6 @@ func dedupPrefix(queue string) string {
 		return rediskey.UpdateMsgCache
 	case QueueTopicDelete, QueueCommentDelete:
 		return rediskey.DeleteMsgCache
-	case QueueGetCourse:
-		return rediskey.GetAllCourse
 	case QueueNotifyUser:
 		return rediskey.NotifyCache
 	case QueueDie:

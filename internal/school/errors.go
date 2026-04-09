@@ -9,7 +9,7 @@ import (
 const errMsgInvalidParam = "参数错误"
 
 var (
-	ErrJWHelperUnavailable = errors.New("jw request helper not initialized")
+	ErrJWClientUnavailable = errors.New("jw client not initialized")
 	ErrUserNotFound        = bizerr.NotFound("用户不存在")
 	ErrTermNotFound        = bizerr.NotFound("学期不存在")
 	ErrTermDuplicated      = bizerr.Biz("学期已存在")

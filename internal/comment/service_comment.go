@@ -59,7 +59,7 @@ func (s *Service) getTopic(ctx context.Context, topicID string, onlyChecked bool
 	if topic.Imgs == nil {
 		topic.Imgs = []string{}
 	}
-	createdAt := topic.ID.Timestamp()
+	createdAt := topic.ID.Timestamp().Local()
 	topic.CreatedTime = &createdAt
 	return topic, nil
 }

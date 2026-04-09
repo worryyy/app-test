@@ -40,7 +40,6 @@ const (
 	TopicCreateCache = "campus:TCC:"
 	TopicInfoCache   = "campus:TIC:"
 	DeleteTopicCache = "campus:DTC:"
-	GetAllCourse     = "campus:GAC:"
 	NotifyCache      = "campus:NOTIFY:"
 )
 

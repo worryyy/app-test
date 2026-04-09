@@ -40,9 +40,6 @@ func declareTopology(ch *amqp.Channel) error {
 	if err := declareQueueAndBind(ch, QueueTopicCheck, Exchange, KeyTopicCheck, deadArgs); err != nil {
 		return err
 	}
-	if err := declareQueueAndBind(ch, QueueGetCourse, Exchange, KeyGetCourse, deadArgs); err != nil {
-		return err
-	}
 	if err := declareQueueAndBind(ch, QueueNotifyUser, Exchange, KeyNotifyUser, deadArgs); err != nil {
 		return err
 	}
