@@ -47,9 +47,10 @@ func newJWRemoteClient(cfg *config.Config, logger *zap.Logger) *jwRemoteClient {
 	}
 
 	transport := &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
+		// Align with the legacy Java Forest client: direct HTTPS requests with no
+		// environment proxy dependency and default HTTP/1.1 behavior.
+		Proxy:                 nil,
 		DialContext:           (&net.Dialer{Timeout: jwRemoteTimeout, KeepAlive: 30 * time.Second}).DialContext,
-		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          jwRemoteMaxConnections,
 		MaxIdleConnsPerHost:   jwRemoteMaxConnections,
 		MaxConnsPerHost:       jwRemoteMaxConnections,

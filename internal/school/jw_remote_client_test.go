@@ -181,3 +181,26 @@ func TestJWClientUnreadableHTTPErrorIncludesResponsePreview(t *testing.T) {
 		t.Fatalf("error should include response preview: %v", err)
 	}
 }
+
+func TestNewJWRemoteClientUsesDirectHTTPTransport(t *testing.T) {
+	client := newJWRemoteClient(&config.Config{
+		JW: config.JWConfig{
+			BaseURL: "https://example.com/sztu_jw",
+			APIKey:  "test-api-key",
+		},
+	}, zap.NewNop())
+	if client == nil {
+		t.Fatal("expected client, got nil")
+	}
+
+	transport, ok := client.client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("unexpected transport type: %T", client.client.Transport)
+	}
+	if transport.Proxy != nil {
+		t.Fatal("jw remote client should not depend on environment proxies by default")
+	}
+	if transport.ForceAttemptHTTP2 {
+		t.Fatal("jw remote client should keep default HTTP/1.1 behavior")
+	}
+}
