@@ -2,6 +2,7 @@ package responses
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -90,5 +91,20 @@ func TestErrorHTTPStatusUsesDetailedStatus(t *testing.T) {
 	}
 	if body.HTTPStatus != http.StatusUnauthorized {
 		t.Fatalf("httpstatus = %d, want %d", body.HTTPStatus, http.StatusUnauthorized)
+	}
+}
+
+func TestFailRecordsErrorOnContext(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+
+	Fail(ctx, errors.New("upstream exploded"))
+
+	if len(ctx.Errors) != 1 {
+		t.Fatalf("error count = %d, want 1", len(ctx.Errors))
+	}
+	if got := ctx.Errors.Last().Err.Error(); got != "upstream exploded" {
+		t.Fatalf("last error = %q, want upstream exploded", got)
 	}
 }

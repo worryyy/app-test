@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"go.uber.org/zap"
@@ -151,5 +152,32 @@ func TestJWRemoteClientResolveURLKeepsBasePath(t *testing.T) {
 	want := "https://example.com/sztu_jw/get_exam_score?ss=2025-2026-1"
 	if endpoint != want {
 		t.Fatalf("unexpected endpoint: got %s want %s", endpoint, want)
+	}
+}
+
+func TestJWClientUnreadableHTTPErrorIncludesResponsePreview(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte("<html><body>jw upstream exploded</body></html>"))
+	}))
+	defer server.Close()
+
+	client := NewJWClient(&config.Config{
+		JW: config.JWConfig{BaseURL: server.URL},
+	}, zap.NewNop())
+
+	_, err := client.GetExam(context.Background(), JWGetExamReq{
+		SchoolID: "2023001",
+		Password: "bad-pass",
+		XNXQID:   "2025-2026-1",
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "jw service status 500") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(err.Error(), "jw upstream exploded") {
+		t.Fatalf("error should include response preview: %v", err)
 	}
 }

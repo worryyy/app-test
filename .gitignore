@@ -13,6 +13,8 @@ coverage.out
 /dist/
 .omc/
 .superset/
+.gocache/
+.gomodcache/
 
 /ecampus
 /ecampus-crm

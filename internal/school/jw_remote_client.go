@@ -21,6 +21,7 @@ import (
 const (
 	jwRemoteTimeout        = 50 * time.Second
 	jwRemoteMaxConnections = 500
+	jwResponsePreviewLimit = 240
 )
 
 type jwRemoteClient struct {
@@ -146,22 +147,50 @@ func (c *jwRemoteClient) doJSON(
 		return nil, fmt.Errorf("read jw response: %w", err)
 	}
 
+	preview := responsePreview(raw)
 	parsed, decodeErr := decodeJWCommonResp(raw)
 	if decodeErr == nil {
 		normalizeJWCommonResp(parsed, resp.StatusCode)
 		if resp.StatusCode >= http.StatusBadRequest {
-			c.logger.Warn("jw service returned non-2xx status",
+			fields := []zap.Field{
 				zap.Int("status", resp.StatusCode),
 				zap.String("path", path),
+				zap.String("endpoint", endpoint),
 				zap.String("message", parsed.Message),
-			)
+			}
+			if preview != "" {
+				fields = append(fields, zap.String("response_preview", preview))
+			}
+			c.logger.Warn("jw service returned non-2xx status", fields...)
 		}
 		return parsed, nil
 	}
 
 	if resp.StatusCode >= http.StatusBadRequest {
+		fields := []zap.Field{
+			zap.Int("status", resp.StatusCode),
+			zap.String("path", path),
+			zap.String("endpoint", endpoint),
+			zap.Error(decodeErr),
+		}
+		if preview != "" {
+			fields = append(fields, zap.String("response_preview", preview))
+		}
+		c.logger.Error("jw service returned unreadable error response", fields...)
+		if preview != "" {
+			return nil, fmt.Errorf("jw service status %d: %s", resp.StatusCode, preview)
+		}
 		return nil, fmt.Errorf("jw service status %d", resp.StatusCode)
 	}
+	fields := []zap.Field{
+		zap.String("path", path),
+		zap.String("endpoint", endpoint),
+		zap.Error(decodeErr),
+	}
+	if preview != "" {
+		fields = append(fields, zap.String("response_preview", preview))
+	}
+	c.logger.Error("decode jw response failed", fields...)
 	return nil, fmt.Errorf("decode jw response: %w", decodeErr)
 }
 
@@ -210,4 +239,17 @@ func firstNonBlank(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func responsePreview(raw []byte) string {
+	preview := strings.Join(strings.Fields(string(raw)), " ")
+	if preview == "" {
+		return ""
+	}
+
+	runes := []rune(preview)
+	if len(runes) <= jwResponsePreviewLimit {
+		return preview
+	}
+	return string(runes[:jwResponsePreviewLimit]) + "..."
 }

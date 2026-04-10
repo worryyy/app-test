@@ -30,6 +30,9 @@ func RequestLog(logger *zap.Logger) gin.HandlerFunc {
 			zap.Duration("latency", latency),
 			zap.String("clientIP", c.ClientIP()),
 		}
+		if errMsg := requestErrorMessage(c); errMsg != "" {
+			fields = append(fields, zap.String("error", errMsg))
+		}
 
 		if status >= 500 {
 			logger.Error("http request", fields...)
@@ -41,6 +44,25 @@ func RequestLog(logger *zap.Logger) gin.HandlerFunc {
 		}
 		logger.Info("http request", fields...)
 	}
+}
+
+func requestErrorMessage(c *gin.Context) string {
+	if c == nil || len(c.Errors) == 0 {
+		return ""
+	}
+
+	errs := make([]string, 0, len(c.Errors))
+	for _, item := range c.Errors {
+		if item == nil || item.Err == nil {
+			continue
+		}
+		msg := strings.TrimSpace(item.Err.Error())
+		if msg == "" {
+			continue
+		}
+		errs = append(errs, msg)
+	}
+	return strings.Join(errs, " | ")
 }
 
 func maskedRequestPath(path, rawQuery string) string {

@@ -41,10 +41,19 @@ func defaultResponseForStatus(code int) Response {
 }
 
 func Fail(ctx *gin.Context, err error) {
+	recordError(ctx, err)
 	FromError(err).Resp(ctx)
 }
 
 func FailMessage(ctx *gin.Context, err error, message string) {
+	recordError(ctx, err)
 	resp := FromError(err)
 	resp.RespMessage(ctx, message)
+}
+
+func recordError(ctx *gin.Context, err error) {
+	if ctx == nil || err == nil {
+		return
+	}
+	_ = ctx.Error(err)
 }
