@@ -54,3 +54,21 @@ func (h *AdminHandler) SetCurrentTerm(c *gin.Context) {
 	}
 	responses.Success.RespData(c, curTerm)
 }
+
+func (h *AdminHandler) CurrentTerm(c *gin.Context) {
+	data, err := h.svc.CurTerm(c.Request.Context())
+	if err != nil {
+		responses.Fail(c, err)
+		return
+	}
+	responses.Success.RespData(c, data)
+}
+
+func (h *AdminHandler) ListTerms(c *gin.Context) {
+	terms, err := h.svc.ListTerms(c.Request.Context())
+	if err != nil {
+		responses.Fail(c, err)
+		return
+	}
+	responses.Success.RespData(c, terms)
+}

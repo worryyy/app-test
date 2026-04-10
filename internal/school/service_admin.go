@@ -76,3 +76,12 @@ func (s *Service) SetCurrentTerm(ctx context.Context, termID string) (*CurTerm, 
 	current.Term = term.Term
 	return current, nil
 }
+
+func (s *Service) ListTerms(ctx context.Context) ([]Term, error) {
+	terms, err := s.repo.ListTerms(ctx)
+	if err != nil {
+		return nil, bizerr.InternalWrap("list terms failed", err)
+
+	}
+	return terms, nil
+}

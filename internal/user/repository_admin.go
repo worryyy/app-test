@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 )
 
@@ -48,32 +45,6 @@ func (r *Repository) FindLegacyAdminUser(
 		return nil, fmt.Errorf("query legacy admin user by stu_num %s: %w", stuNum, err)
 	}
 	return &user, nil
-}
-
-func (r *Repository) CountAdminsByUsername(ctx context.Context, username string) (int64, error) {
-	db, err := r.gormDB(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	var count int64
-	if err := db.Model(&Admin{}).Where("username = ?", username).Count(&count).Error; err != nil {
-		return 0, fmt.Errorf("count admins by username %s: %w", username, err)
-	}
-	return count, nil
-}
-
-func (r *Repository) CountAdminsByUserID(ctx context.Context, userID int64) (int64, error) {
-	db, err := r.gormDB(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	var count int64
-	if err := db.Model(&Admin{}).Where("user_id = ?", userID).Count(&count).Error; err != nil {
-		return 0, fmt.Errorf("count admins by user_id %d: %w", userID, err)
-	}
-	return count, nil
 }
 
 func (r *Repository) CreateAdmin(ctx context.Context, admin *Admin) error {
@@ -175,34 +146,4 @@ func (r *Repository) ClearAuthentication(ctx context.Context, userID int64) erro
 		"stu_pwd":      "",
 		"school":       "",
 	})
-}
-
-func (r *Repository) FindCourseFileByKey(ctx context.Context, key string) (*CourseFile, error) {
-	coll, err := r.courseCollection()
-	if err != nil {
-		return nil, err
-	}
-
-	var course CourseFile
-	if err := coll.FindOne(ctx, bson.M{"key": key}).Decode(&course); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("find course by key %s: %w", key, err)
-	}
-	return &course, nil
-}
-
-func (r *Repository) courseCollection() (*mongo.Collection, error) {
-	if r.mongoDB == nil {
-		return nil, errors.New("mongo db not initialized")
-	}
-	return r.mongoDB.Collection("campus_course"), nil
-}
-
-type CourseFile struct {
-	ID       primitive.ObjectID `bson:"_id,omitempty"`
-	Key      string             `bson:"key"`
-	FilePath string             `bson:"filePath"`
-	Val      []byte             `bson:"val"`
 }

@@ -1,14 +1,12 @@
 package user
 
 import (
-	"errors"
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/responses"
 )
+
+const preAuthSuccessMessage = "\u9884\u8ba4\u8bc1\u6210\u529f"
 
 type AdminHandler struct {
 	svc *Service
@@ -51,34 +49,6 @@ func (h *AdminHandler) AddUser(c *gin.Context) {
 	responses.Success.Resp(c)
 }
 
-func (h *AdminHandler) AddAdmin(c *gin.Context) {
-	var req AddAdminReq
-	if !bindJSON(c, &req) {
-		return
-	}
-
-	if err := h.svc.AddAdmin(c.Request.Context(), req.UserID, req.Username, req.Password, req.Power); err != nil {
-		responses.Fail(c, err)
-		return
-	}
-
-	responses.Success.RespMessage(c, "添加成功")
-}
-
-func (h *AdminHandler) DeleteUser(c *gin.Context) {
-	var uri userIDURI
-	if !bindURI(c, &uri) {
-		return
-	}
-
-	if err := h.svc.DeleteUser(c.Request.Context(), uri.ID); err != nil {
-		responses.Fail(c, err)
-		return
-	}
-
-	responses.Success.RespMessage(c, "删除成功")
-}
-
 func (h *AdminHandler) EditUser(c *gin.Context) {
 	var uri userIDURI
 	if !bindURI(c, &uri) {
@@ -95,26 +65,7 @@ func (h *AdminHandler) EditUser(c *gin.Context) {
 		return
 	}
 
-	responses.Success.RespMessage(c, "更新成功")
-}
-
-func (h *AdminHandler) GetUser(c *gin.Context) {
-	var uri userIDURI
-	if !bindURI(c, &uri) {
-		return
-	}
-
-	user, err := h.svc.GetByID(c.Request.Context(), uri.ID)
-	if err != nil {
-		responses.Fail(c, err)
-		return
-	}
-	if user == nil {
-		responses.Fail(c, ErrUserNotFound)
-		return
-	}
-
-	responses.Success.RespData(c, h.svc.sanitizeUser(user))
+	responses.Success.RespMessage(c, "\u66f4\u65b0\u6210\u529f")
 }
 
 func (h *AdminHandler) ListUsers(c *gin.Context) {
@@ -143,7 +94,21 @@ func (h *Handler) PreAuth(c *gin.Context) {
 		return
 	}
 
-	responses.Success.RespMessage(c, "预认证成功")
+	responses.Success.RespMessage(c, preAuthSuccessMessage)
+}
+
+func (h *AdminHandler) PreAuth(c *gin.Context) {
+	var query preAuthQuery
+	if !bindQuery(c, &query) {
+		return
+	}
+
+	if err := h.svc.PreAuthentication(c.Request.Context(), query.UserID, query.NickName, query.Pwd); err != nil {
+		responses.Fail(c, err)
+		return
+	}
+
+	responses.Success.RespMessage(c, preAuthSuccessMessage)
 }
 
 func (h *AdminHandler) ClearAuthentication(c *gin.Context) {
@@ -158,25 +123,4 @@ func (h *AdminHandler) ClearAuthentication(c *gin.Context) {
 	}
 
 	responses.Success.Resp(c)
-}
-
-func (h *AdminHandler) UserCourse(c *gin.Context) {
-	var query courseKeyQuery
-	if !bindQuery(c, &query) {
-		return
-	}
-
-	course, err := h.svc.GetCourseFileByKey(c.Request.Context(), query.Key)
-	if err != nil {
-		var be *bizerr.Error
-		if errors.As(err, &be) && be.Code == bizerr.CodeNotFound {
-			c.Data(http.StatusNotFound, "text/plain; charset=utf-8", []byte(be.Message))
-			return
-		}
-		responses.Fail(c, err)
-		return
-	}
-
-	c.Header("Content-Disposition", "attachment;filename="+query.Key)
-	c.Data(http.StatusOK, "application/msexcel", course.Val)
 }

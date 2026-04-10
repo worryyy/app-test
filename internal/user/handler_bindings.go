@@ -31,7 +31,3 @@ type preAuthQuery struct {
 	NickName string `form:"nick_name" binding:"required"`
 	Pwd      string `form:"pwd" binding:"required"`
 }
-
-type courseKeyQuery struct {
-	Key string `form:"key" binding:"required"`
-}

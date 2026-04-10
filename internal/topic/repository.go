@@ -14,6 +14,7 @@ const (
 	mongoCollThemeID         = "campus_theme_id"
 	mongoCollTopicLike       = "campus_topic_like"
 	mongoCollTopicCollection = "campus_topic_collection"
+	mongoCollComment         = "campus_comment"
 )
 
 type Repository struct {

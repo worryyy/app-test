@@ -135,3 +135,22 @@ func (r *Repository) UpdateCurrentTerm(ctx context.Context, id primitive.ObjectI
 	}
 	return nil
 }
+
+func (r *Repository) ListTerms(ctx context.Context) ([]Term, error) {
+	coll, err := r.mongoCollection(mongoCollTerm)
+	if err != nil {
+		return nil, err
+	}
+
+	cursor, err := coll.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, fmt.Errorf("find terms: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var terms []Term
+	if err := cursor.All(ctx, &terms); err != nil {
+		return nil, fmt.Errorf("decode terms: %w", err)
+	}
+	return terms, nil
+}

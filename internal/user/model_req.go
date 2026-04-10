@@ -23,13 +23,6 @@ type UserEditReq struct {
 	Signature string `json:"signature" binding:"omitempty,max=50"`
 }
 
-type AddAdminReq struct {
-	UserID   int64  `json:"userId" binding:"required"`
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
-	Power    *int   `json:"power"`
-}
-
 type UserIDReq struct {
 	UserID int64 `json:"userId" binding:"required"`
 }

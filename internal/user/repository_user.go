@@ -107,17 +107,6 @@ func (r *Repository) CountUsersByOpenID(ctx context.Context, openID string) (int
 	return count, nil
 }
 
-func (r *Repository) DeleteUser(ctx context.Context, id int64) error {
-	db, err := r.gormDB(ctx)
-	if err != nil {
-		return err
-	}
-	if err := db.Delete(&User{}, id).Error; err != nil {
-		return fmt.Errorf("delete user %d: %w", id, err)
-	}
-	return nil
-}
-
 func (r *Repository) InitializeRootIdentity(ctx context.Context, userID int64) error {
 	return r.updateUserFields(ctx, userID, map[string]any{
 		"root_user_id":   userID,
