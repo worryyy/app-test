@@ -1,7 +1,7 @@
 package topic
 
 type resourceIDURI struct {
-	ID string `uri:"id" binding:"required"`
+	ID string `uri:"topic_id" binding:"required"`
 }
 
 type topicURI struct {

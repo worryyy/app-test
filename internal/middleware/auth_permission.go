@@ -11,7 +11,7 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/user"
 )
 
-const authPermissionMsg = "当前接口需要进行认证后，方可使用"
+const authPermissionMsg = "当前接口需要认证用户权限"
 
 var (
 	authPermissionResp = responses.New(false, http.StatusForbidden, authPermissionMsg)
@@ -23,7 +23,6 @@ var authPermissionExcludes = map[string]struct{}{
 	"/api/user/login":              {},
 	"/api/user/refresh":            {},
 	"/api/user/pre_authentication": {},
-	"/admin/user/login":            {},
 }
 
 func CertifiedUserCheck(db *gorm.DB) gin.HandlerFunc {

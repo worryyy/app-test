@@ -4,10 +4,15 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/adminjwt"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/encrypt"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/rediskey"
@@ -17,8 +22,8 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 	if req == nil {
 		return "", "", nil, bizerr.Param(errMsgInvalidParam)
 	}
-	if s.jwtHelper == nil {
-		return "", "", nil, bizerr.Internal("jwt helper not initialized")
+	if s.adminJWT == nil {
+		return "", "", nil, bizerr.Internal("admin jwt helper not initialized")
 	}
 	if s.redis == nil {
 		return "", "", nil, bizerr.Internal("redis client not initialized")
@@ -67,12 +72,17 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 		admin = &migratedAdmin
 	}
 
-	if admin.Password != md5Hex(req.Password) {
+	matched, needsUpgrade := verifyAdminPassword(admin.Password, req.Password)
+	if !matched {
 		remaining, countErr := s.handleLoginFail(ctx, failCountKey, lockKey)
 		if countErr != nil {
 			return "", "", nil, countErr
 		}
 		return "", "", nil, bizerr.Biz("账号或密码错误，今日还有 " + strconv.Itoa(remaining) + " 次机会")
+	}
+
+	if needsUpgrade {
+		s.tryUpgradeAdminPasswordHash(ctx, admin, req.Password)
 	}
 
 	user, err := s.GetByID(ctx, admin.UserID)
@@ -87,17 +97,66 @@ func (s *Service) AdminLogin(ctx context.Context, req *AdminLoginReq) (string, s
 		return "", "", nil, bizerr.InternalWrap("清理管理员登录失败计数失败", err)
 	}
 
-	user.Power = resolveAdminPower(admin.Power)
-	rootUser, err := s.getRootUser(ctx, user)
-	if err != nil {
-		return "", "", nil, err
-	}
-
-	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildAdminTokenUser(user, rootUser))
+	token, refreshToken, err := s.adminJWT.GenerateTokenPair(s.buildAdminAuthTokenUser(admin))
 	if err != nil {
 		return "", "", nil, bizerr.InternalWrap("生成管理员登录令牌失败", err)
 	}
 	return token, refreshToken, s.sanitizeUser(user), nil
+}
+
+func (s *Service) AdminRefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
+	if s.adminJWT == nil {
+		return "", "", bizerr.Internal("admin jwt helper not initialized")
+	}
+	if s.redis == nil {
+		return "", "", bizerr.Internal("redis client not initialized")
+	}
+
+	claims, err := s.adminJWT.ParseAndVerifyRefresh(ctx, refreshToken, s.redis)
+	if err != nil {
+		return "", "", mapAdminAuthError(err)
+	}
+	if err := s.adminJWT.ConsumeRefreshToken(ctx, refreshToken, s.redis); err != nil {
+		return "", "", mapAdminAuthError(err)
+	}
+
+	admin, err := s.repo.FindAdminByID(ctx, claims.AdminID)
+	if err != nil {
+		return "", "", bizerr.InternalWrap("查询管理员失败", err)
+	}
+	if admin == nil || admin.UserID != claims.UserID {
+		return "", "", bizerr.Forbidden("管理员权限不足")
+	}
+
+	user, err := s.GetByID(ctx, admin.UserID)
+	if err != nil {
+		return "", "", err
+	}
+	if user == nil {
+		return "", "", ErrUserNotFound
+	}
+
+	tokenUser := s.buildAdminAuthTokenUser(admin)
+	if tokenUser == nil {
+		return "", "", bizerr.Internal("admin token user invalid")
+	}
+	tokenUser.SessionID = claims.SessionID
+
+	token, newRefreshToken, err := s.adminJWT.GenerateTokenPair(tokenUser)
+	if err != nil {
+		return "", "", bizerr.InternalWrap("生成管理员刷新令牌失败", err)
+	}
+	return token, newRefreshToken, nil
+}
+
+func (s *Service) AdminLogout(ctx context.Context, claims *adminjwt.Claims) error {
+	if claims == nil || claims.AdminID <= 0 {
+		return bizerr.Unauthorized(errMsgUserNotLogin)
+	}
+	if s.adminJWT == nil {
+		return bizerr.Internal("admin jwt helper not initialized")
+	}
+	return mapAdminAuthError(s.adminJWT.Logout(ctx, claims.AdminID, s.redis))
 }
 
 func (s *Service) handleLoginFail(ctx context.Context, failCountKey, lockKey string) (int, error) {
@@ -116,7 +175,7 @@ func (s *Service) handleLoginFail(ctx context.Context, failCountKey, lockKey str
 	}
 	if count >= 10 {
 		if err := s.redis.Set(ctx, lockKey, "locked", 24*time.Hour).Err(); err != nil {
-			return 0, bizerr.InternalWrap("锁定管理员账号失败", err)
+			return 0, bizerr.InternalWrap("锁定管理员帐号失败", err)
 		}
 	}
 
@@ -139,20 +198,25 @@ func (s *Service) loadLegacyAdmin(ctx context.Context, stuNum, rawPwd string) (*
 
 	user, err := s.repo.FindLegacyAdminUser(ctx, stuNum, encPwd, 8)
 	if err != nil {
-		return nil, bizerr.InternalWrap("查询旧管理员账号失败", err)
+		return nil, bizerr.InternalWrap("查询旧管理员帐号失败", err)
 	}
 	return user, nil
 }
 
 func (s *Service) migrateLegacyAdmin(ctx context.Context, user *User, username, rawPwd string) (Admin, error) {
+	hashedPassword, err := hashAdminPassword(rawPwd)
+	if err != nil {
+		return Admin{}, bizerr.InternalWrap("加密管理员密码失败", err)
+	}
+
 	admin := Admin{
 		UserID:   user.ID,
 		Username: username,
-		Password: md5Hex(rawPwd),
+		Password: hashedPassword,
 		Power:    resolveAdminPower(user.Power),
 	}
 	if err := s.repo.CreateAdmin(ctx, &admin); err != nil {
-		return Admin{}, bizerr.InternalWrap("迁移旧管理员账号失败", err)
+		return Admin{}, bizerr.InternalWrap("迁移旧管理员帐号失败", err)
 	}
 	return admin, nil
 }
@@ -179,4 +243,53 @@ func (s *Service) adminSecondaryPassword() string {
 		return defaultAdminSecondaryPassword
 	}
 	return pwd
+}
+
+func hashAdminPassword(raw string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(raw), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
+func verifyAdminPassword(storedHash, raw string) (matched, needsUpgrade bool) {
+	if strings.HasPrefix(storedHash, "$2") {
+		return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(raw)) == nil, false
+	}
+	return storedHash == md5Hex(raw), true
+}
+
+func (s *Service) tryUpgradeAdminPasswordHash(ctx context.Context, admin *Admin, rawPassword string) {
+	if admin == nil || admin.ID <= 0 {
+		return
+	}
+
+	hashedPassword, err := hashAdminPassword(rawPassword)
+	if err != nil {
+		s.logger.Warn("hash admin password failed", zap.Error(err), zap.Int64("adminID", admin.ID))
+		return
+	}
+	if err := s.repo.UpdateAdminPasswordHash(ctx, admin.ID, hashedPassword); err != nil {
+		s.logger.Warn("upgrade admin password hash failed", zap.Error(err), zap.Int64("adminID", admin.ID))
+		return
+	}
+	admin.Password = hashedPassword
+}
+
+func mapAdminAuthError(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, adminjwt.ErrTokenNotExisted):
+		return bizerr.NotFound("admin refresh_token 不存在, 或已过期")
+	case errors.Is(err, adminjwt.ErrTokenUsed):
+		return bizerr.Biz("admin refresh_token 已使用")
+	case errors.Is(err, adminjwt.ErrSessionInvalid):
+		return bizerr.Unauthorized("admin session 无效")
+	case errors.Is(err, adminjwt.ErrTokenEmpty), errors.Is(err, adminjwt.ErrTokenInvalid), errors.Is(err, adminjwt.ErrUserInvalid):
+		return bizerr.Unauthorized("admin token 无效")
+	default:
+		return bizerr.InternalWrap("admin auth failed", err)
+	}
 }

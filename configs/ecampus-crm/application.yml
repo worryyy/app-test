@@ -20,12 +20,19 @@ jwt:
   refresh_token_minutes: 2880
   issue: "campus"
 
+admin_jwt:
+  secret: "@12asd.admin."
+  token_minutes: 30
+  refresh_token_minutes: 1440
+  issuer: "campus-admin"
+
 encryption:
   key: "W0F7PePvolUJHmZtkv1MusWpwhpVJIJI"
 
 admin:
   power_sign: 999
   secondary_password: "replace-me"
+  pre_auth_password: "zjb&bjz"
 
 logging:
   level: "info"

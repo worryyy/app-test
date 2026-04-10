@@ -25,6 +25,26 @@ func (r *Repository) FindAdminByUsername(ctx context.Context, username string) (
 	return &admin, nil
 }
 
+func (r *Repository) FindAdminByID(ctx context.Context, id int64) (*Admin, error) {
+	if id <= 0 {
+		return nil, nil
+	}
+
+	db, err := r.gormDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var admin Admin
+	if err := db.Where("id = ?", id).First(&admin).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query admin by id %d: %w", id, err)
+	}
+	return &admin, nil
+}
+
 func (r *Repository) FindLegacyAdminUser(
 	ctx context.Context,
 	stuNum, encryptedPassword string,
@@ -58,15 +78,21 @@ func (r *Repository) CreateAdmin(ctx context.Context, admin *Admin) error {
 	return nil
 }
 
-func (r *Repository) ListUsers(ctx context.Context, page, size int, nickname string) ([]User, int64, error) {
+func (r *Repository) ListUsers(ctx context.Context, page, size int, filter AdminListUsersFilter) ([]User, int64, error) {
 	db, err := r.gormDB(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	query := db.Model(&User{})
-	if strings.TrimSpace(nickname) != "" {
-		query = query.Where("nickname = ?", nickname)
+	if filter.ID > 0 {
+		query = query.Where("id = ?", filter.ID)
+	}
+	if strings.TrimSpace(filter.StuNum) != "" {
+		query = query.Where("stu_num = ?", filter.StuNum)
+	}
+	if strings.TrimSpace(filter.Nickname) != "" {
+		query = query.Where("nickname LIKE ?", "%"+filter.Nickname+"%")
 	}
 
 	var total int64
@@ -83,6 +109,17 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int, nickname str
 		return nil, 0, fmt.Errorf("list users: %w", err)
 	}
 	return users, total, nil
+}
+
+func (r *Repository) UpdateAdminPasswordHash(ctx context.Context, adminID int64, hashedPassword string) error {
+	db, err := r.gormDB(ctx)
+	if err != nil {
+		return err
+	}
+	if err := db.Model(&Admin{}).Where("id = ?", adminID).Update("password", hashedPassword).Error; err != nil {
+		return fmt.Errorf("update admin password hash %d: %w", adminID, err)
+	}
+	return nil
 }
 
 func (r *Repository) UpdateAdminUser(

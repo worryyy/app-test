@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/app/bootstrap"
-	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/comment"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/adminjwt"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/sensitive"
 	"github.com/Milchstrassse/Ecampus-go/internal/topic"
@@ -22,18 +23,20 @@ func Run() error {
 	}
 	defer infra.Close(context.Background())
 
-	jwtHelper := jwtutil.NewHelper(infra.Config.JWT, infra.Redis)
+	adminHelper := adminjwt.NewHelper(infra.Config.AdminJWT, infra.Redis)
 	userSvc := user.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
 	schoolSvc := school.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger, nil)
 	sensitiveSvc := sensitive.NewService(infra.MySQL, infra.Logger)
 	topicSvc := topic.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
+	commentSvc := comment.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger, nil)
 
 	engine := bootstrap.NewEngine()
-	registerRoutes(engine, infra.Logger, infra.MySQL, jwtHelper, infra.Redis, adminHandlers{
+	registerRoutes(engine, infra.Logger, infra.MySQL, adminHelper, infra.Redis, adminHandlers{
 		User:      user.NewAdminHandler(userSvc),
 		School:    school.NewAdminHandler(schoolSvc),
 		Sensitive: sensitive.NewAdminHandler(sensitiveSvc),
 		Topic:     topic.NewAdminHandler(topicSvc),
+		Comment:   comment.NewAdminHandler(commentSvc),
 	})
 
 	server := bootstrap.NewHTTPServer(infra.Config.Server.Port, engine)

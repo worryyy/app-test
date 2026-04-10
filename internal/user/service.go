@@ -18,6 +18,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/integration/wxutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/adminjwt"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
@@ -37,6 +38,7 @@ type Service struct {
 	cfg        *config.Config
 	logger     *zap.Logger
 	jwtHelper  *jwtutil.Helper
+	adminJWT   *adminjwt.Helper
 	wxClient   *wxutil.Client
 	producer   EventProducer
 	identityMu sync.Mutex
@@ -56,6 +58,7 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 
 	if cfg != nil {
 		s.jwtHelper = jwtutil.NewHelper(cfg.JWT, rds)
+		s.adminJWT = adminjwt.NewHelper(cfg.AdminJWT, rds)
 		s.wxClient = wxutil.NewClient(cfg.WX, logger)
 	}
 

@@ -5,6 +5,9 @@ import "fmt"
 const (
 	TokenPrefix        = "campus:token:"
 	RefreshTokenPrefix = "campus:refresh_token:"
+	AdminTokenPrefix   = "admin:token:"
+	AdminRefreshPrefix = "admin:refresh_token:"
+	AdminSessionPrefix = "admin:session:"
 )
 
 func Token(sha1 string) string {
@@ -13,6 +16,18 @@ func Token(sha1 string) string {
 
 func RefreshToken(sha1 string) string {
 	return RefreshTokenPrefix + sha1
+}
+
+func AdminToken(sha1 string) string {
+	return AdminTokenPrefix + sha1
+}
+
+func AdminRefreshToken(sha1 string) string {
+	return AdminRefreshPrefix + sha1
+}
+
+func AdminSession(adminID int64) string {
+	return fmt.Sprintf("%s%d", AdminSessionPrefix, adminID)
 }
 
 const (

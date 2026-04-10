@@ -21,9 +21,12 @@ type userStatsQuery struct {
 }
 
 type adminListUsersQuery struct {
-	Page     int    `form:"page"`
-	Size     int    `form:"size"`
-	NickName string `form:"nick_name"`
+	Page           int    `form:"page"`
+	Size           int    `form:"size"`
+	ID             int64  `form:"id"`
+	StuNum         string `form:"stu_num"`
+	Nickname       string `form:"nickname"`
+	LegacyNickName string `form:"nick_name"`
 }
 
 type preAuthQuery struct {

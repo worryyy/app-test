@@ -13,6 +13,7 @@ type Config struct {
 	Mongo      MongoConfig      `mapstructure:"mongo"`
 	Redis      RedisConfig      `mapstructure:"redis"`
 	JWT        JWTConfig        `mapstructure:"jwt"`
+	AdminJWT   AdminJWTConfig   `mapstructure:"admin_jwt"`
 	COS        COSConfig        `mapstructure:"cos"`
 	WX         WXConfig         `mapstructure:"wx"`
 	RabbitMQ   RabbitMQConfig   `mapstructure:"rabbitmq"`
@@ -54,6 +55,13 @@ type JWTConfig struct {
 	Issue               string `mapstructure:"issue"`
 }
 
+type AdminJWTConfig struct {
+	Secret              string `mapstructure:"secret"`
+	TokenMinutes        int    `mapstructure:"token_minutes"`
+	RefreshTokenMinutes int    `mapstructure:"refresh_token_minutes"`
+	Issue               string `mapstructure:"issuer"`
+}
+
 type COSConfig struct {
 	AccessKeyID     string `mapstructure:"access_key_id"`
 	AccessKeySecret string `mapstructure:"access_key_secret"`
@@ -93,6 +101,7 @@ type EncryptionConfig struct {
 type AdminConfig struct {
 	PowerSign         int    `mapstructure:"power_sign"`
 	SecondaryPassword string `mapstructure:"secondary_password"`
+	PreAuthPassword   string `mapstructure:"pre_auth_password"`
 }
 
 type LoggingConfig struct {

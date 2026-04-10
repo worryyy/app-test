@@ -83,19 +83,6 @@ func (s *Service) DeleteByWord(ctx context.Context, word string) error {
 	return nil
 }
 
-func (s *Service) DeleteByList(ctx context.Context, words []string) error {
-	normalized := normalizeWordList(words)
-	if len(normalized) == 0 {
-		return bizerr.Param(errMsgInvalidParam)
-	}
-
-	if _, err := s.repo.DeleteByWords(ctx, normalized); err != nil {
-		return bizerr.InternalWrap("批量删除敏感词失败", err)
-	}
-	s.invalidateCache()
-	return nil
-}
-
 func (s *Service) Add(ctx context.Context, word string) error {
 	word = strings.TrimSpace(word)
 	if word == "" {
@@ -112,41 +99,6 @@ func (s *Service) Add(ctx context.Context, word string) error {
 
 	if err := s.repo.Create(ctx, &SensitiveWord{Word: word}); err != nil {
 		return bizerr.InternalWrap("新增敏感词失败", err)
-	}
-	s.invalidateCache()
-	return nil
-}
-
-func (s *Service) AddByList(ctx context.Context, words []string) error {
-	normalized := normalizeWordList(words)
-	if len(normalized) == 0 {
-		return bizerr.Param(errMsgInvalidParam)
-	}
-
-	existing, err := s.repo.FindByWords(ctx, normalized)
-	if err != nil {
-		return bizerr.InternalWrap("批量新增敏感词失败", err)
-	}
-
-	existingSet := make(map[string]struct{}, len(existing))
-	for _, item := range existing {
-		existingSet[item.Word] = struct{}{}
-	}
-
-	items := make([]SensitiveWord, 0, len(normalized))
-	for _, word := range normalized {
-		if _, ok := existingSet[word]; ok {
-			continue
-		}
-		items = append(items, SensitiveWord{Word: word})
-	}
-
-	if len(items) == 0 {
-		return nil
-	}
-
-	if err := s.repo.CreateBatch(ctx, items); err != nil {
-		return bizerr.InternalWrap("批量新增敏感词失败", err)
 	}
 	s.invalidateCache()
 	return nil
@@ -175,45 +127,6 @@ func (s *Service) FindByLike(ctx context.Context, word string) ([]SensitiveWord,
 		return nil, bizerr.InternalWrap("查询敏感词失败", err)
 	}
 	return list, nil
-}
-
-func (s *Service) UpdateByWord(ctx context.Context, word, updateWord string) error {
-	word = strings.TrimSpace(word)
-	updateWord = strings.TrimSpace(updateWord)
-	if word == "" || updateWord == "" {
-		return bizerr.Param(errMsgInvalidParam)
-	}
-
-	if word == updateWord {
-		return nil
-	}
-
-	target, err := s.repo.FindByWord(ctx, word)
-	if err != nil {
-		return bizerr.InternalWrap("更新敏感词失败", err)
-	}
-	if target == nil {
-		return ErrSensitiveWordNotFound
-	}
-
-	exists, err := s.repo.FindByWord(ctx, updateWord)
-	if err != nil {
-		return bizerr.InternalWrap("更新敏感词失败", err)
-	}
-	if exists != nil && exists.ID != target.ID {
-		return ErrSensitiveWordExists
-	}
-
-	updated, err := s.repo.UpdateByWord(ctx, word, updateWord)
-	if err != nil {
-		return bizerr.InternalWrap("更新敏感词失败", err)
-	}
-	if !updated {
-		return ErrSensitiveWordNotFound
-	}
-
-	s.invalidateCache()
-	return nil
 }
 
 func (s *Service) FilterText(ctx context.Context, content string) (string, error) {

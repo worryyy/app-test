@@ -23,6 +23,11 @@ type AdminLoginResp struct {
 	User         *User  `json:"user"`
 }
 
+type AdminRefreshResp struct {
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
 type RefreshTokenResp struct {
 	Token           string    `json:"token"`
 	RefreshToken    string    `json:"refresh_token"`

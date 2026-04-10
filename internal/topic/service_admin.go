@@ -5,8 +5,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/adminjwt"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
-	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
 )
 
 func (s *Service) ListAdmin(ctx context.Context, page, size int) (*PageResult[Topic], error) {
@@ -18,14 +18,14 @@ func (s *Service) ListAdmin(ctx context.Context, page, size int) (*PageResult[To
 		size,
 	)
 	if err != nil {
-		return nil, bizerr.InternalWrap("鏌ヨ甯栧瓙鍒楄〃澶辫触", err)
+		return nil, bizerr.InternalWrap("查询帖子列表失败", err)
 	}
 
 	s.prepareTopics(topics)
 	return NewPageResult(topics, total, page, size), nil
 }
 
-func (s *Service) CreateAdmin(ctx context.Context, claims *jwtutil.Claims, req *CreateTopicReq) (*Topic, error) {
+func (s *Service) CreateAdmin(ctx context.Context, claims *adminjwt.Claims, req *CreateTopicReq) (*Topic, error) {
 	if claims == nil {
 		return nil, ErrInvalidAuthClaims
 	}
@@ -36,18 +36,66 @@ func (s *Service) CreateAdmin(ctx context.Context, claims *jwtutil.Claims, req *
 		return nil, err
 	}
 
-	author, err := s.resolveTopicAuthor(ctx, claims, req.AccountType)
+	author, err := s.resolveAdminTopicAuthor(ctx, claims.UserID, req.AccountType)
 	if err != nil {
 		return nil, err
 	}
 
 	topic := buildAdminTopic(author, req)
 	if _, err := s.repo.CreateTopic(ctx, topic); err != nil {
-		return nil, bizerr.InternalWrap("鍒涘缓甯栧瓙澶辫触", err)
+		return nil, bizerr.InternalWrap("创建帖子失败", err)
 	}
 
 	s.prepareTopic(topic)
 	return topic, nil
+}
+
+func (s *Service) resolveAdminTopicAuthor(
+	ctx context.Context,
+	adminUserID int64,
+	accountType string,
+) (*topicAuthor, error) {
+	if adminUserID <= 0 {
+		return nil, ErrInvalidAuthClaims
+	}
+
+	accountType, err := normalizeTopicAccountType(accountType)
+	if err != nil {
+		return nil, err
+	}
+
+	adminUser, err := s.repo.FindUserByID(ctx, adminUserID)
+	if err != nil {
+		return nil, bizerr.InternalWrap("查询管理员用户失败", err)
+	}
+	if adminUser == nil {
+		return nil, ErrUserNotFound
+	}
+
+	rootUserID := adminUser.ID
+	if adminUser.RootUserID > 0 {
+		rootUserID = adminUser.RootUserID
+	}
+
+	if accountType == topicAccountTypeAnonymous {
+		author, err := s.repo.FindUserByRootAndAccountType(ctx, rootUserID, topicAccountTypeAnonymous)
+		if err != nil {
+			return nil, bizerr.InternalWrap("查询匿名身份失败", err)
+		}
+		if author == nil {
+			return nil, ErrAnonymousAccountNotFound
+		}
+		return author, nil
+	}
+
+	author, err := s.repo.FindUserByID(ctx, rootUserID)
+	if err != nil {
+		return nil, bizerr.InternalWrap("查询用户失败", err)
+	}
+	if author == nil {
+		return nil, ErrUserNotFound
+	}
+	return author, nil
 }
 
 func (s *Service) UpdateAdmin(ctx context.Context, topicID string, req *UpdateTopicReq) error {
@@ -67,7 +115,7 @@ func (s *Service) UpdateAdmin(ctx context.Context, topicID string, req *UpdateTo
 
 	ok, err := s.repo.UpdateTopicAdmin(ctx, oid, update)
 	if err != nil {
-		return bizerr.InternalWrap("鏇存柊甯栧瓙澶辫触", err)
+		return bizerr.InternalWrap("更新帖子失败", err)
 	}
 	if !ok {
 		return ErrTopicNotFound
@@ -83,14 +131,14 @@ func (s *Service) DeleteAdmin(ctx context.Context, topicID string) error {
 
 	ok, err := s.repo.HideTopic(ctx, oid, "", true)
 	if err != nil {
-		return bizerr.InternalWrap("鍒犻櫎甯栧瓙澶辫触", err)
+		return bizerr.InternalWrap("删除帖子失败", err)
 	}
 	if !ok {
 		return ErrTopicNotFound
 	}
 
 	if err := s.repo.CleanupDeletedTopic(ctx, topicID); err != nil {
-		return bizerr.InternalWrap("鍒犻櫎甯栧瓙澶辫触", err)
+		return bizerr.InternalWrap("删除帖子失败", err)
 	}
 	return nil
 }

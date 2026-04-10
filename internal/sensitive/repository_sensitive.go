@@ -40,26 +40,6 @@ func (r *Repository) FindByWord(ctx context.Context, word string) (*SensitiveWor
 	return &item, nil
 }
 
-func (r *Repository) FindByWords(ctx context.Context, words []string) ([]SensitiveWord, error) {
-	if len(words) == 0 {
-		return []SensitiveWord{}, nil
-	}
-
-	db, err := r.gormDB(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var list []SensitiveWord
-	if err := db.Where("word IN ?", words).Find(&list).Error; err != nil {
-		return nil, fmt.Errorf("find sensitive words by list: %w", err)
-	}
-	if list == nil {
-		return []SensitiveWord{}, nil
-	}
-	return list, nil
-}
-
 func (r *Repository) Create(ctx context.Context, item *SensitiveWord) error {
 	db, err := r.gormDB(ctx)
 	if err != nil {
@@ -67,21 +47,6 @@ func (r *Repository) Create(ctx context.Context, item *SensitiveWord) error {
 	}
 	if err := db.Create(item).Error; err != nil {
 		return fmt.Errorf("create sensitive word %q: %w", item.Word, err)
-	}
-	return nil
-}
-
-func (r *Repository) CreateBatch(ctx context.Context, items []SensitiveWord) error {
-	if len(items) == 0 {
-		return nil
-	}
-
-	db, err := r.gormDB(ctx)
-	if err != nil {
-		return err
-	}
-	if err := db.Create(&items).Error; err != nil {
-		return fmt.Errorf("create sensitive words batch: %w", err)
 	}
 	return nil
 }
@@ -97,23 +62,6 @@ func (r *Repository) DeleteByWord(ctx context.Context, word string) (bool, error
 		return false, fmt.Errorf("delete sensitive word %q: %w", word, res.Error)
 	}
 	return res.RowsAffected > 0, nil
-}
-
-func (r *Repository) DeleteByWords(ctx context.Context, words []string) (int64, error) {
-	if len(words) == 0 {
-		return 0, nil
-	}
-
-	db, err := r.gormDB(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	res := db.Where("word IN ?", words).Delete(&SensitiveWord{})
-	if res.Error != nil {
-		return 0, fmt.Errorf("delete sensitive words batch: %w", res.Error)
-	}
-	return res.RowsAffected, nil
 }
 
 func (r *Repository) FindPage(ctx context.Context, page, size int) ([]SensitiveWord, int64, error) {
@@ -164,17 +112,4 @@ func (r *Repository) FindByLike(ctx context.Context, word string) ([]SensitiveWo
 		return []SensitiveWord{}, nil
 	}
 	return list, nil
-}
-
-func (r *Repository) UpdateByWord(ctx context.Context, word, updateWord string) (bool, error) {
-	db, err := r.gormDB(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	res := db.Model(&SensitiveWord{}).Where("word = ?", word).Update("word", updateWord)
-	if res.Error != nil {
-		return false, fmt.Errorf("update sensitive word %q to %q: %w", word, updateWord, res.Error)
-	}
-	return res.RowsAffected > 0, nil
 }

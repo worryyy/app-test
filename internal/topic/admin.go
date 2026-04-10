@@ -32,7 +32,7 @@ func (h *AdminHandler) Create(c *gin.Context) {
 		return
 	}
 
-	data, err := h.svc.CreateAdmin(c.Request.Context(), middleware.GetClaims(c), &req)
+	data, err := h.svc.CreateAdmin(c.Request.Context(), middleware.GetAdminClaims(c), &req)
 	if err != nil {
 		responses.Fail(c, err)
 		return

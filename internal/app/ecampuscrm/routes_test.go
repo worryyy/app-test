@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/sensitive"
 	"github.com/Milchstrassse/Ecampus-go/internal/topic"
@@ -19,13 +20,17 @@ func TestRegisterRoutesExposesExpectedAdminEndpoints(t *testing.T) {
 		School:    school.NewAdminHandler(nil),
 		Sensitive: sensitive.NewAdminHandler(nil),
 		Topic:     topic.NewAdminHandler(nil),
+		Comment:   comment.NewAdminHandler(nil),
 	})
 
 	routes := routeSet(engine.Routes())
 
 	expected := []routeKey{
 		{method: "POST", path: "/admin/user/login"},
+		{method: "POST", path: "/admin/user/refresh"},
+		{method: "POST", path: "/admin/user/logout"},
 		{method: "PUT", path: "/admin/user/pre_authentication"},
+		{method: "PUT", path: "/admin/user/pre_authentication/batch"},
 		{method: "POST", path: "/admin/user"},
 		{method: "PUT", path: "/admin/user/:id"},
 		{method: "GET", path: "/admin/user/list"},
@@ -41,8 +46,9 @@ func TestRegisterRoutesExposesExpectedAdminEndpoints(t *testing.T) {
 		{method: "DELETE", path: "/admin/sensitive/deleteByWord"},
 		{method: "GET", path: "/admin/topic"},
 		{method: "POST", path: "/admin/topic"},
-		{method: "PATCH", path: "/admin/topic/:id"},
-		{method: "DELETE", path: "/admin/topic/:id"},
+		{method: "PATCH", path: "/admin/topic/:topic_id"},
+		{method: "DELETE", path: "/admin/topic/:topic_id"},
+		{method: "DELETE", path: "/admin/topic/:topic_id/comment/:comment_id"},
 	}
 
 	for _, want := range expected {
@@ -59,6 +65,7 @@ func TestRegisterRoutesRemovesDeprecatedAdminEndpoints(t *testing.T) {
 		School:    school.NewAdminHandler(nil),
 		Sensitive: sensitive.NewAdminHandler(nil),
 		Topic:     topic.NewAdminHandler(nil),
+		Comment:   comment.NewAdminHandler(nil),
 	})
 
 	routes := routeSet(engine.Routes())

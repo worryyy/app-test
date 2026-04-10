@@ -6,6 +6,6 @@ func RegisterAdminRoutes(admin *gin.RouterGroup, handler *AdminHandler) {
 	group := admin.Group("/topic")
 	group.GET("", handler.List)
 	group.POST("", handler.Create)
-	group.PATCH("/:id", handler.Update)
-	group.DELETE("/:id", handler.Delete)
+	group.PATCH("/:topic_id", handler.Update)
+	group.DELETE("/:topic_id", handler.Delete)
 }

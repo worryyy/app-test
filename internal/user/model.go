@@ -40,7 +40,7 @@ type Admin struct {
 	ID       int64  `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	UserID   int64  `gorm:"column:user_id;uniqueIndex" json:"userId"`
 	Username string `gorm:"column:username;uniqueIndex" json:"username"`
-	Password string `gorm:"column:password" json:"-"`
+	Password string `gorm:"column:password;size:255" json:"-"`
 	Power    int    `gorm:"column:power;default:2" json:"power"`
 }
 

@@ -79,15 +79,3 @@ func (r *Repository) FindThemeByID(ctx context.Context, id primitive.ObjectID) (
 	}
 	return &theme, nil
 }
-
-func (r *Repository) UpdateTheme(ctx context.Context, id primitive.ObjectID, update bson.M) error {
-	coll, err := r.themeCollection()
-	if err != nil {
-		return err
-	}
-
-	if _, err := coll.UpdateByID(ctx, id, bson.M{"$set": update}); err != nil {
-		return fmt.Errorf("update theme %s: %w", id.Hex(), err)
-	}
-	return nil
-}

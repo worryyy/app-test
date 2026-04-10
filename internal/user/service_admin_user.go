@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
@@ -52,7 +53,11 @@ func (s *Service) EditAdminUser(ctx context.Context, userID, operatorID int64, r
 	return nil
 }
 
-func (s *Service) ListUsers(ctx context.Context, page, size int, name string) (*PageResult[User], error) {
+func (s *Service) ListUsers(
+	ctx context.Context,
+	page, size int,
+	filter AdminListUsersFilter,
+) (*PageResult[User], error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -60,7 +65,7 @@ func (s *Service) ListUsers(ctx context.Context, page, size int, name string) (*
 		size = s.defaultPageSize()
 	}
 
-	list, total, err := s.repo.ListUsers(ctx, page, size, name)
+	list, total, err := s.repo.ListUsers(ctx, page, size, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -72,19 +77,92 @@ func (s *Service) ClearAuthentication(ctx context.Context, userID int64) error {
 }
 
 func (s *Service) PreAuthentication(ctx context.Context, userID int64, nickname, pwd string) error {
+	if err := s.legacyPreAuthError(userID, nickname, pwd); err != nil {
+		return err
+	}
+	resp, err := s.PreAuthenticationBatch(ctx, AdminBatchPreAuthReq{
+		Password: pwd,
+		Items: []AdminPreAuthItem{
+			{UserID: userID, NickName: nickname},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if resp.SuccessCount != 1 || len(resp.Results) == 0 || !resp.Results[0].Success {
+		message := "预认证更新失败"
+		if len(resp.Results) > 0 && strings.TrimSpace(resp.Results[0].Message) != "" {
+			message = resp.Results[0].Message
+		}
+		return bizerr.Biz(message)
+	}
+	return nil
+}
+
+func (s *Service) PreAuthenticationBatch(
+	ctx context.Context,
+	req AdminBatchPreAuthReq,
+) (*AdminBatchPreAuthResp, error) {
+	if strings.TrimSpace(req.Password) != s.adminPreAuthPassword() {
+		return nil, bizerr.Biz("预认证密码错误")
+	}
+	if len(req.Items) == 0 {
+		return nil, bizerr.Param(errMsgInvalidParam)
+	}
+
+	resp := &AdminBatchPreAuthResp{
+		Total:   len(req.Items),
+		Results: make([]AdminPreAuthResult, 0, len(req.Items)),
+	}
+
+	for _, item := range req.Items {
+		result := AdminPreAuthResult{UserID: item.UserID}
+		userID := item.UserID
+		nickname := strings.TrimSpace(item.NickName)
+		switch {
+		case userID <= 0 || nickname == "":
+			result.Message = errMsgInvalidParam
+		default:
+			updated, err := s.repo.MarkPreAuthenticated(ctx, userID, nickname)
+			if err != nil {
+				return nil, bizerr.InternalWrap("预认证失败", err)
+			}
+			if updated {
+				result.Success = true
+				result.Message = preAuthSuccessMessage
+			} else {
+				result.Message = fmt.Sprintf("userId=%d 预认证更新失败", userID)
+			}
+		}
+
+		if result.Success {
+			resp.SuccessCount++
+		} else {
+			resp.FailureCount++
+		}
+		resp.Results = append(resp.Results, result)
+	}
+	return resp, nil
+}
+
+func (s *Service) adminPreAuthPassword() string {
+	if s.cfg == nil {
+		return defaultAdminPreAuthPassword
+	}
+
+	pwd := strings.TrimSpace(s.cfg.Admin.PreAuthPassword)
+	if pwd == "" || pwd == "replace-me" {
+		return defaultAdminPreAuthPassword
+	}
+	return pwd
+}
+
+func (s *Service) legacyPreAuthError(userID int64, nickname, pwd string) error {
 	if userID <= 0 || strings.TrimSpace(nickname) == "" {
 		return bizerr.Param(errMsgInvalidParam)
 	}
-	if pwd != "zjb&bjz" {
+	if strings.TrimSpace(pwd) != s.adminPreAuthPassword() {
 		return bizerr.Biz("\u9884\u8ba4\u8bc1\u5bc6\u7801\u9519\u8bef")
-	}
-
-	updated, err := s.repo.MarkPreAuthenticated(ctx, userID, nickname)
-	if err != nil {
-		return bizerr.InternalWrap("\u9884\u8ba4\u8bc1\u5931\u8d25", err)
-	}
-	if !updated {
-		return bizerr.Biz("\u9884\u8ba4\u8bc1\u66f4\u65b0\u5931\u8d25")
 	}
 	return nil
 }

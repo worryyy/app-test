@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/adminjwt"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
 	"go.uber.org/zap"
 )
@@ -14,6 +15,7 @@ const (
 
 	anonymousNicknameUpdateHourLimit = 72
 	defaultAdminSecondaryPassword    = "pyhtip-nyxqen-6rigvE"
+	defaultAdminPreAuthPassword      = "zjb&bjz"
 )
 
 func (s *Service) sanitizeUser(user *User) *User {
@@ -144,14 +146,6 @@ func (s *Service) buildTokenUser(identity, rootUser *User) *jwtutil.TokenUser {
 	return s.buildTokenUserWithPower(identity, rootUser, 0)
 }
 
-func (s *Service) buildAdminTokenUser(identity, rootUser *User) *jwtutil.TokenUser {
-	power := 0
-	if identity != nil {
-		power = identity.Power
-	}
-	return s.buildTokenUserWithPower(identity, rootUser, power)
-}
-
 func (s *Service) buildTokenUserWithPower(identity, rootUser *User, power int) *jwtutil.TokenUser {
 	identity = s.normalizedUser(identity)
 	rootUser = s.normalizedUser(rootUser)
@@ -164,6 +158,18 @@ func (s *Service) buildTokenUserWithPower(identity, rootUser *User, power int) *
 		Power:       power,
 		AccountType: identity.AccountType,
 		RootUserID:  rootUser.ID,
+	}
+}
+
+func (s *Service) buildAdminAuthTokenUser(admin *Admin) *adminjwt.TokenUser {
+	if admin == nil || admin.ID <= 0 || admin.UserID <= 0 {
+		return nil
+	}
+	return &adminjwt.TokenUser{
+		AdminID:  admin.ID,
+		UserID:   admin.UserID,
+		Username: admin.Username,
+		Power:    admin.Power,
 	}
 }
 

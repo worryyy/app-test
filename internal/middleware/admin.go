@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,32 +13,35 @@ import (
 
 var adminForbiddenResp = responses.New(false, http.StatusForbidden, "权限不足")
 
-func AdminCheck(db *gorm.DB) gin.HandlerFunc {
+func AdminPermissionCheck(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		claims := GetClaims(c)
+		claims := GetAdminClaims(c)
 		if claims == nil {
 			adminForbiddenResp.Resp(c)
 			c.Abort()
 			return
 		}
-
-		isAdminToken := claims.Power > 0 && ((claims.Power>>1)&1) == 1
-
-		var count int64
 		if db == nil {
 			adminForbiddenResp.Resp(c)
 			c.Abort()
 			return
 		}
 
-		if err := db.Model(&user.Admin{}).Where("user_id = ?", claims.UserID).Count(&count).Error; err != nil {
+		var admin user.Admin
+		err := db.WithContext(c.Request.Context()).
+			Where("id = ? AND user_id = ?", claims.AdminID, claims.UserID).
+			Take(&admin).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			adminForbiddenResp.Resp(c)
 			c.Abort()
 			return
 		}
-		isAdminUser := count > 0
-
-		if !isAdminToken || !isAdminUser {
+		if err != nil {
+			adminForbiddenResp.Resp(c)
+			c.Abort()
+			return
+		}
+		if admin.Power != claims.Power {
 			adminForbiddenResp.Resp(c)
 			c.Abort()
 			return
