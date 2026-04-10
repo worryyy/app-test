@@ -6,22 +6,44 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 )
 
 func NewEngine() *gin.Engine {
+	registerCustomValidators()
 	engine := gin.New()
 	engine.HandleMethodNotAllowed = true
 	engine.Use(gin.Recovery())
 	engine.Use(middleware.CORS())
 	RegisterCommonRoutes(engine)
 	return engine
+}
+
+func registerCustomValidators() {
+	v, ok := binding.Validator.Engine().(*validator.Validate)
+	if !ok {
+		return
+	}
+	_ = v.RegisterValidation("checkform", func(fl validator.FieldLevel) bool {
+		pattern := fl.Param()
+		if pattern == "" {
+			return true
+		}
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return false
+		}
+		return re.MatchString(fl.Field().String())
+	})
 }
 
 func RegisterCommonRoutes(engine *gin.Engine) {
