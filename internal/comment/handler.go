@@ -39,7 +39,7 @@ func (h *Handler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.DeleteComment(c.Request.Context(), uri.TopicID, uri.CommentID, middleware.GetUserID(c), false); err != nil {
+	if err := h.svc.DeleteComment(c.Request.Context(), uri.TopicID, uri.CommentID, middleware.GetUserID(c)); err != nil {
 		responses.Fail(c, err)
 		return
 	}

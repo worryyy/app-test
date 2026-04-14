@@ -20,7 +20,7 @@ func (h *AdminHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.DeleteComment(c.Request.Context(), uri.TopicID, uri.CommentID, 0, true); err != nil {
+	if err := h.svc.DeleteCommentAdmin(c.Request.Context(), uri.TopicID, uri.CommentID); err != nil {
 		responses.Fail(c, err)
 		return
 	}

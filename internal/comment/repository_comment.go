@@ -32,21 +32,34 @@ func (r *Repository) CreateComment(ctx context.Context, comment *Comment) (primi
 	return oid, nil
 }
 
-func (r *Repository) HideComment(
+func (r *Repository) HideCommentByUser(
 	ctx context.Context,
 	topicID string,
 	commentID primitive.ObjectID,
 	userID string,
-	isAdmin bool,
 ) (bool, bool, error) {
+	return r.hideComment(ctx, bson.M{
+		"_id":         commentID,
+		"topicId":     topicID,
+		"user.userId": userID,
+	})
+}
+
+func (r *Repository) HideCommentAdmin(
+	ctx context.Context,
+	topicID string,
+	commentID primitive.ObjectID,
+) (bool, bool, error) {
+	return r.hideComment(ctx, bson.M{
+		"_id":     commentID,
+		"topicId": topicID,
+	})
+}
+
+func (r *Repository) hideComment(ctx context.Context, filter bson.M) (bool, bool, error) {
 	coll, err := r.mongoCollection(mongoCollComment)
 	if err != nil {
 		return false, false, err
-	}
-
-	filter := bson.M{"_id": commentID, "topicId": topicID}
-	if !isAdmin {
-		filter["user.userId"] = userID
 	}
 
 	res, err := coll.UpdateOne(ctx, filter, bson.M{
@@ -56,6 +69,7 @@ func (r *Repository) HideComment(
 		},
 	})
 	if err != nil {
+		commentID, _ := filter["_id"].(primitive.ObjectID)
 		return false, false, fmt.Errorf("hide comment %s: %w", commentID.Hex(), err)
 	}
 	return res.MatchedCount > 0, res.ModifiedCount > 0, nil

@@ -2,10 +2,12 @@ package topic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -13,25 +15,22 @@ func (r *Repository) FindTopicStateDocs(
 	ctx context.Context,
 	collName string,
 	userID string,
-) ([]topicStateDoc, error) {
+	accountType string,
+) (*topicStateDoc, error) {
 	coll, err := r.mongoCollection(collName)
 	if err != nil {
 		return nil, err
 	}
 
-	cur, err := coll.Find(ctx, bson.M{"userId": userID})
-	if err != nil {
+	var docs topicStateDoc
+	if err := coll.FindOne(ctx, bson.M{"userId": userID, "accountType": accountType}).Decode(&docs); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("find %s docs: %w", collName, err)
 	}
-	defer func() {
-		_ = cur.Close(ctx)
-	}()
 
-	var docs []topicStateDoc
-	if err := cur.All(ctx, &docs); err != nil {
-		return nil, fmt.Errorf("decode %s docs: %w", collName, err)
-	}
-	return docs, nil
+	return &docs, nil
 }
 
 func (r *Repository) AddTopicState(
@@ -45,8 +44,8 @@ func (r *Repository) AddTopicState(
 	}
 
 	res, err := coll.UpdateOne(ctx, bson.M{
-		"userId":    userID,
-		"themeName": themeName,
+		"userId":      userID,
+		"accountType": accountType,
 	}, bson.M{
 		"$setOnInsert": bson.M{
 			"userId":      userID,
@@ -64,31 +63,33 @@ func (r *Repository) AddTopicState(
 func (r *Repository) RemoveTopicState(
 	ctx context.Context,
 	collName string,
-	userID, topicID string,
+	userID, accountType, topicID string,
 ) (bool, error) {
 	coll, err := r.mongoCollection(collName)
 	if err != nil {
 		return false, err
 	}
 
-	res, err := coll.UpdateMany(ctx, bson.M{"userId": userID}, bson.M{"$pull": bson.M{"topicIds": topicID}})
+	res, err := coll.UpdateOne(ctx, bson.M{
+		"userId":      userID,
+		"accountType": accountType,
+	}, bson.M{"$pull": bson.M{"topicIds": topicID}})
 	if err != nil {
 		return false, fmt.Errorf("remove topic %s from %s: %w", topicID, collName, err)
 	}
 	return res.ModifiedCount > 0, nil
 }
 
-func (r *Repository) CountTopicStateItems(ctx context.Context, collName, userID string) (int64, error) {
-	docs, err := r.FindTopicStateDocs(ctx, collName, userID)
+func (r *Repository) CountTopicStateItems(ctx context.Context, collName, userID, accountType string) (int64, error) {
+	docs, err := r.FindTopicStateDocs(ctx, collName, userID, accountType)
 	if err != nil {
 		return 0, err
 	}
-
-	var total int64
-	for _, doc := range docs {
-		total += int64(len(doc.TopicIDs))
+	if docs == nil {
+		return 0, nil
 	}
-	return total, nil
+
+	return int64(len(docs.TopicIDs)), nil
 }
 
 func (r *Repository) FindTopicsByIDs(

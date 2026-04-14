@@ -30,24 +30,33 @@ func (r *Repository) CreateTopic(ctx context.Context, topic *Topic) (primitive.O
 	return oid, nil
 }
 
-func (r *Repository) HideTopic(
+func (r *Repository) HideTopicByUser(
 	ctx context.Context,
 	topicID primitive.ObjectID,
 	userID string,
-	isAdmin bool,
 ) (bool, error) {
+	return r.hideTopic(ctx, bson.M{
+		"_id":    topicID,
+		"userId": userID,
+	})
+}
+
+func (r *Repository) HideTopicAdmin(
+	ctx context.Context,
+	topicID primitive.ObjectID,
+) (bool, error) {
+	return r.hideTopic(ctx, bson.M{"_id": topicID})
+}
+
+func (r *Repository) hideTopic(ctx context.Context, filter bson.M) (bool, error) {
 	coll, err := r.mongoCollection(mongoCollTopic)
 	if err != nil {
 		return false, err
 	}
 
-	filter := bson.M{"_id": topicID}
-	if !isAdmin {
-		filter["userId"] = userID
-	}
-
 	res, err := coll.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"hasCheck": false}})
 	if err != nil {
+		topicID, _ := filter["_id"].(primitive.ObjectID)
 		return false, fmt.Errorf("hide topic %s: %w", topicID.Hex(), err)
 	}
 	return res.MatchedCount > 0, nil

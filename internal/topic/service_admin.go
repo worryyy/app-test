@@ -129,7 +129,7 @@ func (s *Service) DeleteAdmin(ctx context.Context, topicID string) error {
 		return err
 	}
 
-	ok, err := s.repo.HideTopic(ctx, oid, "", true)
+	ok, err := s.repo.HideTopicAdmin(ctx, oid)
 	if err != nil {
 		return bizerr.InternalWrap("删除帖子失败", err)
 	}

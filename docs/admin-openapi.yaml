@@ -1,0 +1,1130 @@
+openapi: 3.0.3
+info:
+  title: EcampusGO Admin API
+  version: 1.0.0
+  description: |
+    OpenAPI document for EcampusGO admin endpoints.
+    Import this file into Apifox directly.
+    Actual admin prefix: /admin
+    Protected endpoints require Bearer Token.
+    Failed business responses usually return HTTP 400 with semantic status in body.httpstatus.
+servers:
+  - url: http://localhost:8081
+tags:
+  - name: AdminAuth
+  - name: AdminUser
+  - name: AdminSchool
+  - name: AdminSensitive
+  - name: AdminTopic
+  - name: AdminComment
+security:
+  - bearerAuth: []
+paths:
+  /admin/user/login:
+    post:
+      tags: [AdminAuth]
+      summary: Admin Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminLoginSuccessResponse'
+        '400':
+          description: 登录失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/user/refresh:
+    post:
+      tags: [AdminAuth]
+      summary: 刷新管理员 Token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: 刷新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRefreshSuccessResponse'
+        '400':
+          description: 刷新失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/user/logout:
+    post:
+      tags: [AdminAuth]
+      summary: Admin Logout
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptySuccessResponse'
+        '400':
+          description: 登出失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/user:
+    post:
+      tags: [AdminUser]
+      summary: 新增用户
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '200':
+          description: 新增成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptySuccessResponse'
+        '400':
+          description: 新增失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/user/{id}:
+    put:
+      tags: [AdminUser]
+      summary: 编辑用户
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminEditUserRequest'
+      responses:
+        '200':
+          description: 修改成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnlySuccessResponse'
+        '400':
+          description: 修改失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/user/list:
+    get:
+      tags: [AdminUser]
+      summary: 用户列表
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - name: id
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: stu_num
+          in: query
+          schema:
+            type: string
+        - name: nickname
+          in: query
+          schema:
+            type: string
+        - name: nick_name
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPageSuccessResponse'
+        '400':
+          description: 查询失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/user/pre_authentication:
+    put:
+      tags: [AdminUser]
+      summary: Single Pre-Authentication
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: nick_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: pwd
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 认证成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOnlySuccessResponse'
+        '400':
+          description: 认证失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/user/pre_authentication/batch:
+    put:
+      tags: [AdminUser]
+      summary: Batch Pre-Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminBatchPreAuthRequest'
+      responses:
+        '200':
+          description: 处理成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminBatchPreAuthSuccessResponse'
+        '400':
+          description: 处理失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/user/clear:
+    post:
+      tags: [AdminUser]
+      summary: Clear Authentication State
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserIDRequest'
+      responses:
+        '200':
+          description: 清除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptySuccessResponse'
+        '400':
+          description: 清除失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/term:
+    get:
+      tags: [AdminSchool]
+      summary: 查询当前学期
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentTermSuccessResponse'
+        '400':
+          description: 查询失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [AdminSchool]
+      summary: 新增学期
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TermCreateRequest'
+      responses:
+        '200':
+          description: 新增成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TermSuccessResponse'
+        '400':
+          description: 新增失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/term/list:
+    get:
+      tags: [AdminSchool]
+      summary: 学期列表
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TermListSuccessResponse'
+        '400':
+          description: 查询失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/term/{id}:
+    delete:
+      tags: [AdminSchool]
+      summary: 删除学期
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptySuccessResponse'
+        '400':
+          description: 删除失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/term/cur:
+    post:
+      tags: [AdminSchool]
+      summary: 设置当前学期
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetCurrentTermRequest'
+      responses:
+        '200':
+          description: 设置成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurTermSuccessResponse'
+        '400':
+          description: 设置失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/sensitive/page:
+    get:
+      tags: [AdminSensitive]
+      summary: Sensitive Words Page
+      parameters:
+        - name: page
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: size
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SensitiveWordPageSuccessResponse'
+        '400':
+          description: 查询失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/sensitive/search_like:
+    get:
+      tags: [AdminSensitive]
+      summary: Search Sensitive Words Like
+      parameters:
+        - name: word
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SensitiveWordListSuccessResponse'
+        '400':
+          description: 查询失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/sensitive/add:
+    post:
+      tags: [AdminSensitive]
+      summary: Add Sensitive Word
+      parameters:
+        - name: word
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 新增成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptySuccessResponse'
+        '400':
+          description: 新增失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/sensitive/deleteByWord:
+    delete:
+      tags: [AdminSensitive]
+      summary: Delete Sensitive Word
+      parameters:
+        - name: word
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptySuccessResponse'
+        '400':
+          description: 删除失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/topic:
+    get:
+      tags: [AdminTopic]
+      summary: Admin Topic List
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicPageSuccessResponse'
+        '400':
+          description: 查询失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [AdminTopic]
+      summary: Admin Create Topic
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTopicRequest'
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopicSuccessResponse'
+        '400':
+          description: 创建失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/topic/{topic_id}:
+    patch:
+      tags: [AdminTopic]
+      summary: Admin Update Topic
+      parameters:
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTopicRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptySuccessResponse'
+        '400':
+          description: 更新失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [AdminTopic]
+      summary: Admin Delete Topic
+      parameters:
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptySuccessResponse'
+        '400':
+          description: 删除失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/topic/{topic_id}/comment/{comment_id}:
+    delete:
+      tags: [AdminComment]
+      summary: Admin Delete Comment
+      parameters:
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptySuccessResponse'
+        '400':
+          description: 删除失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    PageQuery:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    SizeQuery:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 15
+        minimum: 1
+  schemas:
+    ResponseMetaSuccess:
+      type: object
+      required: [success, code, httpstatus, msg]
+      properties:
+        success:
+          type: boolean
+          example: true
+        code:
+          type: integer
+          example: 200
+        httpstatus:
+          type: integer
+          example: 200
+        msg:
+          type: string
+          example: 成功
+        requestId:
+          type: string
+          nullable: true
+    ResponseMetaError:
+      type: object
+      required: [success, code, httpstatus, msg]
+      properties:
+        success:
+          type: boolean
+          example: false
+        code:
+          type: integer
+          example: 400
+        httpstatus:
+          type: integer
+          example: 401
+        msg:
+          type: string
+          example: unauthorized
+        requestId:
+          type: string
+          nullable: true
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaError'
+        - type: object
+          properties:
+            data:
+              nullable: true
+              example: null
+    EmptySuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              nullable: true
+              example: null
+    MessageOnlySuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              nullable: true
+              example: null
+    AdminLoginRequest:
+      type: object
+      required: [username, password, secondaryPassword]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        secondaryPassword:
+          type: string
+    RefreshTokenRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+    UserIDRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: integer
+          format: int64
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nickname:
+          type: string
+        avatar:
+          type: string
+        power:
+          type: integer
+        accountType:
+          type: string
+          enum: [base, anonymous]
+        stuNum:
+          type: string
+        stuName:
+          type: string
+        stuPwd:
+          type: string
+        stuCla:
+          type: string
+        stuIsCheck:
+          type: boolean
+        school:
+          type: string
+        tag:
+          type: string
+        gender:
+          type: string
+        rootUserId:
+          type: integer
+          format: int64
+        lastSwitchId:
+          type: integer
+          format: int64
+          nullable: true
+        signature:
+          type: string
+    UserCreateRequest:
+      type: object
+      properties:
+        nickname:
+          type: string
+        avatar:
+          type: string
+        power:
+          type: integer
+        accountType:
+          type: string
+          enum: [base, anonymous]
+        stuNum:
+          type: string
+        stuName:
+          type: string
+        stuPwd:
+          type: string
+        stuCla:
+          type: string
+        stuIsCheck:
+          type: boolean
+        school:
+          type: string
+        tag:
+          type: string
+        gender:
+          type: string
+        rootUserId:
+          type: integer
+          format: int64
+        lastSwitchId:
+          type: integer
+          format: int64
+          nullable: true
+        signature:
+          type: string
+    AdminEditUserRequest:
+      type: object
+      properties:
+        nickname:
+          type: string
+        avatar:
+          type: string
+        power:
+          type: integer
+          nullable: true
+        stuNum:
+          type: string
+        stuName:
+          type: string
+        stuCla:
+          type: string
+        stuIsCheck:
+          type: boolean
+          nullable: true
+    UserPageResult:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        total:
+          type: integer
+          format: int64
+        current:
+          type: integer
+        size:
+          type: integer
+        pages:
+          type: integer
+        orders:
+          type: array
+          items: {}
+        optimizeCountSql:
+          type: boolean
+        searchCount:
+          type: boolean
+        countId:
+          type: integer
+          nullable: true
+        maxLimit:
+          type: integer
+          nullable: true
+    AdminLoginData:
+      type: object
+      properties:
+        token:
+          type: string
+        refresh_token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+    AdminRefreshData:
+      type: object
+      properties:
+        token:
+          type: string
+        refresh_token:
+          type: string
+    Term:
+      type: object
+      properties:
+        id:
+          type: string
+        term:
+          type: string
+        startDate:
+          type: string
+        totalWeeks:
+          type: integer
+    TermCreateRequest:
+      type: object
+      required: [term, startDate, totalWeeks]
+      properties:
+        term:
+          type: string
+        startDate:
+          type: string
+        totalWeeks:
+          type: integer
+          minimum: 1
+    SetCurrentTermRequest:
+      type: object
+      required: [termId]
+      properties:
+        termId:
+          type: string
+    CurTerm:
+      type: object
+      properties:
+        id:
+          type: string
+        term:
+          type: string
+    CurrentTermData:
+      type: object
+      properties:
+        curDate:
+          type: string
+        curTerm:
+          type: string
+        startDate:
+          type: string
+        totalWeeks:
+          type: integer
+    SensitiveWord:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        word:
+          type: string
+    CommonPageResultSensitiveWord:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SensitiveWord'
+        current:
+          type: integer
+        total:
+          type: integer
+          format: int64
+        size:
+          type: integer
+    Topic:
+      type: object
+      properties:
+        id:
+          type: string
+        themeId:
+          type: string
+        userId:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        imgs:
+          type: array
+          items:
+            type: string
+        hasCheck:
+          type: boolean
+        visitedNum:
+          type: integer
+          format: int64
+        likeNum:
+          type: integer
+          format: int64
+        commentNum:
+          type: integer
+          format: int64
+        collectionNum:
+          type: integer
+          format: int64
+        ext:
+          nullable: true
+        accountType:
+          type: string
+          enum: [base, anonymous]
+        nickName:
+          type: string
+        avatar:
+          type: string
+        createdTime:
+          type: string
+        hasLike:
+          type: boolean
+        hasCollection:
+          type: boolean
+    TopicPageResult:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Topic'
+        current:
+          type: integer
+        total:
+          type: integer
+          format: int64
+        size:
+          type: integer
+    CreateTopicRequest:
+      type: object
+      required: [themeId, accountType]
+      properties:
+        themeId:
+          type: string
+        title:
+          type: string
+          maxLength: 20
+        content:
+          type: string
+          maxLength: 6000
+        imgs:
+          type: array
+          maxItems: 9
+          items:
+            type: string
+        ext:
+          nullable: true
+        accountType:
+          type: string
+          enum: [base, anonymous]
+    UpdateTopicRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 20
+        content:
+          type: string
+          maxLength: 6000
+        imgs:
+          type: array
+          maxItems: 9
+          items:
+            type: string
+        ext:
+          type: string
+          nullable: true
+        hasCheck:
+          type: boolean
+          nullable: true
+    AdminPreAuthItem:
+      type: object
+      properties:
+        userId:
+          type: integer
+          format: int64
+        nickName:
+          type: string
+    AdminBatchPreAuthRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminPreAuthItem'
+    AdminPreAuthResult:
+      type: object
+      properties:
+        userId:
+          type: integer
+          format: int64
+        success:
+          type: boolean
+        message:
+          type: string
+    AdminBatchPreAuthData:
+      type: object
+      properties:
+        total:
+          type: integer
+        successCount:
+          type: integer
+        failureCount:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminPreAuthResult'
+    AdminLoginSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/AdminLoginData'
+    AdminRefreshSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/AdminRefreshData'
+    UserPageSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/UserPageResult'
+    AdminBatchPreAuthSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/AdminBatchPreAuthData'
+    TermSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Term'
+    TermListSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Term'
+    CurTermSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/CurTerm'
+    CurrentTermSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/CurrentTermData'
+    SensitiveWordPageSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/CommonPageResultSensitiveWord'
+    SensitiveWordListSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/SensitiveWord'
+    TopicSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Topic'
+    TopicPageSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/TopicPageResult'

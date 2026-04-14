@@ -42,7 +42,7 @@ func (s *Service) LikeTopic(ctx context.Context, claims *jwtutil.Claims, topicID
 	return nil
 }
 
-func (s *Service) UnlikeTopic(ctx context.Context, userID int64, topicID string) error {
+func (s *Service) UnlikeTopic(ctx context.Context, userID int64, accountType, topicID string) error {
 	if userID <= 0 {
 		return bizerr.Param(errMsgInvalidParam)
 	}
@@ -52,7 +52,7 @@ func (s *Service) UnlikeTopic(ctx context.Context, userID int64, topicID string)
 		return err
 	}
 
-	removed, err := s.repo.RemoveTopicState(ctx, mongoCollTopicLike, userIDString(userID), topicID)
+	removed, err := s.repo.RemoveTopicState(ctx, mongoCollTopicLike, userIDString(userID), accountType, topicID)
 	if err != nil {
 		return bizerr.InternalWrap("取消点赞失败", err)
 	}
@@ -64,8 +64,8 @@ func (s *Service) UnlikeTopic(ctx context.Context, userID int64, topicID string)
 	return nil
 }
 
-func (s *Service) ListLikedTopics(ctx context.Context, userID int64, page, size int) (*PageResult[Topic], error) {
-	return s.listTopicsFromArrayDocs(ctx, mongoCollTopicLike, userID, page, size)
+func (s *Service) ListLikedTopics(ctx context.Context, userID int64, accountType string, page, size int) (*PageResult[Topic], error) {
+	return s.listTopicsFromArrayDocs(ctx, mongoCollTopicLike, userID, accountType, page, size)
 }
 
 func (s *Service) CollectTopic(ctx context.Context, claims *jwtutil.Claims, topicID string) error {
@@ -84,7 +84,7 @@ func (s *Service) CollectTopic(ctx context.Context, claims *jwtutil.Claims, topi
 	currentUserID := userIDString(claims.UserID)
 	themeName := s.resolveThemeName(ctx, topic.ThemeID)
 
-	collCount, err := s.repo.CountTopicStateItems(ctx, mongoCollTopicCollection, currentUserID)
+	collCount, err := s.repo.CountTopicStateItems(ctx, mongoCollTopicCollection, currentUserID, claims.AccountType)
 	if err != nil {
 		return bizerr.InternalWrap("查询收藏数量失败", err)
 	}
@@ -105,7 +105,7 @@ func (s *Service) CollectTopic(ctx context.Context, claims *jwtutil.Claims, topi
 	return nil
 }
 
-func (s *Service) UncollectTopic(ctx context.Context, userID int64, topicID string) error {
+func (s *Service) UncollectTopic(ctx context.Context, userID int64, accountType, topicID string) error {
 	if userID <= 0 {
 		return bizerr.Param(errMsgInvalidParam)
 	}
@@ -115,7 +115,7 @@ func (s *Service) UncollectTopic(ctx context.Context, userID int64, topicID stri
 		return err
 	}
 
-	removed, err := s.repo.RemoveTopicState(ctx, mongoCollTopicCollection, userIDString(userID), topicID)
+	removed, err := s.repo.RemoveTopicState(ctx, mongoCollTopicCollection, userIDString(userID), accountType, topicID)
 	if err != nil {
 		return bizerr.InternalWrap("取消收藏失败", err)
 	}
@@ -127,29 +127,26 @@ func (s *Service) UncollectTopic(ctx context.Context, userID int64, topicID stri
 	return nil
 }
 
-func (s *Service) ListCollectedTopics(ctx context.Context, userID int64, page, size int) (*PageResult[Topic], error) {
-	return s.listTopicsFromArrayDocs(ctx, mongoCollTopicCollection, userID, page, size)
+func (s *Service) ListCollectedTopics(ctx context.Context, userID int64, accountType string, page, size int) (*PageResult[Topic], error) {
+	return s.listTopicsFromArrayDocs(ctx, mongoCollTopicCollection, userID, accountType, page, size)
 }
 
-func (s *Service) listTopicsFromArrayDocs(ctx context.Context, collName string, userID int64, page, size int) (*PageResult[Topic], error) {
+func (s *Service) listTopicsFromArrayDocs(ctx context.Context, collName string, userID int64, accountType string, page, size int) (*PageResult[Topic], error) {
 	if userID <= 0 {
 		return nil, bizerr.Param(errMsgInvalidParam)
 	}
-	if page <= 0 {
-		page = 1
-	}
-	if size <= 0 {
-		size = 15
-	}
-
-	docs, err := s.repo.FindTopicStateDocs(ctx, collName, userIDString(userID))
+	docs, err := s.repo.FindTopicStateDocs(ctx, collName, userIDString(userID), accountType)
 	if err != nil {
 		return nil, bizerr.InternalWrap("查询帖子列表失败", err)
 	}
 
-	allIDs := make([]string, 0)
-	for _, doc := range docs {
-		allIDs = append(allIDs, doc.TopicIDs...)
+	if docs == nil || len(docs.TopicIDs) == 0 {
+		return NewPageResult([]Topic{}, 0, page, size), nil
+	}
+
+	allIDs := make([]string, 0, len(docs.TopicIDs))
+	for _, topicID := range docs.TopicIDs {
+		allIDs = append(allIDs, topicID)
 	}
 
 	total := int64(len(allIDs))
@@ -170,8 +167,26 @@ func (s *Service) listTopicsFromArrayDocs(ctx context.Context, collName string, 
 	if err != nil {
 		return nil, bizerr.InternalWrap("查询帖子列表失败", err)
 	}
-	if err := s.fillLikeAndCollection(ctx, userIDString(userID), topics); err != nil {
-		s.logger.Warn("fill topic like/collection failed", zap.Error(err), zap.String("collection", collName))
+	indexes := resetTopicFlags(topics)
+	switch collName {
+	case mongoCollTopicLike:
+		for i := range topics {
+			topics[i].HasLike = true
+		}
+		if err := s.fillTopicFlags(ctx, userIDString(userID), accountType, indexes, topics, mongoCollTopicCollection, false); err != nil {
+			s.logger.Warn("fill topic collection flags failed", zap.Error(err), zap.String("collection", collName))
+		}
+	case mongoCollTopicCollection:
+		for i := range topics {
+			topics[i].HasCollection = true
+		}
+		if err := s.fillTopicFlags(ctx, userIDString(userID), accountType, indexes, topics, mongoCollTopicLike, true); err != nil {
+			s.logger.Warn("fill topic like flags failed", zap.Error(err), zap.String("collection", collName))
+		}
+	default:
+		if err := s.fillLikeAndCollection(ctx, userIDString(userID), accountType, topics); err != nil {
+			s.logger.Warn("fill topic like/collection failed", zap.Error(err), zap.String("collection", collName))
+		}
 	}
 	return NewPageResult(topics, total, page, size), nil
 }

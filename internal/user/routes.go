@@ -13,7 +13,6 @@ func RegisterPublicRoutes(engine *gin.Engine, handler *Handler) {
 	public := engine.Group("/api/user")
 	public.POST("/login", handler.Login)
 	public.POST("/refresh", handler.RefreshToken)
-	public.PUT("/pre_authentication", handler.PreAuth)
 }
 
 func registerProfileRoutes(api *gin.RouterGroup, handler *Handler) {
@@ -21,7 +20,7 @@ func registerProfileRoutes(api *gin.RouterGroup, handler *Handler) {
 	profile.GET("", handler.GetCurrent)
 	profile.PUT("", handler.Edit)
 	profile.GET("/nickname/random", handler.RandomNickname)
-	profile.GET("/profile", handler.GetUserProfile)
+	profile.GET("/user_profile", handler.GetUserProfile)
 }
 
 func registerFollowRoutes(api *gin.RouterGroup, handler *Handler) {

@@ -112,8 +112,8 @@ func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *Creat
 	return topic, nil
 }
 
-func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAdmin bool) error {
-	if !isAdmin && userID <= 0 {
+func (s *Service) Delete(ctx context.Context, topicID string, userID int64) error {
+	if userID <= 0 {
 		return bizerr.Param(errMsgInvalidParam)
 	}
 
@@ -122,7 +122,7 @@ func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAd
 		return err
 	}
 
-	ok, err := s.repo.HideTopic(ctx, oid, userIDString(userID), isAdmin)
+	ok, err := s.repo.HideTopicByUser(ctx, oid, userIDString(userID))
 	if err != nil {
 		return bizerr.InternalWrap("删除帖子失败", err)
 	}
@@ -138,7 +138,7 @@ func (s *Service) Delete(ctx context.Context, topicID string, userID int64, isAd
 	return nil
 }
 
-func (s *Service) GetByID(ctx context.Context, topicID string, queryUserID string) (*Topic, error) {
+func (s *Service) GetByID(ctx context.Context, topicID string, queryUserID, accountType string) (*Topic, error) {
 	topic, err := s.getTopicByID(ctx, topicID, false)
 	if err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func (s *Service) GetByID(ctx context.Context, topicID string, queryUserID strin
 	}
 
 	topics := []Topic{*topic}
-	if err := s.fillLikeAndCollection(ctx, queryUserID, topics); err != nil {
+	if err := s.fillLikeAndCollection(ctx, queryUserID, accountType, topics); err != nil {
 		s.logger.Warn("fill like/collection failed", zap.Error(err), zap.String("topicID", topicID))
 	}
 	*topic = topics[0]
@@ -210,7 +210,7 @@ func (s *Service) Update(ctx context.Context, topicID string, userID int64, req 
 	return nil
 }
 
-func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*PageResult[Topic], error) {
+func (s *Service) ListMine(ctx context.Context, userID int64, accountType string, page, size int) (*PageResult[Topic], error) {
 	if userID <= 0 {
 		return nil, bizerr.Param(errMsgInvalidParam)
 	}
@@ -221,6 +221,7 @@ func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*
 		page,
 		size,
 		userIDString(userID),
+		accountType,
 		bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}},
 	)
 }
@@ -228,6 +229,7 @@ func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*
 func (s *Service) ListTargetUserTopics(
 	ctx context.Context,
 	currentUserID, targetUserID int64,
+	accountType string,
 	page, size int,
 ) (*PageResult[Topic], error) {
 	if targetUserID <= 0 {
@@ -251,6 +253,7 @@ func (s *Service) ListTargetUserTopics(
 		page,
 		size,
 		userIDString(currentUserID),
+		accountType,
 		bson.D{{Key: "_id", Value: -1}, {Key: "visitedNum", Value: -1}},
 	)
 }
@@ -260,6 +263,7 @@ func (s *Service) listByFilter(
 	filter bson.M,
 	page, size int,
 	queryUserID string,
+	accountType string,
 	sort bson.D,
 ) (*PageResult[Topic], error) {
 	topics, total, err := s.repo.FindTopicsPage(ctx, filter, sort, page, size)
@@ -268,7 +272,7 @@ func (s *Service) listByFilter(
 	}
 
 	s.prepareTopics(topics)
-	if err := s.fillLikeAndCollection(ctx, queryUserID, topics); err != nil {
+	if err := s.fillLikeAndCollection(ctx, queryUserID, accountType, topics); err != nil {
 		s.logger.Warn("fill topic like/collection failed", zap.Error(err))
 	}
 	return NewPageResult(topics, total, page, size), nil

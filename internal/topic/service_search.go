@@ -13,12 +13,13 @@ import (
 func (s *Service) Search(
 	ctx context.Context,
 	userID string,
+	accountType string,
 	themeIDs []string,
 	content string,
 	page, size, ordCreated int,
 ) (*PageResult[Topic], error) {
 	if ordCreated == 0 {
-		return s.searchHot(ctx, userID, themeIDs, content, page, size)
+		return s.searchHot(ctx, userID, accountType, themeIDs, content, page, size)
 	}
 
 	filter := bson.M{"hasCheck": true}
@@ -28,12 +29,13 @@ func (s *Service) Search(
 	if strings.TrimSpace(content) != "" {
 		filter["content"] = primitive.Regex{Pattern: ".*" + content + ".*", Options: "i"}
 	}
-	return s.listByFilter(ctx, filter, page, size, userID, bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}})
+	return s.listByFilter(ctx, filter, page, size, userID, accountType, bson.D{{Key: "_id", Value: -1}, {Key: "commentNum", Value: -1}, {Key: "likeNum", Value: -1}, {Key: "visitedNum", Value: -1}})
 }
 
 func (s *Service) searchHot(
 	ctx context.Context,
 	userID string,
+	accountType string,
 	themeIDs []string,
 	content string,
 	page, size int,
@@ -52,7 +54,7 @@ func (s *Service) searchHot(
 	}
 
 	s.prepareTopics(topics)
-	if err := s.fillLikeAndCollection(ctx, userID, topics); err != nil {
+	if err := s.fillLikeAndCollection(ctx, userID, accountType, topics); err != nil {
 		s.logger.Warn("fill topic like/collection failed", zap.Error(err))
 	}
 	return NewPageResult(topics, total, page, size), nil

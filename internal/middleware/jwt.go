@@ -73,3 +73,11 @@ func GetUserID(c *gin.Context) int64 {
 	}
 	return claims.UserID
 }
+
+func GetAccounType(c *gin.Context) string {
+	claims := GetClaims(c)
+	if claims == nil {
+		return ""
+	}
+	return claims.AccountType
+}

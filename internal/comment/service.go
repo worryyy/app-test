@@ -114,7 +114,11 @@ func (s *Service) AddComment(ctx context.Context, topicID string, currentUserID 
 	return comment.ID.Hex(), nil
 }
 
-func (s *Service) DeleteComment(ctx context.Context, topicID, commentID string, userID int64, isAdmin bool) error {
+func (s *Service) DeleteComment(ctx context.Context, topicID, commentID string, userID int64) error {
+	if userID <= 0 {
+		return bizerr.Param(errMsgInvalidParam)
+	}
+
 	comment, err := s.getCommentByID(ctx, commentID)
 	if err != nil {
 		return err
@@ -125,9 +129,37 @@ func (s *Service) DeleteComment(ctx context.Context, topicID, commentID string, 
 		return err
 	}
 
-	matched, modified, err := s.repo.HideComment(ctx, topicID, commentOID, userIDString(userID), isAdmin)
+	matched, modified, err := s.repo.HideCommentByUser(ctx, topicID, commentOID, userIDString(userID))
 	if err != nil {
 		return s.deleteCommentFallback(ctx, topicID, commentID, bizerr.InternalWrap("删除评论失败", err))
+	}
+	if !matched {
+		return ErrCommentNotFound
+	}
+	if !modified {
+		return ErrCommentDeleteFailed
+	}
+
+	if err := s.decrementCommentCounters(ctx, topicID, comment.RootCmtID); err != nil {
+		return s.deleteCommentFallback(ctx, topicID, commentID, err)
+	}
+	return nil
+}
+
+func (s *Service) DeleteCommentAdmin(ctx context.Context, topicID, commentID string) error {
+	comment, err := s.getCommentByID(ctx, commentID)
+	if err != nil {
+		return err
+	}
+
+	commentOID, err := parseCommentObjectID(commentID)
+	if err != nil {
+		return err
+	}
+
+	matched, modified, err := s.repo.HideCommentAdmin(ctx, topicID, commentOID)
+	if err != nil {
+		return s.deleteCommentFallback(ctx, topicID, commentID, bizerr.InternalWrap("鍒犻櫎璇勮澶辫触", err))
 	}
 	if !matched {
 		return ErrCommentNotFound

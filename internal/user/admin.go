@@ -110,10 +110,6 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 	responses.Success.RespData(c, data)
 }
 
-func (h *Handler) PreAuth(c *gin.Context) {
-	handleSinglePreAuth(c, h.svc)
-}
-
 func (h *AdminHandler) PreAuth(c *gin.Context) {
 	handleSinglePreAuth(c, h.svc)
 }

@@ -100,45 +100,62 @@ func (s *Service) prepareTopics(topics []Topic) {
 	}
 }
 
-func (s *Service) fillLikeAndCollection(ctx context.Context, userID string, topics []Topic) error {
-	if userID == "" || len(topics) == 0 {
+func (s *Service) fillLikeAndCollection(ctx context.Context, userID, accountType string, topics []Topic) error {
+	if userID == "" || accountType == "" || len(topics) == 0 {
 		return nil
 	}
 
+	indexes := resetTopicFlags(topics)
+	if err := s.fillTopicFlags(ctx, userID, accountType, indexes, topics, mongoCollTopicLike, true); err != nil {
+		return err
+	}
+	if err := s.fillTopicFlags(ctx, userID, accountType, indexes, topics, mongoCollTopicCollection, false); err != nil {
+		return err
+	}
+	return nil
+}
+
+func resetTopicFlags(topics []Topic) map[string]int {
 	indexes := make(map[string]int, len(topics))
 	for i := range topics {
 		indexes[topics[i].ID.Hex()] = i
 		topics[i].HasLike = false
 		topics[i].HasCollection = false
 	}
+	return indexes
+}
 
-	likeDocs, err := s.repo.FindTopicStateDocs(ctx, mongoCollTopicLike, userID)
+func (s *Service) fillTopicFlags(
+	ctx context.Context,
+	userID, accountType string,
+	indexes map[string]int,
+	topics []Topic,
+	collName string,
+	isLike bool,
+) error {
+	docs, err := s.repo.FindTopicStateDocs(ctx, collName, userID, accountType)
 	if err != nil {
 		return err
 	}
-	applyTopicFlags(indexes, topics, likeDocs, true)
-
-	collectionDocs, err := s.repo.FindTopicStateDocs(ctx, mongoCollTopicCollection, userID)
-	if err != nil {
-		return err
-	}
-	applyTopicFlags(indexes, topics, collectionDocs, false)
+	applyTopicFlags(indexes, topics, docs, isLike)
 	return nil
 }
 
-func applyTopicFlags(indexes map[string]int, topics []Topic, docs []topicStateDoc, isLike bool) {
-	for _, doc := range docs {
-		for _, id := range doc.TopicIDs {
-			idx, ok := indexes[id]
-			if !ok {
-				continue
-			}
-			if isLike {
-				topics[idx].HasLike = true
-				continue
-			}
-			topics[idx].HasCollection = true
+func applyTopicFlags(indexes map[string]int, topics []Topic, docs *topicStateDoc, isLike bool) {
+	if docs == nil {
+		return
+	}
+
+	for _, id := range docs.TopicIDs {
+		idx, ok := indexes[id]
+		if !ok {
+			continue
 		}
+		if isLike {
+			topics[idx].HasLike = true
+			continue
+		}
+		topics[idx].HasCollection = true
 	}
 }
 

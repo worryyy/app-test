@@ -4,6 +4,10 @@ type resourceIDURI struct {
 	ID string `uri:"topic_id" binding:"required"`
 }
 
+type topicDeleteURI struct {
+	ID string `uri:"id" binding:"required"`
+}
+
 type topicURI struct {
 	TopicID string `uri:"topic_id" binding:"required"`
 }
