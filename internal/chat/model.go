@@ -153,7 +153,8 @@ func (n Notification) MarshalJSON() ([]byte, error) {
 }
 
 type ConversationUnreadCount struct {
-	UnreadCount int `gorm:"column:unread_count" json:"unreadCount"`
+	UnreadCount       int    `gorm:"column:unread_count" json:"unreadCount"`
+	LastReadMessageID *int64 `gorm:"column:last_read_message_id" json:"lastReadMessageId"`
 }
 
 type ConversationProfile struct {

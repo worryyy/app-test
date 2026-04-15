@@ -17,10 +17,7 @@ import (
 )
 
 func (s *Service) handleInitMessage(ctx context.Context, senderID string, body map[string]any) (*Message, error) {
-	conversationID := stringField(body, "id", "conversationId", "conversation_id")
-	if strings.TrimSpace(conversationID) == "" {
-		return nil, ErrConversationIDRequired
-	}
+	conversationID := resolveInitConversationID(body)
 
 	receiverID := stringField(body, "receiverId", "receiver_id")
 	if strings.TrimSpace(receiverID) == "" {
@@ -89,6 +86,14 @@ func (s *Service) handleInitMessage(ctx context.Context, senderID string, body m
 	return message, nil
 }
 
+func resolveInitConversationID(body map[string]any) string {
+	conversationID := stringField(body, "id", "conversationId", "conversation_id")
+	if conversationID != "" {
+		return conversationID
+	}
+	return nextConversationID()
+}
+
 func (s *Service) handleChatMessage(ctx context.Context, senderID string, body map[string]any) (*Message, error) {
 	conversationID := stringField(body, "conversationId", "conversation_id")
 	if strings.TrimSpace(conversationID) == "" {
@@ -154,6 +159,10 @@ func (s *Service) handleChatMessage(ctx context.Context, senderID string, body m
 
 func nextMessageID() int64 {
 	return snowflake.Generate().Int64()
+}
+
+func nextConversationID() string {
+	return snowflake.Generate().String()
 }
 
 func stringField(body map[string]any, keys ...string) string {

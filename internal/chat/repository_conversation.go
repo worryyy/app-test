@@ -117,7 +117,7 @@ func (r *Repository) FindConversationUnreadCounts(
 
 	var list []ConversationUnreadCount
 	if err := db.Model(&ConversationMember{}).
-		Select("unread_count").
+		Select("unread_count", "last_read_message_id").
 		Where("conversation_id = ? AND user_id = ?", conversationID, userID).
 		Find(&list).Error; err != nil {
 		return nil, fmt.Errorf("load unread count %s/%s: %w", conversationID, userID, err)
