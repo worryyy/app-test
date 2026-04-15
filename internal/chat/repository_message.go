@@ -71,7 +71,7 @@ func (r *Repository) FindConversationMessagesBefore(
 	}
 
 	cur, err := coll.Find(ctx, filter, options.Find().
-		SetSort(bson.M{"message_id": 1}).
+		SetSort(bson.M{"message_id": -1}).
 		SetLimit(limit))
 	if err != nil {
 		return nil, 0, fmt.Errorf("find history messages: %w", err)
@@ -87,6 +87,7 @@ func (r *Repository) FindConversationMessagesBefore(
 	if messages == nil {
 		return []Message{}, total, nil
 	}
+	reverseMessages(messages)
 	return messages, total, nil
 }
 
@@ -108,4 +109,10 @@ func (r *Repository) InsertMessage(ctx context.Context, message *Message) error 
 		message.ID = oid
 	}
 	return nil
+}
+
+func reverseMessages(messages []Message) {
+	for left, right := 0, len(messages)-1; left < right; left, right = left+1, right-1 {
+		messages[left], messages[right] = messages[right], messages[left]
+	}
 }

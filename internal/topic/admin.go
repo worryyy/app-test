@@ -16,7 +16,7 @@ func NewAdminHandler(svc *Service) *AdminHandler {
 }
 
 func (h *AdminHandler) List(c *gin.Context) {
-	page, size := pageSize(c)
+	page, size := requestPageSize(c)
 
 	data, err := h.svc.ListAdmin(c.Request.Context(), page, size)
 	if err != nil {

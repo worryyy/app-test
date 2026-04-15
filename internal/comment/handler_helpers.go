@@ -33,14 +33,24 @@ func bindURI(c *gin.Context, req any) bool {
 	return true
 }
 
-func pageSize(c *gin.Context) (int, int) {
+func requestPageSize(c *gin.Context) (int, int) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "15"))
+	return pageSize(page, size, 15)
+}
+
+func pageSize(page, size, defaultSize int) (int, int) {
+	if defaultSize <= 0 {
+		defaultSize = 15
+	}
 	if page <= 0 {
 		page = 1
 	}
 	if size <= 0 {
-		size = 15
+		size = defaultSize
+	}
+	if size > maxPageSize {
+		size = maxPageSize
 	}
 	return page, size
 }

@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  redis:
+    container_name: "campus_redis"
+    build: ./redis
+    restart: unless-stopped
+    volumes:
+      - /data/campus_redis:/data
+    ports:
+      - "9800:6379"
+    networks:
+      - campus
+
+  mysql:
+    container_name: "campus_mysql"
+    build: ./mysql
+    restart: unless-stopped
+    volumes:
+      - /data/campus_db:/var/lib/mysql
+    ports:
+      - "9801:3306"
+    networks:
+      - campus
+
+  phpmyadmin:
+    container_name: "campus_phpmyadmin"
+    links:
+      - mysql
+    build: ./phpmyadmin
+    restart: unless-stopped
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - PMA_ARBITRARY=1 允许登录任何ip
+    ports:
+      - "9802:80"
+    depends_on:
+      - mysql
+    networks:
+      - campus
+  
+  mongo:
+    container_name: "campus_mongodb"
+    build: ./mongo
+    restart: unless-stopped
+    ports:
+      - "9803:27017"
+    volumes:
+      - /data/campus_mongo:/data/db
+    networks:
+      - campus
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=F6m@t3YhexitRu9k
+
+  mongo-express:
+    image: mongo-express
+    container_name: "campus_mongo-express"
+    restart: unless-stopped
+    networks:
+      - campus
+    ports:
+      - "9804:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=F6m@t3YhexitRu9k
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_AUTH_DATABASE=admin
+      - ME_CONFIG_BASICAUTH_USERNAME=campus
+      - ME_CONFIG_BASICAUTH_PASSWORD=zjb2023!
+    depends_on:
+      - mongo
+
+  rabbitmq:
+    container_name: "campus_rabbit"
+    build: ./rabbitMQ
+    restart: unless-stopped
+    ports:
+      - "9072:5672"
+      - "9073:15672"
+    environment:
+      TZ: Asia/Shanghai
+      RABBITMQ_DEFAULT_USER: campus
+      RABBITMQ_DEFAULT_PASS: 'RbbtMq98aA@45zB!'
+      RABBITMQ_CONFIG_FILE: /etc/rabbitmq/rabbitmq
+    volumes:
+      - /data/mq_data:/var/lib/rabbitmq
+    networks:
+      - campus
+
+  nginx:
+    build: ./nginx
+    container_name: 'nginx'
+    restart: unless-stopped
+    # 使用 host 网络模式
+    network_mode: "host"
+    # 移除 ports 配置，因为 host 模式下端口映射是多余的
+    # ports:
+    #   - "80:80"
+    #   - "443:443"
+    volumes:
+      - /data/nginx/logs:/var/log/nginx
+      - /data/nginx/html:/usr/share/nginx/html
+      - /data/nginx/ssl:/etc/nginx/ssl:ro
+      - /data/nginx/usr:/etc/nginx/usr
+      - /data/nginx/images :/usr/share/nginx/images
+    environment:
+      - TZ=Asia/Shanghai          # 时区设置
+#    deploy: # 资源限制（生产环境推荐）
+#      resources:
+#        limits:
+#          cpus: '2'
+#          memory: 1G
+#        reservations:
+#          cpus: '0.5'
+#          memory: 256M
+
+
+networks:
+  campus:
+    external: true

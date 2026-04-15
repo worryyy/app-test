@@ -124,7 +124,7 @@ func (s *Service) DeleteComment(ctx context.Context, topicID, commentID string, 
 		return err
 	}
 
-	commentOID, err := parseCommentObjectID(commentID)
+	commentOID, err := parseObjectID(commentID)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (s *Service) DeleteCommentAdmin(ctx context.Context, topicID, commentID str
 		return err
 	}
 
-	commentOID, err := parseCommentObjectID(commentID)
+	commentOID, err := parseObjectID(commentID)
 	if err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (s *Service) ListByTopic(
 	viewerUserID int64,
 	page, size int,
 ) (*PageResult[Comment], error) {
-	page, size = s.normalizePage(page, size)
+	page, size = pageSize(page, size, s.defaultPageSize())
 	if err := s.ensureTopicExists(ctx, topicID); err != nil {
 		return nil, err
 	}
@@ -188,7 +188,7 @@ func (s *Service) ListByTopic(
 		rootID = DefaultRootCommentID
 	}
 	if rootID != DefaultRootCommentID {
-		if _, err := parseCommentObjectID(rootID); err != nil {
+		if _, err := parseObjectID(rootID); err != nil {
 			return nil, ErrInvalidRootID
 		}
 	}
@@ -215,7 +215,7 @@ func (s *Service) ListByTopic(
 }
 
 func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*PageResult[MyCommentItem], error) {
-	page, size = s.normalizePage(page, size)
+	page, size = pageSize(page, size, s.defaultPageSize())
 	filter := bson.M{"user.userId": userIDString(userID), "hasCheck": bson.M{"$ne": false}}
 
 	comments, total, err := s.repo.FindCommentsPage(
@@ -252,7 +252,7 @@ func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*
 }
 
 func (s *Service) ListTargetUserComments(ctx context.Context, targetUserID int64, page, size int) (*PageResult[Comment], error) {
-	page, size = s.normalizePage(page, size)
+	page, size = pageSize(page, size, s.defaultPageSize())
 	if targetUserID <= 0 {
 		return nil, ErrTargetUserIDRequired
 	}
@@ -278,7 +278,7 @@ func (s *Service) defaultPageSize() int {
 }
 
 func (s *Service) decrementCommentCounters(ctx context.Context, topicID, rootCommentID string) error {
-	topicOID, err := parseCommentObjectID(topicID)
+	topicOID, err := parseObjectID(topicID)
 	if err != nil {
 		return err
 	}
@@ -295,7 +295,7 @@ func (s *Service) decrementCommentCounters(ctx context.Context, topicID, rootCom
 		return nil
 	}
 
-	rootOID, err := parseCommentObjectID(rootCommentID)
+	rootOID, err := parseObjectID(rootCommentID)
 	if err != nil {
 		return err
 	}

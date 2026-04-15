@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/snowflake"
@@ -76,6 +77,13 @@ func (s *Service) handleInitMessage(ctx context.Context, senderID string, body m
 		HandleType:     "INIT",
 	}
 	if err := s.repo.InsertMessage(ctx, message); err != nil {
+		if cleanupErr := s.repo.DeleteConversationCascade(ctx, conversationID); cleanupErr != nil && s.logger != nil {
+			s.logger.Warn(
+				"rollback init conversation failed",
+				zap.Error(cleanupErr),
+				zap.String("conversationID", conversationID),
+			)
+		}
 		return nil, bizerr.InternalWrap("保存消息失败", err)
 	}
 	return message, nil
@@ -90,6 +98,22 @@ func (s *Service) handleChatMessage(ctx context.Context, senderID string, body m
 	receiverID := stringField(body, "receiverId", "receiver_id")
 	if strings.TrimSpace(receiverID) == "" {
 		return nil, ErrReceiverIDRequired
+	}
+
+	senderMember, err := s.repo.FindConversationMember(ctx, conversationID, senderID)
+	if err != nil {
+		return nil, bizerr.InternalWrap("查询会话成员失败", err)
+	}
+	if senderMember == nil {
+		return nil, ErrConversationAccessDenied
+	}
+
+	receiverMember, err := s.repo.FindConversationMember(ctx, conversationID, receiverID)
+	if err != nil {
+		return nil, bizerr.InternalWrap("查询会话成员失败", err)
+	}
+	if receiverMember == nil {
+		return nil, ErrConversationPeerNotFound
 	}
 
 	content := stringField(body, "content")

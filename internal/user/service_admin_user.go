@@ -73,7 +73,22 @@ func (s *Service) ListUsers(
 }
 
 func (s *Service) ClearAuthentication(ctx context.Context, userID int64) error {
-	return s.repo.ClearAuthentication(ctx, userID)
+	user, err := s.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return ErrUserNotFound
+	}
+
+	cleared, err := s.repo.ClearAuthenticationByRootUserID(ctx, rootUserID(user))
+	if err != nil {
+		return err
+	}
+	if !cleared {
+		return ErrAuthenticationClearFailed
+	}
+	return nil
 }
 
 func (s *Service) PreAuthentication(ctx context.Context, userID int64, nickname, pwd string) error {

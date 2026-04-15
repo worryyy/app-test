@@ -37,7 +37,7 @@ func (h *Handler) Download(c *gin.Context) {
 }
 
 func (h *Handler) ListPublic(c *gin.Context) {
-	page, size := pageSize(c)
+	page, size := requestPageSize(c)
 	data, err := h.svc.ListPublic(c.Request.Context(), page, size)
 	if err != nil {
 		responses.Fail(c, err)

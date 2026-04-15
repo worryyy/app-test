@@ -55,7 +55,7 @@ func (s *Service) UnlikeComment(ctx context.Context, commentID string, userID in
 }
 
 func (s *Service) incCommentLikeStrict(ctx context.Context, commentID string, delta int64) error {
-	oid, err := parseCommentObjectID(commentID)
+	oid, err := parseObjectID(commentID)
 	if err != nil {
 		return err
 	}

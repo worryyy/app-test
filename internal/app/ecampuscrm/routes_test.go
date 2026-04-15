@@ -48,6 +48,7 @@ func TestRegisterRoutesExposesExpectedAdminEndpoints(t *testing.T) {
 		{method: "POST", path: "/admin/topic"},
 		{method: "PATCH", path: "/admin/topic/:topic_id"},
 		{method: "DELETE", path: "/admin/topic/:topic_id"},
+		{method: "GET", path: "/admin/topic/:topic_id/comment"},
 		{method: "DELETE", path: "/admin/topic/:topic_id/comment/:comment_id"},
 	}
 

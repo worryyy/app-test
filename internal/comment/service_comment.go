@@ -5,23 +5,11 @@ import (
 	"strconv"
 	"strings"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 )
-
-func (s *Service) normalizePage(page, size int) (int, int) {
-	if page <= 0 {
-		page = 1
-	}
-	if size <= 0 {
-		size = s.defaultPageSize()
-	}
-	if size > maxPageSize {
-		size = maxPageSize
-	}
-	return page, size
-}
 
 func (s *Service) loadUser(ctx context.Context, userID int64) (*userRecord, error) {
 	user, err := s.repo.FindUserByID(ctx, userID)
@@ -43,7 +31,7 @@ func (s *Service) loadUserByStringID(ctx context.Context, userID string) (*userR
 }
 
 func (s *Service) getTopic(ctx context.Context, topicID string, onlyChecked bool) (*CommentTopic, error) {
-	oid, err := parseCommentObjectID(topicID)
+	oid, err := parseObjectID(topicID)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +64,7 @@ func (s *Service) ensureTopicExists(ctx context.Context, topicID string) error {
 }
 
 func (s *Service) getCommentByID(ctx context.Context, commentID string) (*Comment, error) {
-	oid, err := parseCommentObjectID(commentID)
+	oid, err := parseObjectID(commentID)
 	if err != nil {
 		return nil, err
 	}
@@ -122,6 +110,24 @@ func (s *Service) fillCommentLikeState(ctx context.Context, userID string, comme
 	return nil
 }
 
+func (s *Service) ListCommentAdmin(ctx context.Context, topicID string, page, size int) (*PageResult[Comment], error) {
+	page, size = pageSize(page, size, s.defaultPageSize())
+	if err := s.ensureTopicExists(ctx, topicID); err != nil {
+		return nil, err
+	}
+
+	comments, total, err := s.repo.FindCommentsPage(
+		ctx,
+		bson.M{"topicId": topicID},
+		bson.D{{Key: "_id", Value: -1}},
+		page,
+		size,
+	)
+	if err != nil {
+		return nil, bizerr.InternalWrap("query admin comment list failed", err)
+	}
+	return NewPageResult(comments, total, page, size), nil
+}
 func buildCommentUser(user *userRecord) CommentUser {
 	if user == nil {
 		return CommentUser{}
@@ -184,7 +190,7 @@ func userIDString(userID int64) string {
 	return strconv.FormatInt(userID, 10)
 }
 
-func parseCommentObjectID(raw string) (primitive.ObjectID, error) {
+func parseObjectID(raw string) (primitive.ObjectID, error) {
 	oid, err := primitive.ObjectIDFromHex(strings.TrimSpace(raw))
 	if err != nil {
 		return primitive.NilObjectID, bizerr.Param(errMsgInvalidParam)

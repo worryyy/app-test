@@ -105,9 +105,7 @@ func (s *Service) Add(ctx context.Context, word string) error {
 }
 
 func (s *Service) FindByPage(ctx context.Context, page, size int) (*pagination.PageResult[SensitiveWord], error) {
-	if page <= 0 || size <= 0 {
-		return nil, bizerr.Param(errMsgInvalidParam)
-	}
+	page, size = normalizePageSize(page, size)
 
 	list, total, err := s.repo.FindPage(ctx, page, size)
 	if err != nil {
@@ -211,6 +209,16 @@ func normalizeWordList(words []string) []string {
 		normalized = append(normalized, word)
 	}
 	return normalized
+}
+
+func normalizePageSize(page, size int) (int, int) {
+	if page <= 0 {
+		page = 1
+	}
+	if size <= 0 {
+		size = 15
+	}
+	return page, size
 }
 
 func buildSensitivePattern(words []string) *regexp.Regexp {

@@ -161,7 +161,7 @@ func (h *Handler) HistoryMessages(c *gin.Context) {
 		return
 	}
 
-	page, size := pageSize(c)
+	page, size := requestPageSize(c)
 	oldestMessageID, err := parseOptionalPositiveInt64(query.OldestMessageID)
 	if err != nil {
 		responses.Fail(c, err)
@@ -198,7 +198,7 @@ func (h *Handler) NotifyList(c *gin.Context) {
 		return
 	}
 
-	page, size := pageSize(c)
+	page, size := requestPageSize(c)
 	data, err := h.svc.ListNotifications(c.Request.Context(), middleware.GetUserID(c), query.Type, page, size)
 	if err != nil {
 		responses.Fail(c, err)

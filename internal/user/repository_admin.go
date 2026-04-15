@@ -174,13 +174,29 @@ func (r *Repository) MarkPreAuthenticated(ctx context.Context, userID int64, nic
 	return res.RowsAffected > 0, nil
 }
 
-func (r *Repository) ClearAuthentication(ctx context.Context, userID int64) error {
-	return r.updateUserFields(ctx, userID, map[string]any{
-		"stu_is_check": false,
-		"stu_name":     "",
-		"stu_cla":      "",
-		"stu_num":      "",
-		"stu_pwd":      "",
-		"school":       "",
-	})
+func (r *Repository) ClearAuthenticationByRootUserID(ctx context.Context, rootUserID int64) (bool, error) {
+	if rootUserID <= 0 {
+		return false, nil
+	}
+
+	db, err := r.gormDB(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	res := db.
+		Model(&User{}).
+		Where("root_user_id = ? OR id = ?", rootUserID, rootUserID).
+		Updates(map[string]any{
+			"stu_is_check": false,
+			"stu_name":     "",
+			"stu_cla":      "",
+			"stu_num":      "",
+			"stu_pwd":      "",
+			"school":       "",
+		})
+	if res.Error != nil {
+		return false, fmt.Errorf("clear authentication by root_user_id %d: %w", rootUserID, res.Error)
+	}
+	return res.RowsAffected > 0, nil
 }

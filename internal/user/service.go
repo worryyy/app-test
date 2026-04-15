@@ -32,6 +32,8 @@ var (
 	ErrIdentityDenied = bizerr.Forbidden("身份切换无权限")
 )
 
+var ErrAuthenticationClearFailed = bizerr.Biz("清除认证失败")
+
 type Service struct {
 	repo       *Repository
 	redis      *redis.Client

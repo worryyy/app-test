@@ -27,6 +27,16 @@ func TestNormalizeWordList(t *testing.T) {
 	}
 }
 
+func TestNormalizePageSize(t *testing.T) {
+	page, size := normalizePageSize(0, -1)
+	if page != 1 {
+		t.Fatalf("page = %d, want 1", page)
+	}
+	if size != 15 {
+		t.Fatalf("size = %d, want 15", size)
+	}
+}
+
 func repeatMask(value string) string {
 	return buildSensitivePattern([]string{value}).ReplaceAllStringFunc(value, func(match string) string {
 		return repeatAsterisk(match)

@@ -24,7 +24,7 @@ type UserEditReq struct {
 }
 
 type UserIDReq struct {
-	UserID int64 `json:"userId" binding:"required"`
+	UserID int64 `json:"userId" binding:"required,gt=0"`
 }
 
 type AdminEditUserReq struct {

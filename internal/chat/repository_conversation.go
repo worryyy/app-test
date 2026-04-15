@@ -221,10 +221,6 @@ func (r *Repository) DeleteConversationForUser(ctx context.Context, conversation
 	if err != nil {
 		return err
 	}
-	messageColl, err := r.mongoCollection(mongoCollMessage)
-	if err != nil {
-		return err
-	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		var conversation Conversation
@@ -253,10 +249,6 @@ func (r *Repository) DeleteConversationForUser(ctx context.Context, conversation
 			return errRepoConversationDeleteFailed
 		}
 
-		if _, err := messageColl.DeleteMany(ctx, bson.M{"conversation_id": conversationID}); err != nil {
-			return fmt.Errorf("delete conversation messages %s: %w", conversationID, err)
-		}
-
 		var remaining int64
 		if err := tx.Model(&ConversationMember{}).
 			Where("conversation_id = ?", conversationID).
@@ -267,12 +259,37 @@ func (r *Repository) DeleteConversationForUser(ctx context.Context, conversation
 			return nil
 		}
 
+		messageColl, err := r.mongoCollection(mongoCollMessage)
+		if err != nil {
+			return err
+		}
+		if _, err := messageColl.DeleteMany(ctx, bson.M{"conversation_id": conversationID}); err != nil {
+			return fmt.Errorf("delete conversation messages %s: %w", conversationID, err)
+		}
+
 		deleteConversationTx := tx.Where("id = ?", conversationID).Delete(&Conversation{})
 		if deleteConversationTx.Error != nil {
 			return fmt.Errorf("delete conversation %s: %w", conversationID, deleteConversationTx.Error)
 		}
 		if deleteConversationTx.RowsAffected == 0 {
 			return errRepoConversationDeleteFailed
+		}
+		return nil
+	})
+}
+
+func (r *Repository) DeleteConversationCascade(ctx context.Context, conversationID string) error {
+	db, err := r.gormDB(ctx)
+	if err != nil {
+		return err
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("conversation_id = ?", conversationID).Delete(&ConversationMember{}).Error; err != nil {
+			return fmt.Errorf("delete conversation members %s: %w", conversationID, err)
+		}
+		if err := tx.Where("id = ?", conversationID).Delete(&Conversation{}).Error; err != nil {
+			return fmt.Errorf("delete conversation %s: %w", conversationID, err)
 		}
 		return nil
 	})

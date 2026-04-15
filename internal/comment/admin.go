@@ -26,3 +26,17 @@ func (h *AdminHandler) Delete(c *gin.Context) {
 	}
 	responses.Success.Resp(c)
 }
+
+func (h *AdminHandler) List(c *gin.Context) {
+	var uri topicURI
+	if !bindURI(c, &uri) {
+		return
+	}
+	page, size := requestPageSize(c)
+	data, err := h.svc.ListCommentAdmin(c.Request.Context(), uri.TopicID, page, size)
+	if err != nil {
+		responses.Fail(c, err)
+		return
+	}
+	responses.Success.RespData(c, data)
+}

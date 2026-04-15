@@ -56,10 +56,12 @@ func NewSessionManager() *SessionManager {
 	}
 }
 
-func (m *SessionManager) Set(userID int64, s *Session) {
+func (m *SessionManager) Set(userID int64, s *Session) *Session {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	previous := m.sessions[userID]
 	m.sessions[userID] = s
+	return previous
 }
 
 func (m *SessionManager) Get(userID int64) (*Session, bool) {
@@ -69,10 +71,21 @@ func (m *SessionManager) Get(userID int64) (*Session, bool) {
 	return session, ok
 }
 
-func (m *SessionManager) Remove(userID int64) {
+func (m *SessionManager) RemoveIfSame(userID int64, s *Session) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.sessions, userID)
+	if current, ok := m.sessions[userID]; ok && current == s {
+		delete(m.sessions, userID)
+	}
+}
+
+func newWSAuthSuccess(userID int64) gin.H {
+	value := strconv.FormatInt(userID, 10)
+	return gin.H{
+		"type":    "auth_success",
+		"userId":  value,
+		"user_id": value,
+	}
 }
 
 type wsAuthEnvelope struct {
@@ -109,8 +122,10 @@ func (h *Handler) WS(c *gin.Context) {
 	}
 
 	session := &Session{UserID: userID, Conn: conn}
-	h.sessions.Set(userID, session)
-	defer h.sessions.Remove(userID)
+	if previous := h.sessions.Set(userID, session); previous != nil && previous != session && previous.Conn != nil {
+		_ = previous.Conn.Close()
+	}
+	defer h.sessions.RemoveIfSame(userID, session)
 
 	stopPing := make(chan struct{})
 	go func() {
@@ -144,7 +159,7 @@ func (h *Handler) WS(c *gin.Context) {
 			continue
 		}
 		if stringField(messageTypeProbe, "type") == "auth" {
-			_ = session.WriteJSON(gin.H{"type": "auth_success", "user_id": strconv.FormatInt(userID, 10)})
+			_ = session.WriteJSON(newWSAuthSuccess(userID))
 			continue
 		}
 
@@ -188,7 +203,7 @@ func (h *Handler) handleWSAuth(c *gin.Context, conn *websocket.Conn) (int64, err
 	if err != nil {
 		return 0, err
 	}
-	if err := conn.WriteJSON(gin.H{"type": "auth_success", "user_id": strconv.FormatInt(claims.UserID, 10)}); err != nil {
+	if err := conn.WriteJSON(newWSAuthSuccess(claims.UserID)); err != nil {
 		return 0, err
 	}
 	return claims.UserID, nil

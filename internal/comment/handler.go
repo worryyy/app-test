@@ -57,7 +57,7 @@ func (h *Handler) ListByTopic(c *gin.Context) {
 		return
 	}
 
-	page, size := pageSize(c)
+	page, size := requestPageSize(c)
 	data, err := h.svc.ListByTopic(c.Request.Context(), uri.TopicID, query.RootID, middleware.GetUserID(c), page, size)
 	if err != nil {
 		responses.Fail(c, err)
@@ -67,7 +67,7 @@ func (h *Handler) ListByTopic(c *gin.Context) {
 }
 
 func (h *Handler) Mine(c *gin.Context) {
-	page, size := pageSize(c)
+	page, size := requestPageSize(c)
 	data, err := h.svc.ListMine(c.Request.Context(), middleware.GetUserID(c), page, size)
 	if err != nil {
 		responses.Fail(c, err)
@@ -82,7 +82,7 @@ func (h *Handler) TargetUserComments(c *gin.Context) {
 		return
 	}
 
-	page, size := pageSize(c)
+	page, size := requestPageSize(c)
 	data, err := h.svc.ListTargetUserComments(c.Request.Context(), query.TargetUserID, page, size)
 	if err != nil {
 		responses.Fail(c, err)

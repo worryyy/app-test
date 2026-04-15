@@ -83,7 +83,7 @@ func (h *Handler) Search(c *gin.Context) {
 		return
 	}
 
-	page, size := pageSize(c)
+	page, size := requestPageSize(c)
 	data, err := h.svc.Search(
 		c.Request.Context(),
 		userIDString(middleware.GetUserID(c)),
@@ -102,7 +102,7 @@ func (h *Handler) Search(c *gin.Context) {
 }
 
 func (h *Handler) Mine(c *gin.Context) {
-	page, size := pageSize(c)
+	page, size := requestPageSize(c)
 	data, err := h.svc.ListMine(c.Request.Context(), middleware.GetUserID(c), middleware.GetAccounType(c), page, size)
 	if err != nil {
 		responses.Fail(c, err)
@@ -117,7 +117,7 @@ func (h *Handler) TargetUserTopics(c *gin.Context) {
 		return
 	}
 
-	page, size := pageSize(c)
+	page, size := requestPageSize(c)
 	data, err := h.svc.ListTargetUserTopics(c.Request.Context(), middleware.GetUserID(c), query.TargetUserID, middleware.GetAccounType(c), page, size)
 	if err != nil {
 		responses.Fail(c, err)
@@ -157,7 +157,7 @@ func (h *Handler) Unlike(c *gin.Context) {
 }
 
 func (h *Handler) LikedTopics(c *gin.Context) {
-	page, size := pageSize(c)
+	page, size := requestPageSize(c)
 	data, err := h.svc.ListLikedTopics(c.Request.Context(), middleware.GetUserID(c), middleware.GetAccounType(c), page, size)
 	if err != nil {
 		responses.Fail(c, err)
@@ -193,7 +193,7 @@ func (h *Handler) Uncollect(c *gin.Context) {
 }
 
 func (h *Handler) CollectionTopics(c *gin.Context) {
-	page, size := pageSize(c)
+	page, size := requestPageSize(c)
 	data, err := h.svc.ListCollectedTopics(c.Request.Context(), middleware.GetUserID(c), middleware.GetAccounType(c), page, size)
 	if err != nil {
 		responses.Fail(c, err)

@@ -3,6 +3,7 @@ package sensitive
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/pagination"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/responses"
 )
 
@@ -41,12 +42,8 @@ func (h *AdminHandler) Add(c *gin.Context) {
 }
 
 func (h *AdminHandler) Page(c *gin.Context) {
-	var query pageQuery
-	if !bindQuery(c, &query) {
-		return
-	}
-
-	data, err := h.svc.FindByPage(c.Request.Context(), query.Page, query.Size)
+	page, size := pagination.PageSize(c)
+	data, err := h.svc.FindByPage(c.Request.Context(), page, size)
 	if err != nil {
 		responses.Fail(c, err)
 		return
