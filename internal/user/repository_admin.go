@@ -104,7 +104,7 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int, filter Admin
 	if err := query.
 		Offset((page - 1) * size).
 		Limit(size).
-		Order("id DESC").
+		Order("id ASC").
 		Find(&users).Error; err != nil {
 		return nil, 0, fmt.Errorf("list users: %w", err)
 	}
