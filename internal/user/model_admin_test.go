@@ -4,12 +4,11 @@ import "testing"
 
 func TestAdminListUsersQueryFilterUsesPreferredFields(t *testing.T) {
 	query := adminListUsersQuery{
-		Page:           2,
-		Size:           20,
-		ID:             1001,
-		StuNum:         "20230001",
-		Nickname:       "new-name",
-		LegacyNickName: "legacy-name",
+		Page:     2,
+		Size:     20,
+		ID:       1001,
+		StuNum:   "20230001",
+		NickName: "new-name",
 	}
 
 	filter := query.Filter()
@@ -20,16 +19,39 @@ func TestAdminListUsersQueryFilterUsesPreferredFields(t *testing.T) {
 		t.Fatalf("unexpected filter stu num: %s", filter.StuNum)
 	}
 	if filter.Nickname != "new-name" {
-		t.Fatalf("expected nickname to prefer new field, got %s", filter.Nickname)
+		t.Fatalf("expected nickname from NickName field, got %s", filter.Nickname)
 	}
 }
 
-func TestAdminListUsersQueryFilterFallsBackToLegacyNickName(t *testing.T) {
+func TestAdminListUsersQueryFilterTrimsNickName(t *testing.T) {
 	filter := (adminListUsersQuery{
-		LegacyNickName: "legacy-name",
+		NickName: " legacy-name ",
 	}).Filter()
 
 	if filter.Nickname != "legacy-name" {
-		t.Fatalf("expected legacy nickname fallback, got %s", filter.Nickname)
+		t.Fatalf("expected trimmed nickname, got %s", filter.Nickname)
+	}
+}
+
+func TestAdminListUsersFilterSearchUserIDFromNickName(t *testing.T) {
+	filter := AdminListUsersFilter{
+		Nickname: " 12345 ",
+	}
+
+	if got := filter.SearchKeyword(); got != "12345" {
+		t.Fatalf("expected trimmed search keyword, got %s", got)
+	}
+	if got := filter.SearchUserID(); got != 12345 {
+		t.Fatalf("expected search user id 12345, got %d", got)
+	}
+}
+
+func TestAdminListUsersFilterSearchUserIDIgnoresNonNumericNickName(t *testing.T) {
+	filter := AdminListUsersFilter{
+		Nickname: "2023A001",
+	}
+
+	if got := filter.SearchUserID(); got != 0 {
+		t.Fatalf("expected non-numeric nickname search to not produce user id, got %d", got)
 	}
 }

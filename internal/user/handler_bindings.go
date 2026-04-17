@@ -25,12 +25,11 @@ type adminListUsersQuery struct {
 	Size           int    `form:"size"`
 	ID             int64  `form:"id"`
 	StuNum         string `form:"stu_num"`
-	Nickname       string `form:"nickname"`
-	LegacyNickName string `form:"nick_name"`
+	NickName       string `form:"nickName"`
 }
 
 type preAuthQuery struct {
 	UserID   int64  `form:"user_id" binding:"required,gt=0"`
-	NickName string `form:"nick_name" binding:"required"`
+	NickName string `form:"nickName" binding:"required"`
 	Pwd      string `form:"pwd" binding:"required"`
 }

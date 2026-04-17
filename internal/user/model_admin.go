@@ -1,6 +1,9 @@
 package user
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 type AdminListUsersFilter struct {
 	ID       int64
@@ -31,14 +34,27 @@ type AdminPreAuthResult struct {
 	Message string `json:"message"`
 }
 
-func (q adminListUsersQuery) Filter() AdminListUsersFilter {
-	nickname := strings.TrimSpace(q.Nickname)
-	if nickname == "" {
-		nickname = strings.TrimSpace(q.LegacyNickName)
+func (f AdminListUsersFilter) SearchKeyword() string {
+	return strings.TrimSpace(f.Nickname)
+}
+
+func (f AdminListUsersFilter) SearchUserID() int64 {
+	keyword := f.SearchKeyword()
+	if keyword == "" {
+		return 0
 	}
+
+	id, err := strconv.ParseInt(keyword, 10, 64)
+	if err != nil || id <= 0 {
+		return 0
+	}
+	return id
+}
+
+func (q adminListUsersQuery) Filter() AdminListUsersFilter {
 	return AdminListUsersFilter{
 		ID:       q.ID,
 		StuNum:   strings.TrimSpace(q.StuNum),
-		Nickname: nickname,
+		Nickname: strings.TrimSpace(q.NickName),
 	}
 }

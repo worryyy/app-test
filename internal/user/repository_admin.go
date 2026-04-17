@@ -91,8 +91,13 @@ func (r *Repository) ListUsers(ctx context.Context, page, size int, filter Admin
 	if strings.TrimSpace(filter.StuNum) != "" {
 		query = query.Where("stu_num = ?", filter.StuNum)
 	}
-	if strings.TrimSpace(filter.Nickname) != "" {
-		query = query.Where("nickname LIKE ?", "%"+filter.Nickname+"%")
+	if keyword := filter.SearchKeyword(); keyword != "" {
+		keywordLike := "%" + keyword + "%"
+		if searchID := filter.SearchUserID(); searchID > 0 {
+			query = query.Where("(nickname LIKE ? OR stu_num = ? OR id = ?)", keywordLike, keyword, searchID)
+		} else {
+			query = query.Where("(nickname LIKE ? OR stu_num = ?)", keywordLike, keyword)
+		}
 	}
 
 	var total int64

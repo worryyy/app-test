@@ -1,8 +1,6 @@
 package user
 
 import (
-	"errors"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
@@ -10,9 +8,8 @@ import (
 )
 
 const (
-	errMsgInvalidParam   = "invalid param"
-	errMsgUserNotLogin   = "user not logged in"
-	errMsgNeedCampusAuth = "campus auth required"
+	errMsgInvalidParam = "invalid param"
+	errMsgUserNotLogin = "user not logged in"
 )
 
 func bindJSON(c *gin.Context, req any) bool {
@@ -58,18 +55,6 @@ func (h *Handler) currentUser(c *gin.Context) (*User, bool) {
 	return user, true
 }
 
-func (h *Handler) requireCertifiedUser(c *gin.Context) (*User, bool) {
-	user, ok := h.currentUser(c)
-	if !ok {
-		return nil, false
-	}
-	if !user.StuIsCheck {
-		responses.Fail(c, bizerr.Forbidden(errMsgNeedCampusAuth))
-		return nil, false
-	}
-	return user, true
-}
-
 func requireCurrentRootUserID(c *gin.Context) (int64, bool) {
 	claims := currentClaims(c)
 	if claims == nil || claims.RootUserID <= 0 {
@@ -77,9 +62,4 @@ func requireCurrentRootUserID(c *gin.Context) (int64, bool) {
 		return 0, false
 	}
 	return claims.RootUserID, true
-}
-
-func isBizErrCode(err error, code int) bool {
-	var be *bizerr.Error
-	return errors.As(err, &be) && be.Code == code
 }
