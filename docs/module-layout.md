@@ -25,7 +25,7 @@
 | `routes.go` | `RegisterPublicRoutes` / `RegisterProtectedRoutes` | |
 | `routes_admin.go` | `RegisterAdminRoutes` | |
 | `producer.go` | MQ 事件发送接口 | 可选 |
-| `page_result.go` | 分页结果 | 后续应迁移到 platform/pagination |
+| `page_result.go` | 分页结果 | **旧模块遗留**（见第 10 节已知债务）；新模块直接用 `internal/platform/pagination.PageResult[T]` |
 
 ## Service 拆分规则
 
@@ -87,7 +87,7 @@ Handler 的拆分与 Service 保持**对称**：
 
 只放该模块**独有**的 handler 辅助函数（如 `writeTopicListResult`）。
 
-跨模块通用的 handler 工具函数（如 `bindJSON`、`bindQuery`、`pageSize`）应提取到 `internal/platform/ginutil/`，各模块不再重复定义。
+跨模块通用的 handler 工具函数（如 `bindJSON`、`bindQuery`、`pageSize`）目标是统一收敛到 `internal/platform/` 下的公共工具包（计划路径 `internal/platform/ginutil/`，尚未落地）。在该公共包落地之前，各模块保留现有 `handler_helpers.go` 实现；迁移时按独立 PR 进行，不与业务改动混合（见 AGENTS.md 第 3 节迁移原则）。
 
 ## Routes 规则
 
@@ -126,14 +126,17 @@ var (
 
 ## 跨模块共享
 
-| 共享内容 | 放置位置 |
-|---------|---------|
-| Handler 工具（bind, pageSize） | `internal/platform/ginutil/` |
-| 分页结果 `PageResult[T]` | `internal/platform/pagination/` |
-| 业务错误构造 | `internal/platform/bizerr/` |
-| JWT 工具 | `internal/platform/jwtutil/` |
-| 加密工具 | `internal/platform/encrypt/` |
-| 外部服务集成（微信、COS） | `internal/integration/<服务>/` |
+| 共享内容 | 放置位置 | 状态 |
+|---------|---------|------|
+| 分页结果 `PageResult[T]` | `internal/platform/pagination/` | 已落地 |
+| 业务错误构造 | `internal/platform/bizerr/` | 已落地 |
+| 统一响应 | `internal/platform/responses/` | 已落地 |
+| JWT 工具（用户端 / 管理端） | `internal/platform/jwtutil/`、`internal/platform/adminjwt/` | 已落地 |
+| 加密工具 | `internal/platform/encrypt/` | 已落地 |
+| Redis key 规则 | `internal/platform/rediskey/` | 已落地 |
+| 雪花 ID | `internal/platform/snowflake/` | 已落地 |
+| 外部服务集成（微信、COS） | `internal/integration/<服务>/` | 已落地 |
+| Handler 工具（bind, pageSize） | 计划路径 `internal/platform/ginutil/` | **未落地**，现仍在各模块 `handler_helpers.go` |
 
 ## Topic 模板参考
 
@@ -161,6 +164,19 @@ var (
 6. Handler 拆分与 Service 保持对称
 7. 提取跨模块重复代码到 `internal/platform/`
 
+## 10. 已知债务
+
+下列是**当前代码与本规范的偏差**。修 bug 时**不要顺手重写**；迁移走独立 PR（见 AGENTS.md 第 3 节）。
+
+| 债务 | 现状 | 迁移方向 |
+|------|------|---------|
+| `internal/user` 没有 `service.go` | 主流程散落在 `service_user.go` / `service_admin.go` / `service_admin_user.go` / `service_follow.go` / `service_identity.go` / `service_wx.go` | 新模块不要模仿；迁移时抽出主流程进 `service.go` |
+| `page_result.go` 尚未消亡 | `internal/chat`、`internal/comment`、`internal/user`、`internal/topic` 四模块仍在用；`writeXxxListResult` 辅助函数的签名依赖 `*PageResult[T]` | 连带重写 list handler 辅助函数时再迁；不要只换类型不换调用点 |
+| `handler_helpers.go` 跨模块重复 | `chat` / `comment` / `file` / `school` / `sensitive` / `topic` / `user` 共 7 个模块各自定义 `bindJSON` / `bindQuery` / `bindURI`，文本完全相同 | 目标收敛到 `internal/platform/ginutil/`（**未落地**）；落地前各模块保留现状 |
+| 模块级错误常量不统一 | 稳定错误应在 `errors.go`，但部分模块（如 `comment`）用 `errMsgInvalidParam` 常量 + 即时 `bizerr.Param(...)`，未提成 `ErrXxx` | 修 bug 时若遇到动态拼接错误，优先新增包级变量 |
+| `internal/topic` 有 `db_columns.go` 抽列名常量 | 其它模块未普及 | 仅在**跨多个 repository 文件复用**同一列名时新建；单文件内别提 |
+| 测试覆盖稀疏 | 目前只有 `topic` / `comment` / `user` 少数 service 有窄测试 | 新增兼容字段 / 日期格式 / 错误分支时补窄行为测试；暂不强制补历史 |
+
 ## 默认约定
 
-从现在开始，除非有特殊说明，新模块和旧模块重构都默认遵守这套规则。
+从现在开始，除非有特殊说明，新模块和旧模块重构都默认遵守本文档。与第 10 节不一致的地方以"现有稳定行为不回归"为前提逐步迁移，不要求一次性改完。
