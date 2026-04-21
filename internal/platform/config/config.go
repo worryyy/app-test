@@ -21,6 +21,7 @@ type Config struct {
 	JW         JWConfig         `mapstructure:"jw"`
 	Encryption EncryptionConfig `mapstructure:"encryption"`
 	Admin      AdminConfig      `mapstructure:"admin"`
+	Agent      AgentConfig      `mapstructure:"agent"`
 	Logging    LoggingConfig    `mapstructure:"logging"`
 }
 
@@ -102,6 +103,17 @@ type AdminConfig struct {
 	PowerSign         int    `mapstructure:"power_sign"`
 	SecondaryPassword string `mapstructure:"secondary_password"`
 	PreAuthPassword   string `mapstructure:"pre_auth_password"`
+}
+
+type AgentConfig struct {
+	Enabled                      bool   `mapstructure:"enabled"`
+	GRPCAddr                     string `mapstructure:"grpc_addr"`
+	AuthToken                    string `mapstructure:"auth_token"`
+	ConnectTimeoutMS             int    `mapstructure:"connect_timeout_ms"`
+	TimeoutMS                    int    `mapstructure:"timeout_ms"`
+	RateLimitPerMinute           int    `mapstructure:"rate_limit_per_minute"`
+	MaxConcurrentPerUser         int    `mapstructure:"max_concurrent_per_user"`
+	MaxConcurrentPerConversation int    `mapstructure:"max_concurrent_per_conversation"`
 }
 
 type LoggingConfig struct {

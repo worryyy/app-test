@@ -16,6 +16,11 @@ redis:
 rabbitmq:
   url: "amqp://campus:RbbtMq98aA%4045zB%21@rabbitmq:5672/"
 
+agent:
+  enabled: true
+  grpc_addr: "127.0.0.1:50051"
+  auth_token: "test-token"
+
 logging:
   level: "info"
   file_path: "logs/ecampus-dev.log"
