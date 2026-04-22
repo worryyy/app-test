@@ -59,7 +59,6 @@ admin:
 agent:
   grpc_addr: "127.0.0.1:50051"
   auth_token: "replace-me"
-  connect_timeout_ms: 5000
   timeout_ms: 90000
   rate_limit_per_minute: 10
   max_concurrent_per_user: 2

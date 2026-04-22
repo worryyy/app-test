@@ -108,7 +108,6 @@ type AdminConfig struct {
 type AgentConfig struct {
 	GRPCAddr                     string `mapstructure:"grpc_addr"`
 	AuthToken                    string `mapstructure:"auth_token"`
-	ConnectTimeoutMS             int    `mapstructure:"connect_timeout_ms"`
 	TimeoutMS                    int    `mapstructure:"timeout_ms"`
 	RateLimitPerMinute           int    `mapstructure:"rate_limit_per_minute"`
 	MaxConcurrentPerUser         int    `mapstructure:"max_concurrent_per_user"`

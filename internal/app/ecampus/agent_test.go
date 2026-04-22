@@ -20,8 +20,7 @@ func TestNewAgentHandlerDoesNotFailWhenAgentDialFails(t *testing.T) {
 	handler, closeAgent, err := newAgentHandler(&bootstrap.Infra{
 		Config: &config.Config{
 			Agent: config.AgentConfig{
-				GRPCAddr:         "127.0.0.1:1",
-				ConnectTimeoutMS: 50,
+				GRPCAddr: "127.0.0.1:1",
 			},
 		},
 		Logger: zap.NewNop(),

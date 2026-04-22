@@ -1,9 +1,7 @@
 package ecampus
 
 import (
-	"context"
 	"fmt"
-	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -14,8 +12,6 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
 )
-
-const defaultAgentConnectTimeout = 5 * time.Second
 
 func newAgentHandler(infra *bootstrap.Infra, jwtHelper *jwtutil.Helper) (*agentchat.Handler, func(), error) {
 	if infra == nil {
@@ -51,11 +47,7 @@ func dialAgentConn(cfg *config.Config) (*grpc.ClientConn, error) {
 		return nil, fmt.Errorf("agent grpc addr is empty")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), agentConnectTimeout(cfg.Agent.ConnectTimeoutMS))
-	defer cancel()
-
-	conn, err := grpc.DialContext(
-		ctx,
+	conn, err := grpc.NewClient(
 		cfg.Agent.GRPCAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
@@ -63,11 +55,4 @@ func dialAgentConn(cfg *config.Config) (*grpc.ClientConn, error) {
 		return nil, fmt.Errorf("dial agent grpc %s: %w", cfg.Agent.GRPCAddr, err)
 	}
 	return conn, nil
-}
-
-func agentConnectTimeout(timeoutMS int) time.Duration {
-	if timeoutMS <= 0 {
-		return defaultAgentConnectTimeout
-	}
-	return time.Duration(timeoutMS) * time.Millisecond
 }

@@ -95,7 +95,7 @@ func (s *Service) prepareTurn(ctx context.Context, input TurnInput) (preparedTur
 	return preparedTurn{
 		conversation: conversation,
 		requestID:    requestID,
-		request:      newHandleTurnRequest(input, conversation.SessionID, requestID),
+		request:      s.newHandleTurnRequest(input, conversation.SessionID, requestID),
 	}, release, nil
 }
 
@@ -215,13 +215,14 @@ func normalizeTurnRequestID(requestID string) string {
 	return "agent-turn-" + snowflake.Generate().String()
 }
 
-func newHandleTurnRequest(input TurnInput, sessionID, requestID string) *agentv1.HandleTurnRequest {
+func (s *Service) newHandleTurnRequest(input TurnInput, sessionID, requestID string) *agentv1.HandleTurnRequest {
 	return &agentv1.HandleTurnRequest{
-		RequestId: requestID,
-		UserId:    strconv.FormatInt(input.RootUserID, 10),
-		SessionId: sessionID,
-		Utterance: strings.TrimSpace(input.Content),
-		Metadata:  buildMetadata(input, requestID),
+		RequestId:  requestID,
+		UserId:     strconv.FormatInt(input.RootUserID, 10),
+		SessionId:  sessionID,
+		Utterance:  strings.TrimSpace(input.Content),
+		DeadlineMs: s.timeout().Milliseconds(),
+		Metadata:   buildMetadata(input, requestID),
 	}
 }
 

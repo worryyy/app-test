@@ -4,10 +4,12 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
@@ -17,6 +19,7 @@ import (
 const (
 	wsHeartbeatInterval = 30 * time.Second
 	wsSessionTimeout    = 60 * time.Second
+	wsWriteTimeout      = 10 * time.Second
 	wsPingPayload       = "server_heartbeat"
 )
 
@@ -24,6 +27,8 @@ type Session struct {
 	RootUserID int64
 	Conn       *websocket.Conn
 	mu         sync.Mutex
+	wg         sync.WaitGroup
+	inflight   atomic.Int32
 }
 
 func (s *Session) WriteJSON(v any) error {
@@ -32,6 +37,9 @@ func (s *Session) WriteJSON(v any) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.Conn.SetWriteDeadline(time.Now().Add(wsWriteTimeout)); err != nil {
+		return err
+	}
 	return s.Conn.WriteJSON(v)
 }
 
@@ -41,6 +49,9 @@ func (s *Session) WriteMessage(messageType int, data []byte) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.Conn.SetWriteDeadline(time.Now().Add(wsWriteTimeout)); err != nil {
+		return err
+	}
 	return s.Conn.WriteMessage(messageType, data)
 }
 
@@ -50,17 +61,17 @@ func (h *Handler) WS(c *gin.Context) {
 		responses.Fail(c, bizerr.Biz("websocket upgrade failed"))
 		return
 	}
-	defer func() {
-		_ = conn.Close()
-	}()
 
 	if err := configureWSConn(conn); err != nil {
+		_ = conn.Close()
 		return
 	}
 
 	claims, err := h.handleWSAuth(c.Request.Context(), conn)
 	if err != nil {
-		_ = conn.WriteJSON(wsAuthFailedEvent(err))
+		h.wsLogger().Warn("agent ws auth failed", zap.Error(err))
+		_ = conn.WriteJSON(wsAuthFailedEvent())
+		_ = conn.Close()
 		return
 	}
 
@@ -86,11 +97,11 @@ func configureWSConn(conn *websocket.Conn) error {
 	return nil
 }
 
-func wsAuthFailedEvent(err error) WSEvent {
+func wsAuthFailedEvent() WSEvent {
 	return WSEvent{
 		Type:      "auth_failed",
 		ErrorCode: "unauthorized",
-		Message:   err.Error(),
+		Message:   "鉴权失败",
 	}
 }
 
@@ -106,10 +117,65 @@ func rootUserIDFromClaims(claims *jwtutil.Claims) int64 {
 
 func (h *Handler) serveWSConnection(ctx context.Context, session *Session, claims *jwtutil.Claims) error {
 	baseCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	stopPing := startWSPingLoop(session)
-	defer close(stopPing)
+	err := h.readWSMessages(baseCtx, session, claims)
+	cancel()
+	close(stopPing)
+	session.waitAsync()
+	if session != nil && session.Conn != nil {
+		_ = session.Conn.Close()
+	}
+	return err
+}
 
-	return h.readWSMessages(baseCtx, session, claims)
+func (s *Session) tryStartTurn(limit int) bool {
+	if s == nil {
+		return false
+	}
+	if limit <= 0 {
+		limit = 1
+	}
+
+	maxInflight := int32(limit)
+	for {
+		current := s.inflight.Load()
+		if current >= maxInflight {
+			return false
+		}
+		if s.inflight.CompareAndSwap(current, current+1) {
+			return true
+		}
+	}
+}
+
+func (s *Session) finishTurn() {
+	if s == nil {
+		return
+	}
+	s.inflight.Add(-1)
+}
+
+func (s *Session) startAsync(fn func()) {
+	if s == nil || fn == nil {
+		return
+	}
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		fn()
+	}()
+}
+
+func (s *Session) waitAsync() {
+	if s == nil {
+		return
+	}
+	s.wg.Wait()
+}
+
+func (h *Handler) wsLogger() *zap.Logger {
+	if h != nil && h.svc != nil && h.svc.logger != nil {
+		return h.svc.logger
+	}
+	return zap.NewNop()
 }

@@ -9,13 +9,15 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
 )
 
 func startWSPingLoop(session *Session) chan struct{} {
 	stop := make(chan struct{})
-	go func() {
+	session.startAsync(func() {
 		ticker := time.NewTicker(wsHeartbeatInterval)
 		defer ticker.Stop()
 		for {
@@ -28,7 +30,7 @@ func startWSPingLoop(session *Session) chan struct{} {
 				}
 			}
 		}
-	}()
+	})
 	return stop
 }
 
@@ -98,7 +100,13 @@ func (h *Handler) startWSTurn(ctx context.Context, session *Session, claims *jwt
 		return session.WriteJSON(invalidWSEvent("invalid_message"))
 	}
 
-	go h.handleWSTurn(ctx, session, claims, req)
+	if !session.tryStartTurn(h.maxWSInflightTurns()) {
+		return session.WriteJSON(rejectedWSEvent(req, ErrAgentUserBusy))
+	}
+	session.startAsync(func() {
+		defer session.finishTurn()
+		h.handleWSTurn(ctx, session, claims, req)
+	})
 	return nil
 }
 
@@ -112,6 +120,18 @@ func (h *Handler) handleWSTurn(ctx context.Context, session *Session, claims *jw
 	})
 	if err == nil {
 		return
+	}
+	if ctx.Err() != nil || errors.Is(err, context.Canceled) {
+		return
+	}
+	if shouldLogWSError(err) {
+		h.wsLogger().Warn(
+			"agent ws turn failed",
+			zap.Int64("root_user_id", session.RootUserID),
+			zap.String("request_id", strings.TrimSpace(req.RequestID)),
+			zap.String("conversation_id", strings.TrimSpace(req.ConversationID)),
+			zap.Error(err),
+		)
 	}
 	_ = session.WriteJSON(rejectedWSEvent(req, err))
 }
@@ -142,7 +162,7 @@ func rejectedWSEvent(req wsTurnStartRequest, err error) WSEvent {
 		RequestID:      strings.TrimSpace(req.RequestID),
 		ConversationID: strings.TrimSpace(req.ConversationID),
 		ErrorCode:      "request_rejected",
-		Message:        err.Error(),
+		Message:        safeWSErrorMessage(err),
 	}
 }
 
@@ -178,4 +198,27 @@ func (h *Handler) handleWSAuth(ctx context.Context, conn *websocket.Conn) (*jwtu
 		return nil, err
 	}
 	return claims, nil
+}
+
+func safeWSErrorMessage(err error) string {
+	var bizError *bizerr.Error
+	if errors.As(err, &bizError) {
+		return bizError.Message
+	}
+	return "请求处理失败"
+}
+
+func shouldLogWSError(err error) bool {
+	var bizError *bizerr.Error
+	if !errors.As(err, &bizError) {
+		return true
+	}
+	return bizError.Code == bizerr.CodeInternalErr
+}
+
+func (h *Handler) maxWSInflightTurns() int {
+	if h == nil || h.svc == nil {
+		return defaultMaxConcurrentPerUser
+	}
+	return h.svc.maxConcurrentPerUser()
 }

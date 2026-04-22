@@ -15,33 +15,33 @@ import (
 type fakeAgentClient struct {
 	handleTurnResp *agentv1.HandleTurnResponse
 	handleTurnErr  error
+	handleTurnReq  *agentv1.HandleTurnRequest
 	historyResp    *agentv1.GetSessionHistoryResponse
 	historyErr     error
 	deleteResp     *agentv1.DeleteSessionResponse
 	deleteErr      error
 }
 
-func (f fakeAgentClient) HandleTurn(_ context.Context, _ *agentv1.HandleTurnRequest) (*agentv1.HandleTurnResponse, error) {
+func (f *fakeAgentClient) HandleTurn(_ context.Context, req *agentv1.HandleTurnRequest) (*agentv1.HandleTurnResponse, error) {
+	f.handleTurnReq = req
 	return f.handleTurnResp, f.handleTurnErr
 }
 
-func (f fakeAgentClient) StreamHandleTurn(_ context.Context, _ *agentv1.HandleTurnRequest) (agentv1.AgentService_StreamHandleTurnClient, error) {
+func (f *fakeAgentClient) StreamHandleTurn(_ context.Context, _ *agentv1.HandleTurnRequest) (agentv1.AgentService_StreamHandleTurnClient, error) {
 	return nil, nil
 }
 
-func (f fakeAgentClient) GetSessionHistory(_ context.Context, _ *agentv1.GetSessionHistoryRequest) (*agentv1.GetSessionHistoryResponse, error) {
+func (f *fakeAgentClient) GetSessionHistory(_ context.Context, _ *agentv1.GetSessionHistoryRequest) (*agentv1.GetSessionHistoryResponse, error) {
 	return f.historyResp, f.historyErr
 }
 
-func (f fakeAgentClient) DeleteSession(_ context.Context, _ *agentv1.DeleteSessionRequest) (*agentv1.DeleteSessionResponse, error) {
+func (f *fakeAgentClient) DeleteSession(_ context.Context, _ *agentv1.DeleteSessionRequest) (*agentv1.DeleteSessionResponse, error) {
 	return f.deleteResp, f.deleteErr
 }
 
 func TestHandleTurnCreatesConversationAndPersistsResult(t *testing.T) {
 	db := openTestDB(t)
-	svc := NewService(db, nil, &config.Config{
-		Agent: config.AgentConfig{TimeoutMS: 1000},
-	}, zap.NewNop(), fakeAgentClient{
+	client := &fakeAgentClient{
 		handleTurnResp: &agentv1.HandleTurnResponse{
 			Domain:       agentv1.Domain_DOMAIN_CHAT,
 			Intent:       agentv1.Intent_INTENT_CHAT_GENERAL,
@@ -52,7 +52,10 @@ func TestHandleTurnCreatesConversationAndPersistsResult(t *testing.T) {
 			References:   []*agentv1.Reference{{Source: "kb", Ref: "doc#1", Score: 0.8}},
 			CapabilityId: "chat.general",
 		},
-	})
+	}
+	svc := NewService(db, nil, &config.Config{
+		Agent: config.AgentConfig{TimeoutMS: 1000},
+	}, zap.NewNop(), client)
 
 	resp, err := svc.HandleTurn(context.Background(), TurnInput{
 		Content:       "你好，帮我总结一下",
@@ -95,6 +98,12 @@ func TestHandleTurnCreatesConversationAndPersistsResult(t *testing.T) {
 	if conversation.LastAssistantPreview == "" {
 		t.Fatalf("expected assistant preview")
 	}
+	if client.handleTurnReq == nil {
+		t.Fatalf("expected handle turn request to be captured")
+	}
+	if client.handleTurnReq.DeadlineMs != 1000 {
+		t.Fatalf("deadline ms = %d, want 1000", client.handleTurnReq.DeadlineMs)
+	}
 }
 
 func TestGetHistoryChecksOwnershipAndMapsTurns(t *testing.T) {
@@ -110,7 +119,7 @@ func TestGetHistoryChecksOwnershipAndMapsTurns(t *testing.T) {
 
 	svc := NewService(db, nil, &config.Config{
 		Agent: config.AgentConfig{TimeoutMS: 1000},
-	}, zap.NewNop(), fakeAgentClient{
+	}, zap.NewNop(), &fakeAgentClient{
 		historyResp: &agentv1.GetSessionHistoryResponse{
 			Turns: []*agentv1.ConversationTurn{
 				{SequenceNo: 1, Role: "user", Content: "你好", CreatedAt: "2026-04-08T10:00:00Z", Domain: agentv1.Domain_DOMAIN_CHAT},

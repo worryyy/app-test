@@ -4,7 +4,17 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
+
+var counterGuardAcquireScript = redis.NewScript(`
+local count = redis.call("INCR", KEYS[1])
+if count == 1 then
+	redis.call("PEXPIRE", KEYS[1], ARGV[1])
+end
+return count
+`)
 
 func (s *Service) acquireTurnGuards(ctx context.Context, rootUserID int64, sessionID string) (func(), error) {
 	if err := s.enforcePerMinute(ctx, rootUserID); err != nil {
@@ -66,12 +76,9 @@ func (s *Service) acquireCounterGuard(ctx context.Context, key string, limit int
 		return func() {}, nil
 	}
 
-	count, err := s.redis.Incr(ctx, key).Result()
+	count, err := counterGuardAcquireScript.Run(ctx, s.redis, []string{key}, ttl.Milliseconds()).Int64()
 	if err != nil {
 		return func() {}, nil
-	}
-	if count == 1 {
-		_ = s.redis.Expire(ctx, key, ttl).Err()
 	}
 	if count <= int64(limit) {
 		return func() {
@@ -79,7 +86,7 @@ func (s *Service) acquireCounterGuard(ctx context.Context, key string, limit int
 		}, nil
 	}
 
-	_, _ = s.redis.Decr(ctx, key).Result()
+	_, _ = s.redis.Decr(context.Background(), key).Result()
 	return func() {}, limitErr
 }
 
