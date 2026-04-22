@@ -20,7 +20,6 @@ jw:
   base_url: "https://dev.fangfangfang.top/sztu_jw"
 
 agent:
-  enabled: false
   grpc_addr: "agent-core:50051"
   auth_token: "replace-me"
 

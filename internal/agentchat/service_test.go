@@ -40,7 +40,7 @@ func (f fakeAgentClient) DeleteSession(_ context.Context, _ *agentv1.DeleteSessi
 func TestHandleTurnCreatesConversationAndPersistsResult(t *testing.T) {
 	db := openTestDB(t)
 	svc := NewService(db, nil, &config.Config{
-		Agent: config.AgentConfig{Enabled: true, TimeoutMS: 1000},
+		Agent: config.AgentConfig{TimeoutMS: 1000},
 	}, zap.NewNop(), fakeAgentClient{
 		handleTurnResp: &agentv1.HandleTurnResponse{
 			Domain:       agentv1.Domain_DOMAIN_CHAT,
@@ -109,7 +109,7 @@ func TestGetHistoryChecksOwnershipAndMapsTurns(t *testing.T) {
 	})
 
 	svc := NewService(db, nil, &config.Config{
-		Agent: config.AgentConfig{Enabled: true, TimeoutMS: 1000},
+		Agent: config.AgentConfig{TimeoutMS: 1000},
 	}, zap.NewNop(), fakeAgentClient{
 		historyResp: &agentv1.GetSessionHistoryResponse{
 			Turns: []*agentv1.ConversationTurn{

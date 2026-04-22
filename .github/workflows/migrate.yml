@@ -1,0 +1,65 @@
+name: Run Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Run migration on'
+        type: choice
+        default: test
+        options:
+          - test
+          - production
+
+jobs:
+  migrate-test:
+    name: Migrate Test
+    if: github.event.inputs.target == 'test'
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - name: Run migration via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          APP_PROFILE: test
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: DOCKERHUB_USER,APP_PROFILE
+          command_timeout: 10m
+          script: |
+            set -e
+            docker pull $DOCKERHUB_USER/ecampus:latest
+            docker run --rm \
+              --network campus \
+              -e APP_PROFILE=$APP_PROFILE \
+              --entrypoint ./ecampus-migrate \
+              $DOCKERHUB_USER/ecampus:latest
+
+  migrate-prod:
+    name: Migrate Production
+    if: github.event.inputs.target == 'production'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Run migration via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          APP_PROFILE: prod
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: DOCKERHUB_USER,APP_PROFILE
+          command_timeout: 10m
+          script: |
+            set -e
+            docker pull $DOCKERHUB_USER/ecampus:latest
+            docker run --rm \
+              --network campus \
+              -e APP_PROFILE=$APP_PROFILE \
+              --entrypoint ./ecampus-migrate \
+              $DOCKERHUB_USER/ecampus:latest

@@ -64,10 +64,6 @@ func NewService(db *gorm.DB, rds *redis.Client, cfg *config.Config, logger *zap.
 	}
 }
 
-func (s *Service) enabled() bool {
-	return s != nil && s.cfg != nil && s.cfg.Agent.Enabled && s.client != nil
-}
-
 func (s *Service) timeout() time.Duration {
 	if s == nil || s.cfg == nil || s.cfg.Agent.TimeoutMS <= 0 {
 		return defaultTimeout

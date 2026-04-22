@@ -15,10 +15,6 @@ import (
 )
 
 func (s *Service) ListConversations(ctx context.Context, rootUserID int64, page, size int) (*pagination.PageResult[Conversation], error) {
-	if !s.enabled() {
-		return nil, ErrAgentDisabled
-	}
-
 	page, size = normalizeConversationPage(page, size)
 	items, total, err := s.listConversations(ctx, rootUserID, page, size)
 	if err != nil {
@@ -34,10 +30,6 @@ func (s *Service) GetHistory(
 	beforeSequenceNo *int64,
 	size int,
 ) (*HistoryResponse, error) {
-	if !s.enabled() {
-		return nil, ErrAgentDisabled
-	}
-
 	conversation, err := s.requireOwnedConversation(ctx, conversationID, rootUserID)
 	if err != nil {
 		return nil, err
@@ -54,10 +46,6 @@ func (s *Service) GetHistory(
 }
 
 func (s *Service) DeleteConversation(ctx context.Context, rootUserID int64, conversationID string) error {
-	if !s.enabled() {
-		return ErrAgentDisabled
-	}
-
 	conversation, err := s.requireOwnedConversation(ctx, conversationID, rootUserID)
 	if err != nil {
 		return err

@@ -66,9 +66,6 @@ func (s *Service) StreamTurn(ctx context.Context, input TurnInput, emit func(WSE
 }
 
 func (s *Service) prepareTurn(ctx context.Context, input TurnInput) (preparedTurn, func(), error) {
-	if !s.enabled() {
-		return preparedTurn{}, func() {}, ErrAgentDisabled
-	}
 	if strings.TrimSpace(input.Content) == "" {
 		return preparedTurn{}, func() {}, ErrTurnContentRequired
 	}

@@ -21,15 +21,8 @@ func newAgentHandler(infra *bootstrap.Infra, jwtHelper *jwtutil.Helper) (*agentc
 	if infra == nil {
 		return nil, func() {}, fmt.Errorf("infra is nil")
 	}
-
-	svc := agentchat.NewService(infra.MySQL, infra.Redis, infra.Config, infra.Logger, nil)
-	handler := agentchat.NewHandler(svc, jwtHelper, infra.Redis)
-	if infra.Config == nil || !infra.Config.Agent.Enabled {
-		return handler, func() {}, nil
-	}
-
-	if err := agentchat.EnsureSchema(infra.MySQL); err != nil {
-		return nil, func() {}, err
+	if infra.Config == nil {
+		return nil, func() {}, fmt.Errorf("config is nil")
 	}
 
 	conn, err := dialAgentConn(infra.Config)
@@ -38,12 +31,7 @@ func newAgentHandler(infra *bootstrap.Infra, jwtHelper *jwtutil.Helper) (*agentc
 	}
 
 	client := agentchat.NewClient(conn, infra.Config.Agent.AuthToken)
-	if err := checkAgentHealth(client, infra.Config); err != nil {
-		_ = conn.Close()
-		return nil, func() {}, err
-	}
-
-	infra.Logger.Info("agent grpc ready", zap.String("addr", infra.Config.Agent.GRPCAddr))
+	infra.Logger.Info("agent grpc configured", zap.String("addr", infra.Config.Agent.GRPCAddr))
 	return agentchat.NewHandler(
 			agentchat.NewService(infra.MySQL, infra.Redis, infra.Config, infra.Logger, client),
 			jwtHelper,
@@ -56,6 +44,13 @@ func newAgentHandler(infra *bootstrap.Infra, jwtHelper *jwtutil.Helper) (*agentc
 }
 
 func dialAgentConn(cfg *config.Config) (*grpc.ClientConn, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("config is nil")
+	}
+	if cfg.Agent.GRPCAddr == "" {
+		return nil, fmt.Errorf("agent grpc addr is empty")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), agentConnectTimeout(cfg.Agent.ConnectTimeoutMS))
 	defer cancel()
 
@@ -63,22 +58,11 @@ func dialAgentConn(cfg *config.Config) (*grpc.ClientConn, error) {
 		ctx,
 		cfg.Agent.GRPCAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("dial agent grpc %s: %w", cfg.Agent.GRPCAddr, err)
 	}
 	return conn, nil
-}
-
-func checkAgentHealth(client *agentchat.Client, cfg *config.Config) error {
-	ctx, cancel := context.WithTimeout(context.Background(), agentConnectTimeout(cfg.Agent.ConnectTimeoutMS))
-	defer cancel()
-
-	if err := client.CheckHealth(ctx); err != nil {
-		return fmt.Errorf("check agent grpc health %s: %w", cfg.Agent.GRPCAddr, err)
-	}
-	return nil
 }
 
 func agentConnectTimeout(timeoutMS int) time.Duration {

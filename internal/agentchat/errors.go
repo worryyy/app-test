@@ -5,7 +5,6 @@ import "github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 const errMsgInvalidParam = "参数错误"
 
 var (
-	ErrAgentDisabled            = bizerr.NotFound("agent 未启用")
 	ErrConversationNotFound     = bizerr.NotFound("agent 会话不存在")
 	ErrConversationAccessDenied = bizerr.Forbidden("无权访问该 agent 会话")
 	ErrConversationDeleteDenied = bizerr.Forbidden("无权删除该 agent 会话")

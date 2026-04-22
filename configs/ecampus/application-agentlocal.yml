@@ -1,5 +1,4 @@
 agent:
-  enabled: true
   grpc_addr: "127.0.0.1:50051"
   auth_token: "test-token"
   timeout_ms: 90000

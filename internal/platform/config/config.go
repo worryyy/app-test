@@ -106,7 +106,6 @@ type AdminConfig struct {
 }
 
 type AgentConfig struct {
-	Enabled                      bool   `mapstructure:"enabled"`
 	GRPCAddr                     string `mapstructure:"grpc_addr"`
 	AuthToken                    string `mapstructure:"auth_token"`
 	ConnectTimeoutMS             int    `mapstructure:"connect_timeout_ms"`
