@@ -56,6 +56,14 @@ admin:
   power_sign: 999
   secondary_password: "replace-me"
 
+agent:
+  grpc_addr: "127.0.0.1:50051"
+  auth_token: "replace-me"
+  timeout_ms: 90000
+  rate_limit_per_minute: 10
+  max_concurrent_per_user: 2
+  max_concurrent_per_conversation: 1
+
 logging:
   level: "info"
   file_path: "logs/ecampus.log"

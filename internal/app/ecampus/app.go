@@ -60,6 +60,11 @@ func Run() error {
 	fileH := file.NewHandler(fileSvc)
 	chatH := chat.NewHandler(chatSvc, userSvc, jwtHelper, infra.Redis)
 	schoolH := school.NewHandler(schoolSvc)
+	agentH, closeAgent, err := newAgentHandler(infra, jwtHelper)
+	if err != nil {
+		return err
+	}
+	defer closeAgent()
 
 	engine := bootstrap.NewEngine()
 	registerRoutes(engine, infra.Logger, infra.MySQL, jwtHelper, infra.Redis, userHandlers{
@@ -70,6 +75,7 @@ func Run() error {
 		File:    fileH,
 		Chat:    chatH,
 		School:  schoolH,
+		Agent:   agentH,
 	})
 
 	consumers, err := mq.NewConsumers(infra.RabbitMQ, infra.Redis, infra.Mongo, infra.MySQL, infra.Config, infra.Logger, producer, sensitiveSvc)

@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/agentchat"
 	"github.com/Milchstrassse/Ecampus-go/internal/chat"
 	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
@@ -25,6 +26,7 @@ type userHandlers struct {
 	File    *file.Handler
 	Chat    *chat.Handler
 	School  *school.Handler
+	Agent   *agentchat.Handler
 }
 
 func registerRoutes(
@@ -39,6 +41,7 @@ func registerRoutes(
 	school.RegisterPublicRoutes(engine, handlers.School)
 	file.RegisterPublicRoutes(engine, handlers.File)
 	chat.RegisterInfraRoutes(engine, handlers.Chat)
+	agentchat.RegisterInfraRoutes(engine, handlers.Agent)
 
 	api := engine.Group("/api")
 	api.Use(
@@ -51,6 +54,7 @@ func registerRoutes(
 	topic.RegisterProtectedRoutes(api, handlers.Topic)
 	comment.RegisterProtectedRoutes(api, handlers.Comment)
 	chat.RegisterProtectedRoutes(api, handlers.Chat)
+	agentchat.RegisterProtectedRoutes(api, handlers.Agent)
 	school.RegisterProtectedRoutes(api, handlers.School)
 	theme.RegisterProtectedRoutes(api, handlers.Theme)
 
