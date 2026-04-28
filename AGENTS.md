@@ -16,7 +16,7 @@
 
 - 请求有 ≥ 2 种合理解释时，列出来让用户选，不要静默挑一种。
 - 不清楚就问：命名、边界、字段含义、迁移范围、是否复用 `internal/platform/`。
-- 发现更简单的方案要说出来。
+- 发现更简单的或者更好更优秀的方案要说出来，必要时全网搜索参考最佳实践。
 - **Success signal**：澄清问题出现在实现之前，而不是之后。
 
 ### 0.2 Simplicity First
@@ -64,7 +64,6 @@
 ## 2. 完成自检（改完必过）
 
 - [ ] diff 里每行都能追溯到当前请求
-- [ ] 真实 HTTP Status 只有 200 / 400（业务码在 `body.httpstatus`，见 CLAUDE.md 第 3 节）
 - [ ] 分层清晰：Handler 无 DB 访问、Service 参数没有 `*gin.Context`
 - [ ] 新依赖在 `internal/app/<service>/app.go` 注入，模块内无全局单例
 - [ ] 兼容逻辑 / 字段映射 / 日期格式有窄测试覆盖
@@ -105,12 +104,7 @@ PR 描述里说清"改了什么 + 为什么"，不必贴代码片段；测试 / 
 ---
 
 ## 5. 安全红线（YOU MUST NOT）
-
-- **敏感字段不落日志**：OpenID / unionID / 身份证号 / 手机号 / JWT / 微信 `code` / COS 凭证 / 任何原始密码。
-  - Why：日志统一采集到 ELK，留痕 + 被多方访问；一次泄漏难以追溯清除。
-  - How to apply：打这些字段时走 `encrypt` / 脱敏函数，或者直接用 `userID` / `rootUserID` 代替。
 - **密码 / token 存储必须走 `internal/platform/encrypt`**，禁止明文入库或明文 Redis。
-- **CORS / 跨域白名单改动**必须先问，不能默默加 `*` 通配符（历史踩过 credentials 模式下通配符失效的坑，见 commit `2c8342c`）。
 
 ---
 
