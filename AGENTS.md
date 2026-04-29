@@ -103,12 +103,7 @@ PR 描述里说清"改了什么 + 为什么"，不必贴代码片段；测试 / 
 
 ---
 
-## 5. 安全红线（YOU MUST NOT）
-- **密码 / token 存储必须走 `internal/platform/encrypt`**，禁止明文入库或明文 Redis。
-
----
-
-## 6. 延伸阅读
+## 5. 延伸阅读
 
 - 项目详细规范：[CLAUDE.md](./CLAUDE.md)
 - 模块布局模板：[docs/module-layout.md](./docs/module-layout.md)

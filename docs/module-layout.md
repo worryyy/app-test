@@ -175,7 +175,7 @@ var (
 | `handler_helpers.go` 跨模块重复 | `chat` / `comment` / `file` / `school` / `sensitive` / `topic` / `user` 共 7 个模块各自定义 `bindJSON` / `bindQuery` / `bindURI`，文本完全相同 | `internal/platform/ginutil/` **已落地**；迁移各模块调用点时走独立 PR |
 | 模块级错误常量不统一 | 稳定错误应在 `errors.go`，但部分模块（如 `comment`）用 `errMsgInvalidParam` 常量 + 即时 `bizerr.Param(...)`，未提成 `ErrXxx` | 修 bug 时若遇到动态拼接错误，优先新增包级变量 |
 | `internal/topic` 有 `db_columns.go` 抽列名常量 | 其它模块未普及 | 仅在**跨多个 repository 文件复用**同一列名时新建；单文件内别提 |
-| 测试覆盖稀疏 | 目前只有 `topic` / `comment` / `user` 少数 service 有窄测试 | 新增兼容字段 / 日期格式 / 错误分支时补窄行为测试；暂不强制补历史 |
+| 测试覆盖仍不均衡 | 已有 `agentchat` / `chat` / `comment` / `school` / `sensitive` / `topic` / `user` / `middleware` 等局部测试，但模块间覆盖深度不一致 | 新增兼容字段 / 日期格式 / 错误分支时补窄行为测试；暂不强制补历史 |
 
 ## 默认约定
 

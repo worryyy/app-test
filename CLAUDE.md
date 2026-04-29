@@ -34,7 +34,8 @@ go run ./cmd/ecampus          # 本地默认读 application-local.yml（profile 
 go run ./cmd/ecampus-crm
 go build ./...                # 编译自查
 go test ./internal/<mod>/...  # 改完必跑相关模块；PR 前跑 go test ./...
-gofmt -w . && golangci-lint run ./...
+gofmt -w <changed .go files>  # 仅格式化本次改动文件
+golangci-lint run ./...
 ```
 
 CI/CD 走 `.github/workflows/deploy.yml`（Docker + SSH），本地无需执行部署命令。
@@ -139,6 +140,7 @@ c.AbortWithStatus(http.StatusNotFound)
 | **context 传递** | Handler 用 `*gin.Context`；Service / Repository 用 `context.Context`；Handler 调 Service 时传 `c.Request.Context()` |
 | **分页统一** | 新模块用 `internal/platform/pagination.PageResult[T]`；旧模块的 `page_result.go` 不新增（见模块布局第 10 节） |
 | **db_columns.go** | 部分模块（如 `topic`）把 GORM 列名抽成常量；**仅在跨多个 repository 文件复用列名时新建**，单文件内别上提 |
+| **Agent proto 生成** | 修改 `proto/agent/v1/agent.proto` 后运行 `make proto-agent`，并检查 `internal/agentchat/agentv1/*.pb.go` |
 
 ---
 
