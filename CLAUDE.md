@@ -182,7 +182,7 @@ c.AbortWithStatus(http.StatusNotFound)
 | 配置 / 加密 / Redis key / 雪花 ID | `internal/platform/{config,encrypt,rediskey,snowflake}/` |
 | 外部服务集成（微信 / COS） | `internal/integration/<service>/` |
 
-**判断规则**：被 ≥ 2 个模块复制 → 上提到 `platform/`；单模块使用 → 留在模块内。上提时走 AGENTS.md 第 3 节迁移原则，不与业务改动混合 PR。
+**判断规则**：被 ≥ 2 个模块复制 → 上提到 `platform/`；单模块使用 → 留在模块内。上提时拆独立 PR，不与业务改动混合。
 
 ---
 

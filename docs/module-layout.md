@@ -87,7 +87,7 @@ Handler 的拆分与 Service 保持**对称**：
 
 只放该模块**独有**的 handler 辅助函数（如 `writeTopicListResult`）。
 
-跨模块通用的 handler 工具函数（如 `bindJSON`、`bindQuery`、`pageSize`）已收敛到 `internal/platform/ginutil/`（导出 `BindJSON` / `BindQuery` / `BindURI` / `PageSize` / `ParseOptionalPositiveInt64`）。现有模块尚未全部迁移，各模块保留现有 `handler_helpers.go` 实现；迁移时按独立 PR 进行，不与业务改动混合（见 AGENTS.md 第 3 节迁移原则）。
+跨模块通用的 handler 工具函数（如 `bindJSON`、`bindQuery`、`pageSize`）已收敛到 `internal/platform/ginutil/`（导出 `BindJSON` / `BindQuery` / `BindURI` / `PageSize` / `ParseOptionalPositiveInt64`）。现有模块尚未全部迁移，各模块保留现有 `handler_helpers.go` 实现；迁移时按独立 PR 进行，不与业务改动混合。
 
 ## Routes 规则
 
@@ -166,7 +166,7 @@ var (
 
 ## 10. 已知债务
 
-下列是**当前代码与本规范的偏差**。修 bug 时**不要顺手重写**；迁移走独立 PR（见 AGENTS.md 第 3 节）。
+下列是**当前代码与本规范的偏差**。修 bug 时**不要顺手重写**；迁移走独立 PR。
 
 | 债务 | 现状 | 迁移方向 |
 |------|------|---------|

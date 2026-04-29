@@ -33,7 +33,7 @@
 **YOU MUST** 让每行改动可追溯到用户请求。
 
 - 改 A 模块时 import / 命名 / 错误包装路径**沿用该模块既有做法**，不以"你认为更好"的方式重写相邻代码。
-- 修 bug 时不要顺手把 helper 上提到公共层——**迁移类改动独立 PR**（见第 3 节）。
+- 修 bug 时不要顺手把 helper 上提到公共层——**迁移类改动独立 PR**。
 - 自己改动造成的孤儿 import / 变量才清理；看到预存 dead code 可提一嘴，不删。
 - **Success signal**：diff 里没有无关格式化 / 重命名 / 注释修改。
 
@@ -71,39 +71,14 @@
 
 ---
 
-## 3. 迁移原则（项目特化）
+## 3. Commit / PR 约定
 
-本仓库向 `internal/platform/` 长期收敛，但：
-
-- **旧模块以"稳定行为不回归"为前提逐步迁移，不要求一次性全量改完**
-  - Why：接口契约、字段兼容、日期格式都是线上客户端依赖的，统一重写风险远大于收益。
-- 新模块默认遵守规范。
-- **重构类改动拆独立 PR，或用户明确同意后合入**——不要藏在业务 PR 里顺手做。
-  - Why：业务改动 + 重构混在一起时 review 成本暴涨，出问题很难回滚单独一部分。
-
-已知债务清单见 [docs/module-layout.md 第 10 节](./docs/module-layout.md#10-已知债务)——修 bug 时顺手看一眼，不要"顺便修好它们"。
+- **Commit 前缀**：`feat:` / `bugfix:` / `refactor:` / `docs:` / `chore:`，半角冒号后直接跟中文描述，**不加空格，不用英文 Conventional Commits 格式**。
+- **PR 描述**：说清"改了什么 + 为什么"；测试命令列在"测试"章节。
 
 ---
 
-## 4. Commit / PR 约定
-
-**前缀**：`feat:` / `bugfix:` / `refactor:` / `docs:` / `chore:`，半角冒号后直接跟中文描述（参考实际历史，冒号后不加空格）。
-
-**IMPORTANT：不要**自作主张用 Conventional Commits 英文格式（`fix(scope): ...`）或别的约定。参考最近几条：
-
-```
-feat:管理端用户信息rootUserID 搜索多元化
-bugfix:theme routes error
-refactor:优化目录结构 划分各模块各层业务界限
-```
-
-> Why：历史提交都是这套风格，切换会让 `git log` 可读性下降、也打乱了 changelog 生成脚本的预期。
-
-PR 描述里说清"改了什么 + 为什么"，不必贴代码片段；测试 / 自测命令列在"测试"章节（见第 2 节自检）。
-
----
-
-## 5. 延伸阅读
+## 4. 延伸阅读
 
 - 项目详细规范：[CLAUDE.md](./CLAUDE.md)
 - 模块布局模板：[docs/module-layout.md](./docs/module-layout.md)
