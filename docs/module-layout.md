@@ -87,7 +87,7 @@ Handler 的拆分与 Service 保持**对称**：
 
 只放该模块**独有**的 handler 辅助函数（如 `writeTopicListResult`）。
 
-跨模块通用的 handler 工具函数（如 `bindJSON`、`bindQuery`、`pageSize`）目标是统一收敛到 `internal/platform/` 下的公共工具包（计划路径 `internal/platform/ginutil/`，尚未落地）。在该公共包落地之前，各模块保留现有 `handler_helpers.go` 实现；迁移时按独立 PR 进行，不与业务改动混合（见 AGENTS.md 第 3 节迁移原则）。
+跨模块通用的 handler 工具函数（如 `bindJSON`、`bindQuery`、`pageSize`）已收敛到 `internal/platform/ginutil/`（导出 `BindJSON` / `BindQuery` / `BindURI` / `PageSize` / `ParseOptionalPositiveInt64`）。现有模块尚未全部迁移，各模块保留现有 `handler_helpers.go` 实现；迁移时按独立 PR 进行，不与业务改动混合（见 AGENTS.md 第 3 节迁移原则）。
 
 ## Routes 规则
 
@@ -136,7 +136,7 @@ var (
 | Redis key 规则 | `internal/platform/rediskey/` | 已落地 |
 | 雪花 ID | `internal/platform/snowflake/` | 已落地 |
 | 外部服务集成（微信、COS） | `internal/integration/<服务>/` | 已落地 |
-| Handler 工具（bind, pageSize） | 计划路径 `internal/platform/ginutil/` | **未落地**，现仍在各模块 `handler_helpers.go` |
+| Handler 工具（bind, pageSize） | `internal/platform/ginutil/` | **已落地**（导出 API 已就绪），各模块尚未迁移 |
 
 ## Topic 模板参考
 
@@ -172,7 +172,7 @@ var (
 |------|------|---------|
 | `internal/user` 没有 `service.go` | 主流程散落在 `service_user.go` / `service_admin.go` / `service_admin_user.go` / `service_follow.go` / `service_identity.go` / `service_wx.go` | 新模块不要模仿；迁移时抽出主流程进 `service.go` |
 | `page_result.go` 尚未消亡 | `internal/chat`、`internal/comment`、`internal/user`、`internal/topic` 四模块仍在用；`writeXxxListResult` 辅助函数的签名依赖 `*PageResult[T]` | 连带重写 list handler 辅助函数时再迁；不要只换类型不换调用点 |
-| `handler_helpers.go` 跨模块重复 | `chat` / `comment` / `file` / `school` / `sensitive` / `topic` / `user` 共 7 个模块各自定义 `bindJSON` / `bindQuery` / `bindURI`，文本完全相同 | 目标收敛到 `internal/platform/ginutil/`（**未落地**）；落地前各模块保留现状 |
+| `handler_helpers.go` 跨模块重复 | `chat` / `comment` / `file` / `school` / `sensitive` / `topic` / `user` 共 7 个模块各自定义 `bindJSON` / `bindQuery` / `bindURI`，文本完全相同 | `internal/platform/ginutil/` **已落地**；迁移各模块调用点时走独立 PR |
 | 模块级错误常量不统一 | 稳定错误应在 `errors.go`，但部分模块（如 `comment`）用 `errMsgInvalidParam` 常量 + 即时 `bizerr.Param(...)`，未提成 `ErrXxx` | 修 bug 时若遇到动态拼接错误，优先新增包级变量 |
 | `internal/topic` 有 `db_columns.go` 抽列名常量 | 其它模块未普及 | 仅在**跨多个 repository 文件复用**同一列名时新建；单文件内别提 |
 | 测试覆盖稀疏 | 目前只有 `topic` / `comment` / `user` 少数 service 有窄测试 | 新增兼容字段 / 日期格式 / 错误分支时补窄行为测试；暂不强制补历史 |

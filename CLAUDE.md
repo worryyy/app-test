@@ -43,12 +43,12 @@ CI/CD 走 `.github/workflows/deploy.yml`（Docker + SSH），本地无需执行�
 
 ## 2. 分层契约
 
-**层次**：`Handler → Service → Repository`。Repository **不是抽象层**，不定义 interface 做测试替身（见 AGENTS.md 第 0.2 节）。
+**层次**：`Handler → Service → Repository`。Repository **不是抽象层**（见 AGENTS.md 第 0.2 节）。
 
 ### 2.1 Handler 只做 4 件事
 
 1. 绑定 URI / Query / JSON 参数（用模块内 `bindJSON` / `bindQuery` / `bindURI`）
-2. 从 context 读认证信息（`middleware.GetUserID(c)` / `currentClaims(c)` / `currentUserID(c)`）
+2. 从 context 读认证信息（`middleware.GetUserID(c)` / `middleware.GetClaims(c)`；部分模块封装了私有便捷函数如 `currentUserID(c)`）
 3. 调用 service，**传 `c.Request.Context()`**（不要把 `*gin.Context` 带进 service）
 4. 用 `responses.*` 统一输出
 
@@ -136,7 +136,6 @@ c.AbortWithStatus(http.StatusNotFound)
 | **空列表返回 `[]T{}` 不是 `nil`** | 防止客户端看到 `null` 而做空判失败 |
 | **JSON 字段名 camelCase** | `accountType` / `rootUserId` / `createdTime`，保持旧客户端兼容 |
 | **时间字段常自定义 `MarshalJSON`** | 评论等模块把 `time.Time` 格式化为字符串——**序列化兼容 > 零定制** |
-| **Handler 不解析 JWT** | 统一走 middleware 写入 context，用 `middleware.GetUserID(c)` / `currentClaims(c)` 读 |
 | **context 传递** | Handler 用 `*gin.Context`；Service / Repository 用 `context.Context`；Handler 调 Service 时传 `c.Request.Context()` |
 | **分页统一** | 新模块用 `internal/platform/pagination.PageResult[T]`；旧模块的 `page_result.go` 不新增（见模块布局第 10 节） |
 | **db_columns.go** | 部分模块（如 `topic`）把 GORM 列名抽成常量；**仅在跨多个 repository 文件复用列名时新建**，单文件内别上提 |
@@ -146,10 +145,6 @@ c.AbortWithStatus(http.StatusNotFound)
 ## 5. 模块布局
 
 标准参考：`internal/topic`。完整文件清单、拆分规则、**已知债务清单** → [`docs/module-layout.md`](./docs/module-layout.md)。
-
-常用文件：`model.go` / `model_req.go` / `errors.go` / `service.go` / `service_<子域>.go` / `repository.go` / `repository_<子域>.go` / `handler.go` / `handler_bindings.go` / `admin.go` / `routes.go` / `routes_admin.go`。
-
-**`service.go` 只放主流程**（Create / Delete / Update / Detail / Mine / 主列表）；扩展能力拆到 `service_<子域>.go`。Handler 与 Service 拆分**保持对称**。
 
 ---
 
