@@ -10,7 +10,7 @@ func RegisterAdminPublicRoutes(engine *gin.Engine, handler *AdminHandler) {
 
 func RegisterAdminRoutes(admin *gin.RouterGroup, handler *AdminHandler) {
 	admin.POST("/user/logout", handler.Logout)
-	admin.POST("/user/mock_token", handler.UserToken)
+	admin.POST("/user/user_token", handler.UserToken)
 	admin.POST("/user", handler.AddUser)
 	admin.PUT("/user/:id", handler.EditUser)
 	admin.GET("/user/list", handler.ListUsers)
