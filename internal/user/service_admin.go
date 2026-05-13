@@ -159,6 +159,33 @@ func (s *Service) AdminLogout(ctx context.Context, claims *adminjwt.Claims) erro
 	return mapAdminAuthError(s.adminJWT.Logout(ctx, claims.AdminID, s.redis))
 }
 
+func (s *Service) AdminUserToken(ctx context.Context, claims *adminjwt.Claims) (string, string, error) {
+	if claims == nil || claims.AdminID <= 0 || claims.UserID <= 0 {
+		return "", "", bizerr.Unauthorized(errMsgUserNotLogin)
+	}
+	if s.jwtHelper == nil {
+		return "", "", bizerr.Internal("jwt helper not initialized")
+	}
+
+	user, err := s.GetByID(ctx, claims.UserID)
+	if err != nil {
+		return "", "", err
+	}
+	if user == nil {
+		return "", "", ErrUserNotFound
+	}
+
+	token, refreshToken, err := s.jwtHelper.GenerateTokenPair(s.buildAdminUserJWTUser(user))
+	if err != nil {
+		return "", "", bizerr.InternalWrap("generate admin user token failed", err)
+	}
+	return token, refreshToken, nil
+}
+
+func (s *Service) buildAdminUserJWTUser(user *User) *jwtutil.TokenUser {
+	return s.buildTokenUser(user, user)
+}
+
 func (s *Service) handleLoginFail(ctx context.Context, failCountKey, lockKey string) (int, error) {
 	if s.redis == nil {
 		return 0, bizerr.Internal("redis client not initialized")

@@ -29,6 +29,7 @@ func TestRegisterRoutesExposesExpectedAdminEndpoints(t *testing.T) {
 		{method: "POST", path: "/admin/user/login"},
 		{method: "POST", path: "/admin/user/refresh"},
 		{method: "POST", path: "/admin/user/logout"},
+		{method: "POST", path: "/admin/user/user_token"},
 		{method: "PUT", path: "/admin/user/pre_authentication"},
 		{method: "PUT", path: "/admin/user/pre_authentication/batch"},
 		{method: "POST", path: "/admin/user"},

@@ -62,6 +62,19 @@ func (h *AdminHandler) Logout(c *gin.Context) {
 	responses.Success.Resp(c)
 }
 
+func (h *AdminHandler) UserToken(c *gin.Context) {
+	token, refreshToken, err := h.svc.AdminUserToken(c.Request.Context(), currentAdminClaims(c))
+	if err != nil {
+		responses.Fail(c, err)
+		return
+	}
+
+	responses.Success.RespData(c, &AdminUserTokenResp{
+		Token:        token,
+		RefreshToken: refreshToken,
+	})
+}
+
 func (h *AdminHandler) AddUser(c *gin.Context) {
 	var req User
 	if !bindJSON(c, &req) {
