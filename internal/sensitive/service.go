@@ -6,10 +6,14 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
+	sensitivelib "github.com/importcjj/sensitive"
 	"go.uber.org/zap"
+	"golang.org/x/text/unicode/norm"
 	"gorm.io/gorm"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
@@ -22,23 +26,33 @@ type Filter interface {
 	FilterText(ctx context.Context, content string) (string, error)
 }
 
-type Service struct {
-	repo   *Repository
-	logger *zap.Logger
+const maxMaskHits = 30
 
-	cacheMu        sync.RWMutex
-	cacheExpiresAt time.Time
-	cachePattern   *regexp.Regexp
+type Service struct {
+	repo      *Repository
+	logger    *zap.Logger
+	filter    atomic.Pointer[sensitivelib.Filter]
+	stop      chan struct{}
+	stopOnce  sync.Once
+	rebuildMu sync.Mutex
 }
 
 func NewService(db *gorm.DB, logger *zap.Logger) *Service {
 	if logger == nil {
 		logger = zap.NewNop()
 	}
-	return &Service{
+	s := &Service{
 		repo:   NewRepository(db),
 		logger: logger,
+		stop:   make(chan struct{}),
 	}
+	s.rebuildFilter()
+	go s.reloadLoop()
+	return s
+}
+
+func (s *Service) Close() {
+	s.stopOnce.Do(func() { close(s.stop) })
 }
 
 func (s *Service) FindAll(ctx context.Context) ([]SensitiveWord, error) {
@@ -131,63 +145,142 @@ func (s *Service) FilterText(ctx context.Context, content string) (string, error
 	if content == "" {
 		return content, nil
 	}
-
-	pattern, err := s.filterPattern(ctx)
-	if err != nil {
-		return "", bizerr.InternalWrap("过滤敏感词失败", err)
-	}
-	if pattern == nil {
+	f := s.filter.Load()
+	if f == nil {
 		return content, nil
 	}
 
-	return pattern.ReplaceAllStringFunc(content, func(match string) string {
-		return strings.Repeat("*", utf8.RuneCountInString(match))
-	}), nil
+	normalized := normalizeText(content)
+	cleaned := f.RemoveNoise(normalized)
+
+	hits := f.FindAll(cleaned)
+	if len(hits) == 0 {
+		return content, nil
+	}
+	if len(hits) > maxMaskHits {
+		hits = hits[:maxMaskHits]
+	}
+
+	s.logger.Info("sensitive_word_hit",
+		zap.Strings("words", hits),
+		zap.String("content_preview", truncate(content, 100)))
+
+	// Mask on NFKC + invisible-stripped text: preserves case + spaces
+	displayText := stripInvisible(norm.NFKC.String(content))
+	return maskHits(displayText, hits), nil
 }
 
-func (s *Service) filterPattern(ctx context.Context) (*regexp.Regexp, error) {
-	now := time.Now()
+func maskHits(text string, hitWords []string) string {
+	sort.Slice(hitWords, func(i, j int) bool {
+		return utf8.RuneCountInString(hitWords[i]) > utf8.RuneCountInString(hitWords[j])
+	})
 
-	s.cacheMu.RLock()
-	if now.Before(s.cacheExpiresAt) {
-		pattern := s.cachePattern
-		s.cacheMu.RUnlock()
-		return pattern, nil
+	seen := make(map[string]struct{}, len(hitWords))
+	noiseGap := `[\s!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]*`
+
+	for _, word := range hitWords {
+		if _, ok := seen[word]; ok {
+			continue
+		}
+		seen[word] = struct{}{}
+
+		runes := []rune(word)
+		parts := make([]string, len(runes))
+		for i, r := range runes {
+			parts[i] = regexp.QuoteMeta(string(r))
+		}
+		pattern := "(?i)" + strings.Join(parts, noiseGap)
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			continue
+		}
+		text = re.ReplaceAllStringFunc(text, func(match string) string {
+			return strings.Repeat("*", utf8.RuneCountInString(match))
+		})
 	}
-	s.cacheMu.RUnlock()
+	return text
+}
 
-	s.cacheMu.Lock()
-	defer s.cacheMu.Unlock()
-
-	if now.Before(s.cacheExpiresAt) {
-		return s.cachePattern, nil
+func (s *Service) reloadLoop() {
+	ticker := time.NewTicker(filterCacheTTL)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			s.rebuildFilter()
+		case <-s.stop:
+			return
+		}
 	}
+}
 
+func (s *Service) rebuildFilter() {
+	s.rebuildMu.Lock()
+	defer s.rebuildMu.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	words, err := s.repo.FindAll(ctx)
 	if err != nil {
-		return nil, err
+		s.logger.Warn("rebuild sensitive filter failed", zap.Error(err))
+		return
 	}
-
-	pattern := buildSensitivePattern(extractWords(words))
-	s.cachePattern = pattern
-	s.cacheExpiresAt = now.Add(filterCacheTTL)
-	return s.cachePattern, nil
+	raw := make([]string, 0, len(words))
+	for _, w := range words {
+		raw = append(raw, w.Word)
+	}
+	f := buildFilter(raw)
+	s.filter.Store(f)
 }
 
 func (s *Service) invalidateCache() {
-	s.cacheMu.Lock()
-	defer s.cacheMu.Unlock()
-
-	s.cachePattern = nil
-	s.cacheExpiresAt = time.Time{}
+	s.rebuildFilter()
 }
 
-func extractWords(list []SensitiveWord) []string {
-	words := make([]string, 0, len(list))
-	for _, item := range list {
-		words = append(words, item.Word)
+func buildFilter(words []string) *sensitivelib.Filter {
+	normalized := normalizeWordList(words)
+	if len(normalized) == 0 {
+		return nil
 	}
-	return words
+
+	lowerWords := make([]string, 0, len(normalized))
+	for _, w := range normalized {
+		lw := strings.ToLower(norm.NFKC.String(w))
+		if lw != "" {
+			lowerWords = append(lowerWords, lw)
+		}
+	}
+	if len(lowerWords) == 0 {
+		return nil
+	}
+
+	f := sensitivelib.New()
+	f.AddWord(lowerWords...)
+	f.UpdateNoisePattern(`[\s!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+`)
+	return f
+}
+
+func normalizeText(s string) string {
+	s = norm.NFKC.String(s)
+	s = stripInvisible(s)
+	s = strings.ToLower(s)
+	return s
+}
+
+func stripInvisible(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.Is(unicode.Cf, r) || unicode.Is(unicode.Mn, r) {
+			return -1
+		}
+		return r
+	}, s)
+}
+
+func truncate(s string, maxRunes int) string {
+	runes := []rune(s)
+	if len(runes) <= maxRunes {
+		return s
+	}
+	return string(runes[:maxRunes]) + "..."
 }
 
 func normalizeWordList(words []string) []string {
@@ -219,27 +312,4 @@ func normalizePageSize(page, size int) (int, int) {
 		size = 15
 	}
 	return page, size
-}
-
-func buildSensitivePattern(words []string) *regexp.Regexp {
-	normalized := normalizeWordList(words)
-	if len(normalized) == 0 {
-		return nil
-	}
-
-	sort.SliceStable(normalized, func(i, j int) bool {
-		li := utf8.RuneCountInString(normalized[i])
-		lj := utf8.RuneCountInString(normalized[j])
-		if li != lj {
-			return li > lj
-		}
-		return normalized[i] < normalized[j]
-	})
-
-	escaped := make([]string, 0, len(normalized))
-	for _, word := range normalized {
-		escaped = append(escaped, regexp.QuoteMeta(word))
-	}
-
-	return regexp.MustCompile(strings.Join(escaped, "|"))
 }

@@ -9,6 +9,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/websocket v1.5.3
+	github.com/importcjj/sensitive v0.0.0-20200106142752-42d1c505be7b
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/spf13/viper v1.21.0
@@ -16,6 +17,7 @@ require (
 	go.mongodb.org/mongo-driver v1.17.9
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.48.0
+	golang.org/x/text v0.34.0
 	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
 	gorm.io/driver/mysql v1.6.0
@@ -80,6 +82,5 @@ require (
 	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260217215200-42d3e9bedb6d // indirect
 )
