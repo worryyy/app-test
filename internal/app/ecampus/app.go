@@ -46,6 +46,7 @@ func Run() error {
 	topicSvc.SetProducer(newTopicProducerAdapter(producer))
 	commentSvc := comment.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger, producer)
 	sensitiveSvc := sensitive.NewService(infra.MySQL, infra.Logger)
+	defer sensitiveSvc.Close()
 	topicSvc.SetSensitiveFilter(sensitiveSvc)
 	commentSvc.SetSensitiveFilter(sensitiveSvc)
 	themeSvc := theme.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
