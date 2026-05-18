@@ -36,10 +36,3 @@ type AdminEditUserReq struct {
 	StuCla     string `json:"stuCla"`
 	StuIsCheck *bool  `json:"stuIsCheck"`
 }
-
-type CertReviewReq struct {
-	CertificationID string `json:"certificationId" binding:"required"`
-	Action          string `json:"action" binding:"required"`
-	RejectReason    string `json:"rejectReason"`
-	Tag             string `json:"tag" binding:"required"`
-}
