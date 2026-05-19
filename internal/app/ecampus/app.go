@@ -10,6 +10,7 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
 	"github.com/Milchstrassse/Ecampus-go/internal/mq"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/metrics"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/sensitive"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
@@ -68,7 +69,8 @@ func Run() error {
 	defer closeAgent()
 
 	engine := bootstrap.NewEngine()
-	registerRoutes(engine, infra.Logger, infra.MySQL, jwtHelper, infra.Redis, userHandlers{
+	appMetrics := metrics.New(metrics.NewDependencyChecks(infra.MySQL, infra.MongoClient, infra.Redis, infra.RabbitMQ))
+	registerRoutes(engine, infra.Logger, infra.MySQL, jwtHelper, infra.Redis, appMetrics, userHandlers{
 		User:    userH,
 		Topic:   topicH,
 		Comment: commentH,

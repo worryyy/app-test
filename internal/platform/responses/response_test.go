@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/metrics"
 )
 
 func TestRespMessageData(t *testing.T) {
@@ -106,5 +108,43 @@ func TestFailRecordsErrorOnContext(t *testing.T) {
 	}
 	if got := ctx.Errors.Last().Err.Error(); got != "upstream exploded" {
 		t.Fatalf("last error = %q, want upstream exploded", got)
+	}
+}
+
+func TestResponseWritesBusinessCodeForMetrics(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+
+	Success.Resp(ctx)
+
+	code, ok := metrics.BusinessCode(ctx)
+	if !ok {
+		t.Fatalf("business code missing")
+	}
+	if code != "200" {
+		t.Fatalf("business code = %q, want 200", code)
+	}
+	if got := metrics.HTTPStatus(ctx, 0); got != "200" {
+		t.Fatalf("http status = %q, want 200", got)
+	}
+}
+
+func TestFailWritesBusinessCodeForMetrics(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+
+	Fail(ctx, errors.New("upstream exploded"))
+
+	code, ok := metrics.BusinessCode(ctx)
+	if !ok {
+		t.Fatalf("business code missing")
+	}
+	if code != "400" {
+		t.Fatalf("business code = %q, want 400", code)
+	}
+	if got := metrics.HTTPStatus(ctx, 0); got != "500" {
+		t.Fatalf("http status = %q, want 500", got)
 	}
 }
