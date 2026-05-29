@@ -53,6 +53,36 @@ func (h *Handler) currentUser(c *gin.Context) (*campusUser, bool) {
 	return user, true
 }
 
+func (h *Handler) currentRootUser(c *gin.Context) (*campusUser, bool) {
+	userID := currentRootUserID(c)
+	if userID <= 0 {
+		responses.Fail(c, ErrUserNotLogin)
+		return nil, false
+	}
+
+	user, err := h.svc.GetUserByID(c.Request.Context(), userID)
+	if err != nil {
+		responses.Fail(c, err)
+		return nil, false
+	}
+	if user == nil {
+		responses.Fail(c, ErrUserNotFound)
+		return nil, false
+	}
+	return user, true
+}
+
+func currentRootUserID(c *gin.Context) int64 {
+	claims := middleware.GetClaims(c)
+	if claims == nil {
+		return 0
+	}
+	if claims.RootUserID > 0 {
+		return claims.RootUserID
+	}
+	return claims.UserID
+}
+
 func (h *Handler) requireCertifiedUser(c *gin.Context) (*campusUser, bool) {
 	user, ok := h.currentUser(c)
 	if !ok {

@@ -30,7 +30,7 @@ func (h *Handler) Authenticate(c *gin.Context) {
 		return
 	}
 
-	currentUser, ok := h.currentUser(c)
+	currentUser, ok := h.currentRootUser(c)
 	if !ok {
 		return
 	}
@@ -53,7 +53,7 @@ func (h *Handler) ReAuthenticate(c *gin.Context) {
 		return
 	}
 
-	currentUser, ok := h.currentUser(c)
+	currentUser, ok := h.currentRootUser(c)
 	if !ok {
 		return
 	}

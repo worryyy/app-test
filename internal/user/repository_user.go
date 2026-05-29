@@ -124,6 +124,13 @@ func (r *Repository) UpdateUserLastSwitch(ctx context.Context, userID, targetUse
 	})
 }
 
+func (r *Repository) UpdateProvisionalExpiresAt(ctx context.Context, userID int64, expiresAt time.Time) error {
+	return r.updateUserFields(ctx, userID, map[string]any{
+		"provisional_expires_at": expiresAt,
+		"updated_at":             time.Now(),
+	})
+}
+
 func (r *Repository) UpdateUserProfile(ctx context.Context, userID int64, req UserEditReq) error {
 	updates := buildUserProfileUpdates(userID, req, time.Now())
 	return r.updateUserFields(ctx, userID, updates)

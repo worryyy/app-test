@@ -180,6 +180,9 @@ func (s *Service) WechatLogin(ctx context.Context, code string) (string, string,
 	if err != nil {
 		return "", "", nil, nil, false, err
 	}
+	if err := s.maybeGrantProvisionalCert(ctx, rootUser); err != nil {
+		return "", "", nil, nil, false, fmt.Errorf("grant provisional cert: %w", err)
+	}
 	activeIdentity, err := s.resolveActiveIdentity(ctx, rootUser)
 	if err != nil {
 		return "", "", nil, nil, false, err

@@ -8,6 +8,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const schoolAccountTypeAnonymous = "anonymous"
+
 func (r *Repository) FindUserByID(ctx context.Context, id int64) (*campusUser, error) {
 	if id <= 0 {
 		return nil, nil
@@ -54,10 +56,17 @@ func (r *Repository) SaveAuthentication(
 		updates["stu_cla"] = major
 	}
 
-	if err := db.Model(&campusUser{}).
-		Where("id = ?", userID).
-		Updates(updates).Error; err != nil {
-		return fmt.Errorf("save authentication for user %d: %w", userID, err)
-	}
-	return nil
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&campusUser{}).
+			Where("id = ?", userID).
+			Updates(updates).Error; err != nil {
+			return fmt.Errorf("save authentication for user %d: %w", userID, err)
+		}
+		if err := tx.Model(&campusUser{}).
+			Where("root_user_id = ? AND account_type = ?", userID, schoolAccountTypeAnonymous).
+			Update("stu_is_check", true).Error; err != nil {
+			return fmt.Errorf("sync anonymous authentication for user %d: %w", userID, err)
+		}
+		return nil
+	})
 }

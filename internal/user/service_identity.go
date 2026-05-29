@@ -26,19 +26,7 @@ func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64)
 		return nil, bizerr.Biz("匿名身份已存在，无法重复创建")
 	}
 
-	anonymous = &User{
-		Avatar:      s.defaultAnonymousAvatar(),
-		CreatedBy:   rootUser.ID,
-		UpdatedBy:   rootUser.ID,
-		Nickname:    randomAnonymousID(),
-		OpenID:      fmt.Sprintf("%s:anon:%d", rootUser.OpenID, rootUser.ID),
-		Power:       0,
-		AccountType: accountTypeAnonymous,
-		RootUserID:  rootUser.ID,
-		StuIsCheck:  true,
-		Tag:         rootUser.Tag,
-		Gender:      rootUser.Gender,
-	}
+	anonymous = newAnonymousUser(rootUser, s.defaultAnonymousAvatar())
 
 	if err := s.repo.CreateUser(ctx, anonymous); err != nil {
 		return nil, err
@@ -50,6 +38,26 @@ func (s *Service) CreateAnonymousIdentity(ctx context.Context, rootUserID int64)
 	lastSwitchID := anonymous.ID
 	anonymous.LastSwitchID = &lastSwitchID
 	return buildIdentity(anonymous), nil
+}
+
+func newAnonymousUser(rootUser *User, avatar string) *User {
+	if rootUser == nil {
+		return nil
+	}
+	return &User{
+		Avatar:               avatar,
+		CreatedBy:            rootUser.ID,
+		UpdatedBy:            rootUser.ID,
+		Nickname:             randomAnonymousID(),
+		OpenID:               fmt.Sprintf("%s:anon:%d", rootUser.OpenID, rootUser.ID),
+		Power:                0,
+		AccountType:          accountTypeAnonymous,
+		RootUserID:           rootUser.ID,
+		StuIsCheck:           rootUser.StuIsCheck,
+		ProvisionalExpiresAt: rootUser.ProvisionalExpiresAt,
+		Tag:                  rootUser.Tag,
+		Gender:               rootUser.Gender,
+	}
 }
 
 func (s *Service) UpdateAnonymousNickname(ctx context.Context, rootUserID int64, nickname string) error {

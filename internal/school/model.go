@@ -1,6 +1,10 @@
 package school
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type Term struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
@@ -37,13 +41,14 @@ type innerCourse struct {
 }
 
 type campusUser struct {
-	ID         int64  `gorm:"column:id"`
-	StuNum     string `gorm:"column:stu_num"`
-	StuName    string `gorm:"column:stu_name"`
-	StuPwd     string `gorm:"column:stu_pwd"`
-	StuCla     string `gorm:"column:stu_cla"`
-	StuIsCheck bool   `gorm:"column:stu_is_check"`
-	School     string `gorm:"column:school"`
+	ID                   int64      `gorm:"column:id"`
+	StuNum               string     `gorm:"column:stu_num"`
+	StuName              string     `gorm:"column:stu_name"`
+	StuPwd               string     `gorm:"column:stu_pwd"`
+	StuCla               string     `gorm:"column:stu_cla"`
+	StuIsCheck           bool       `gorm:"column:stu_is_check"`
+	ProvisionalExpiresAt *time.Time `gorm:"column:provisional_expires_at"`
+	School               string     `gorm:"column:school"`
 }
 
 func (campusUser) TableName() string {
