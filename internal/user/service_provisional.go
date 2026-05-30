@@ -38,7 +38,7 @@ func provisionalGrantExpiresAt(user *User, now time.Time) (time.Time, bool) {
 func isInProvisionalWindow(t time.Time) bool {
 	local := t.In(provisionalLocation())
 	month := local.Month()
-	return month >= time.May && month < time.October
+	return month >= time.June && month < time.October
 }
 
 func provisionalExpiresAt(t time.Time) time.Time {
