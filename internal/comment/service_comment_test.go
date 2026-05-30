@@ -19,3 +19,38 @@ func TestObjectIDTimestampUsesLocalDateAfterConversion(t *testing.T) {
 		t.Fatalf("unexpected local date: %s", got)
 	}
 }
+
+func TestApplyCommentUserCertificationFillsUserAndParent(t *testing.T) {
+	expiresAt := time.Date(2026, 5, 30, 10, 30, 0, 0, time.UTC)
+	comments := []Comment{
+		{
+			User:   CommentUser{UserID: "11"},
+			Parent: &CommentUser{UserID: "22"},
+		},
+	}
+
+	applyCommentUserCertification(comments, map[int64]userRecord{
+		11: {
+			ID:         11,
+			StuIsCheck: true,
+		},
+		22: {
+			ID:                   22,
+			StuIsCheck:           false,
+			ProvisionalExpiresAt: &expiresAt,
+		},
+	})
+
+	if comments[0].User.StuIsCheck == nil || !*comments[0].User.StuIsCheck {
+		t.Fatalf("expected user stuIsCheck=true, got %v", comments[0].User.StuIsCheck)
+	}
+	if comments[0].Parent == nil || comments[0].Parent.StuIsCheck == nil {
+		t.Fatal("expected parent stuIsCheck to be filled")
+	}
+	if *comments[0].Parent.StuIsCheck {
+		t.Fatal("expected parent stuIsCheck=false to be preserved")
+	}
+	if comments[0].Parent.ProvisionalExpiresAt == nil || !comments[0].Parent.ProvisionalExpiresAt.Equal(expiresAt) {
+		t.Fatalf("unexpected parent provisionalExpiresAt: %v", comments[0].Parent.ProvisionalExpiresAt)
+	}
+}

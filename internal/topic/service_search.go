@@ -54,6 +54,9 @@ func (s *Service) searchHot(
 	}
 
 	s.prepareTopics(topics)
+	if err := s.fillTopicUserCertification(ctx, topics); err != nil {
+		return nil, err
+	}
 	if err := s.fillLikeAndCollection(ctx, userID, accountType, topics); err != nil {
 		s.logger.Warn("fill topic like/collection failed", zap.Error(err))
 	}

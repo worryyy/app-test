@@ -22,6 +22,9 @@ func (s *Service) ListAdmin(ctx context.Context, page, size int) (*PageResult[To
 	}
 
 	s.prepareTopics(topics)
+	if err := s.fillTopicUserCertification(ctx, topics); err != nil {
+		return nil, err
+	}
 	return NewPageResult(topics, total, page, size), nil
 }
 
@@ -150,22 +153,24 @@ func buildAdminTopic(author *topicAuthor, req *CreateTopicReq) *Topic {
 	}
 
 	return &Topic{
-		ThemeID:       req.ThemeID,
-		UserID:        userIDString(author.ID),
-		Title:         title,
-		Content:       req.Content,
-		Imgs:          ensureSlice(req.Imgs),
-		HasCheck:      true,
-		VisitedNum:    0,
-		LikeNum:       0,
-		CommentNum:    0,
-		CollectionNum: 0,
-		Ext:           req.Ext,
-		AccountType:   author.AccountType,
-		NickName:      author.Nickname,
-		Avatar:        author.Avatar,
-		HasLike:       false,
-		HasCollection: false,
+		ThemeID:              req.ThemeID,
+		UserID:               userIDString(author.ID),
+		Title:                title,
+		Content:              req.Content,
+		Imgs:                 ensureSlice(req.Imgs),
+		HasCheck:             true,
+		VisitedNum:           0,
+		LikeNum:              0,
+		CommentNum:           0,
+		CollectionNum:        0,
+		Ext:                  req.Ext,
+		AccountType:          author.AccountType,
+		NickName:             author.Nickname,
+		Avatar:               author.Avatar,
+		StuIsCheck:           boolPtr(author.StuIsCheck),
+		ProvisionalExpiresAt: author.ProvisionalExpiresAt,
+		HasLike:              false,
+		HasCollection:        false,
 	}
 }
 

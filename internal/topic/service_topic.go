@@ -100,6 +100,60 @@ func (s *Service) prepareTopics(topics []Topic) {
 	}
 }
 
+func (s *Service) fillTopicUserCertification(ctx context.Context, topics []Topic) error {
+	ids := collectTopicAuthorIDs(topics)
+	if len(ids) == 0 {
+		return nil
+	}
+
+	authors, err := s.repo.FindUsersByIDs(ctx, ids)
+	if err != nil {
+		return bizerr.InternalWrap("查询用户认证信息失败", err)
+	}
+	applyTopicUserCertification(topics, authors)
+	return nil
+}
+
+func collectTopicAuthorIDs(topics []Topic) []int64 {
+	seen := make(map[int64]struct{}, len(topics))
+	ids := make([]int64, 0, len(topics))
+	for _, topic := range topics {
+		id, ok := parseTopicUserID(topic.UserID)
+		if !ok {
+			continue
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func applyTopicUserCertification(topics []Topic, authors map[int64]topicAuthor) {
+	for i := range topics {
+		id, ok := parseTopicUserID(topics[i].UserID)
+		if !ok {
+			continue
+		}
+		author, ok := authors[id]
+		if !ok {
+			continue
+		}
+		topics[i].StuIsCheck = boolPtr(author.StuIsCheck)
+		topics[i].ProvisionalExpiresAt = author.ProvisionalExpiresAt
+	}
+}
+
+func parseTopicUserID(raw string) (int64, bool) {
+	id, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+	return id, true
+}
+
 func (s *Service) fillLikeAndCollection(ctx context.Context, userID, accountType string, topics []Topic) error {
 	if userID == "" || accountType == "" || len(topics) == 0 {
 		return nil
@@ -169,6 +223,10 @@ func parseTopicObjectID(topicID string) (primitive.ObjectID, error) {
 
 func userIDString(userID int64) string {
 	return strconv.FormatInt(userID, 10)
+}
+
+func boolPtr(value bool) *bool {
+	return &value
 }
 
 func validateTopicClaims(claims *jwtutil.Claims) error {

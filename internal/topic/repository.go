@@ -3,6 +3,7 @@ package topic
 import (
 	"context"
 	"errors"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -23,11 +24,13 @@ type Repository struct {
 }
 
 type topicAuthor struct {
-	ID          int64  `gorm:"column:id"`
-	Nickname    string `gorm:"column:nickname"`
-	Avatar      string `gorm:"column:avatar"`
-	AccountType string `gorm:"column:account_type"`
-	RootUserID  int64  `gorm:"column:root_user_id"`
+	ID                   int64      `gorm:"column:id"`
+	Nickname             string     `gorm:"column:nickname"`
+	Avatar               string     `gorm:"column:avatar"`
+	AccountType          string     `gorm:"column:account_type"`
+	RootUserID           int64      `gorm:"column:root_user_id"`
+	StuIsCheck           bool       `gorm:"column:stu_is_check"`
+	ProvisionalExpiresAt *time.Time `gorm:"column:provisional_expires_at"`
 }
 
 func (topicAuthor) TableName() string {

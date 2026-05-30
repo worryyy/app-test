@@ -155,6 +155,29 @@ func (r *Repository) FindUserByID(ctx context.Context, userID int64) (*userRecor
 	return &user, nil
 }
 
+func (r *Repository) FindUsersByIDs(ctx context.Context, userIDs []int64) (map[int64]userRecord, error) {
+	if len(userIDs) == 0 {
+		return map[int64]userRecord{}, nil
+	}
+
+	db, err := r.gormDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var users []userRecord
+	var user userRecord
+	if err := db.Table(user.TableName()).Where("id IN ?", userIDs).Find(&users).Error; err != nil {
+		return nil, fmt.Errorf("find users by ids: %w", err)
+	}
+
+	result := make(map[int64]userRecord, len(users))
+	for _, user := range users {
+		result[user.ID] = user
+	}
+	return result, nil
+}
+
 func (r *Repository) FindTopicByID(
 	ctx context.Context,
 	topicID primitive.ObjectID,

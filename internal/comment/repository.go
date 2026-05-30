@@ -3,6 +3,7 @@ package comment
 import (
 	"context"
 	"errors"
+	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
@@ -20,14 +21,16 @@ type Repository struct {
 }
 
 type userRecord struct {
-	ID          int64  `gorm:"column:id"`
-	Nickname    string `gorm:"column:nickname"`
-	Avatar      string `gorm:"column:avatar"`
-	AccountType string `gorm:"column:account_type"`
-	Power       int    `gorm:"column:power"`
-	Gender      string `gorm:"column:gender"`
-	RootUserID  int64  `gorm:"column:root_user_id"`
-	Signature   string `gorm:"column:signature"`
+	ID                   int64      `gorm:"column:id"`
+	Nickname             string     `gorm:"column:nickname"`
+	Avatar               string     `gorm:"column:avatar"`
+	AccountType          string     `gorm:"column:account_type"`
+	Power                int        `gorm:"column:power"`
+	Gender               string     `gorm:"column:gender"`
+	RootUserID           int64      `gorm:"column:root_user_id"`
+	Signature            string     `gorm:"column:signature"`
+	StuIsCheck           bool       `gorm:"column:stu_is_check"`
+	ProvisionalExpiresAt *time.Time `gorm:"column:provisional_expires_at"`
 }
 
 func (userRecord) TableName() string {

@@ -26,11 +26,13 @@ type Comment struct {
 }
 
 type CommentUser struct {
-	UserID      string `bson:"userId" json:"userId"`
-	Avatar      string `bson:"avatar" json:"avatar"`
-	NickName    string `bson:"nickName" json:"nickName"`
-	AccountType string `bson:"accountType" json:"accountType"`
-	Signature   string `bson:"signature" json:"signature"`
+	UserID               string     `bson:"userId" json:"userId"`
+	Avatar               string     `bson:"avatar" json:"avatar"`
+	NickName             string     `bson:"nickName" json:"nickName"`
+	AccountType          string     `bson:"accountType" json:"accountType"`
+	Signature            string     `bson:"signature" json:"signature"`
+	StuIsCheck           *bool      `bson:"-" json:"stuIsCheck"`
+	ProvisionalExpiresAt *time.Time `bson:"-" json:"provisionalExpiresAt"`
 }
 
 type CommentLike struct {

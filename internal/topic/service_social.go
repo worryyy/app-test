@@ -213,6 +213,9 @@ func (s *Service) findByIDs(ctx context.Context, topicIDs []string) ([]Topic, er
 		return nil, err
 	}
 	s.prepareTopics(topics)
+	if err := s.fillTopicUserCertification(ctx, topics); err != nil {
+		return nil, err
+	}
 
 	ordered := make([]Topic, 0, len(topics))
 	byID := make(map[string]Topic, len(topics))

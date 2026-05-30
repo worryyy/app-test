@@ -126,6 +126,9 @@ func (s *Service) ListCommentAdmin(ctx context.Context, topicID string, page, si
 	if err != nil {
 		return nil, bizerr.InternalWrap("query admin comment list failed", err)
 	}
+	if err := s.fillCommentUserCertification(ctx, comments); err != nil {
+		return nil, err
+	}
 	return NewPageResult(comments, total, page, size), nil
 }
 func buildCommentUser(user *userRecord) CommentUser {
@@ -133,12 +136,89 @@ func buildCommentUser(user *userRecord) CommentUser {
 		return CommentUser{}
 	}
 	return CommentUser{
-		UserID:      strconv.FormatInt(user.ID, 10),
-		Avatar:      user.Avatar,
-		NickName:    user.Nickname,
-		AccountType: user.AccountType,
-		Signature:   user.Signature,
+		UserID:               strconv.FormatInt(user.ID, 10),
+		Avatar:               user.Avatar,
+		NickName:             user.Nickname,
+		AccountType:          user.AccountType,
+		Signature:            user.Signature,
+		StuIsCheck:           boolPtr(user.StuIsCheck),
+		ProvisionalExpiresAt: user.ProvisionalExpiresAt,
 	}
+}
+
+func (s *Service) fillCommentUserCertification(ctx context.Context, comments []Comment) error {
+	userIDs := collectCommentUserIDs(comments)
+	if len(userIDs) == 0 {
+		return nil
+	}
+
+	users, err := s.repo.FindUsersByIDs(ctx, userIDs)
+	if err != nil {
+		return bizerr.InternalWrap("query comment user certification failed", err)
+	}
+	applyCommentUserCertification(comments, users)
+	return nil
+}
+
+func collectCommentUserIDs(comments []Comment) []int64 {
+	seen := make(map[int64]struct{}, len(comments))
+	ids := make([]int64, 0, len(comments))
+	for _, comment := range comments {
+		ids = appendCommentUserID(ids, seen, comment.User.UserID)
+		if comment.Parent != nil {
+			ids = appendCommentUserID(ids, seen, comment.Parent.UserID)
+		}
+	}
+	return ids
+}
+
+func appendCommentUserID(ids []int64, seen map[int64]struct{}, raw string) []int64 {
+	id, ok := parseCommentUserID(raw)
+	if !ok {
+		return ids
+	}
+	if _, exists := seen[id]; exists {
+		return ids
+	}
+	seen[id] = struct{}{}
+	return append(ids, id)
+}
+
+func applyCommentUserCertification(comments []Comment, users map[int64]userRecord) {
+	for i := range comments {
+		applyCommentUserCertificationToUser(&comments[i].User, users)
+		if comments[i].Parent != nil {
+			applyCommentUserCertificationToUser(comments[i].Parent, users)
+		}
+	}
+}
+
+func applyCommentUserCertificationToUser(commentUser *CommentUser, users map[int64]userRecord) {
+	if commentUser == nil {
+		return
+	}
+	id, ok := parseCommentUserID(commentUser.UserID)
+	if !ok {
+		return
+	}
+	user, ok := users[id]
+	if !ok {
+		return
+	}
+	commentUser.StuIsCheck = boolPtr(user.StuIsCheck)
+	commentUser.ProvisionalExpiresAt = user.ProvisionalExpiresAt
+}
+
+func parseCommentUserID(raw string) (int64, bool) {
+	id, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+	return id, true
+}
+
+func boolPtr(value bool) *bool {
+	return &value
 }
 
 func normalizeCommentAccountType(accountType string) string {

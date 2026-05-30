@@ -28,6 +28,7 @@ func (h *Handler) Create(c *gin.Context) {
 		responses.Fail(c, err)
 		return
 	
+	}
 }
 
 func (h *Handler) Delete(c *gin.Context) {

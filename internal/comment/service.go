@@ -208,6 +208,9 @@ func (s *Service) ListByTopic(
 		return nil, bizerr.InternalWrap("查询评论列表失败", err)
 	}
 
+	if err := s.fillCommentUserCertification(ctx, comments); err != nil {
+		return nil, err
+	}
 	if err := s.fillCommentLikeState(ctx, userIDString(viewerUserID), comments); err != nil {
 		return nil, err
 	}
@@ -229,6 +232,9 @@ func (s *Service) ListMine(ctx context.Context, userID int64, page, size int) (*
 		return nil, bizerr.InternalWrap("查询我的评论失败", err)
 	}
 
+	if err := s.fillCommentUserCertification(ctx, comments); err != nil {
+		return nil, err
+	}
 	if err := s.fillCommentLikeState(ctx, userIDString(userID), comments); err != nil {
 		return nil, err
 	}
@@ -266,6 +272,9 @@ func (s *Service) ListTargetUserComments(ctx context.Context, targetUserID int64
 	)
 	if err != nil {
 		return nil, bizerr.InternalWrap("查询目标用户评论失败", err)
+	}
+	if err := s.fillCommentUserCertification(ctx, comments); err != nil {
+		return nil, err
 	}
 	return NewPageResult(comments, total, page, size), nil
 }

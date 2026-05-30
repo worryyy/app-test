@@ -28,6 +28,28 @@ func (r *Repository) FindUserByID(ctx context.Context, id int64) (*topicAuthor, 
 	return &author, nil
 }
 
+func (r *Repository) FindUsersByIDs(ctx context.Context, ids []int64) (map[int64]topicAuthor, error) {
+	if len(ids) == 0 {
+		return map[int64]topicAuthor{}, nil
+	}
+
+	db, err := r.gormDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var authors []topicAuthor
+	if err := db.Where(colTopicUserID+" IN ?", ids).Find(&authors).Error; err != nil {
+		return nil, fmt.Errorf("find topic authors by ids: %w", err)
+	}
+
+	result := make(map[int64]topicAuthor, len(authors))
+	for _, author := range authors {
+		result[author.ID] = author
+	}
+	return result, nil
+}
+
 func (r *Repository) FindUserByRootAndAccountType(
 	ctx context.Context,
 	rootUserID int64,

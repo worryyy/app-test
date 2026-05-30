@@ -81,22 +81,24 @@ func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *Creat
 	}
 
 	topic := &Topic{
-		ThemeID:       req.ThemeID,
-		UserID:        userIDString(author.ID),
-		Title:         filteredTitle,
-		Content:       filteredContent,
-		Imgs:          ensureSlice(req.Imgs),
-		HasCheck:      false,
-		VisitedNum:    0,
-		LikeNum:       0,
-		CommentNum:    0,
-		CollectionNum: 0,
-		Ext:           req.Ext,
-		AccountType:   author.AccountType,
-		NickName:      author.Nickname,
-		Avatar:        author.Avatar,
-		HasLike:       false,
-		HasCollection: false,
+		ThemeID:              req.ThemeID,
+		UserID:               userIDString(author.ID),
+		Title:                filteredTitle,
+		Content:              filteredContent,
+		Imgs:                 ensureSlice(req.Imgs),
+		HasCheck:             false,
+		VisitedNum:           0,
+		LikeNum:              0,
+		CommentNum:           0,
+		CollectionNum:        0,
+		Ext:                  req.Ext,
+		AccountType:          author.AccountType,
+		NickName:             author.Nickname,
+		Avatar:               author.Avatar,
+		StuIsCheck:           boolPtr(author.StuIsCheck),
+		ProvisionalExpiresAt: author.ProvisionalExpiresAt,
+		HasLike:              false,
+		HasCollection:        false,
 	}
 
 	if _, err := s.repo.CreateTopic(ctx, topic); err != nil {
@@ -152,6 +154,9 @@ func (s *Service) GetByID(ctx context.Context, topicID string, queryUserID, acco
 	}
 
 	topics := []Topic{*topic}
+	if err := s.fillTopicUserCertification(ctx, topics); err != nil {
+		return nil, err
+	}
 	if err := s.fillLikeAndCollection(ctx, queryUserID, accountType, topics); err != nil {
 		s.logger.Warn("fill like/collection failed", zap.Error(err), zap.String("topicID", topicID))
 	}
@@ -272,6 +277,9 @@ func (s *Service) listByFilter(
 	}
 
 	s.prepareTopics(topics)
+	if err := s.fillTopicUserCertification(ctx, topics); err != nil {
+		return nil, err
+	}
 	if err := s.fillLikeAndCollection(ctx, queryUserID, accountType, topics); err != nil {
 		s.logger.Warn("fill topic like/collection failed", zap.Error(err))
 	}
