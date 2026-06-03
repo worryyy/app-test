@@ -23,12 +23,11 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	_, err := h.svc.Create(c.Request.Context(), middleware.GetClaims(c), &req)
+	data, err := h.svc.Create(c.Request.Context(), middleware.GetClaims(c), &req)
 	if err != nil {
 		responses.Fail(c, err)
-		return
-	
 	}
+	responses.Success.RespData(c, data)
 }
 
 func (h *Handler) Delete(c *gin.Context) {
