@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/platform/metrics"
 	"github.com/gin-gonic/gin"
 )
 
@@ -49,8 +48,6 @@ func (r Response) RespMessageData(ctx *gin.Context, message string, data any) {
 
 func (r Response) write(ctx *gin.Context, message string, data any) {
 	resp := r.build(ctx, message, data)
-	metrics.SetBusinessCode(ctx, resp.Code)
-	metrics.SetHTTPStatus(ctx, resp.HTTPStatus)
 	ctx.JSON(resp.Code, resp)
 }
 

@@ -12,7 +12,6 @@ import (
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
 	"github.com/Milchstrassse/Ecampus-go/internal/middleware"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
-	"github.com/Milchstrassse/Ecampus-go/internal/platform/metrics"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
 	"github.com/Milchstrassse/Ecampus-go/internal/topic"
@@ -36,14 +35,8 @@ func registerRoutes(
 	db *gorm.DB,
 	jwtHelper *jwtutil.Helper,
 	rds *redis.Client,
-	appMetrics *metrics.Metrics,
 	handlers userHandlers,
 ) {
-	if appMetrics != nil {
-		engine.Use(appMetrics.Middleware())
-		engine.GET("/metrics", appMetrics.Handler())
-	}
-
 	user.RegisterPublicRoutes(engine, handlers.User)
 	school.RegisterPublicRoutes(engine, handlers.School)
 	file.RegisterPublicRoutes(engine, handlers.File)
