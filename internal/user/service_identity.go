@@ -235,5 +235,5 @@ func (s *Service) defaultAnonymousAvatar() string {
 	if s.cfg == nil {
 		return ""
 	}
-	return s.cfg.Custom.DefaultAnonymousAvatar
+	return avatarURL(s.cfg.COS.BaseCDN, s.cfg.Custom.DefaultAnonymousAvatar)
 }

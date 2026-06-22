@@ -266,7 +266,27 @@ func (s *Service) pickDefaultAvatar() string {
 	}
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	return clean[r.Intn(len(clean))]
+	return avatarURL(s.cfg.COS.BaseCDN, clean[r.Intn(len(clean))])
+}
+
+// avatarURL 把配置里的裸 md5 key 拼成可直接加载的 CDN 完整 URL；
+// 已是 http(s) 链接或未配置 base_cdn 时原样返回，避免破坏存量完整 URL。
+func avatarURL(baseCDN, avatar string) string {
+	avatar = strings.TrimSpace(avatar)
+	if avatar == "" {
+		return ""
+	}
+	if strings.HasPrefix(avatar, "http://") || strings.HasPrefix(avatar, "https://") {
+		return avatar
+	}
+	baseCDN = strings.TrimSpace(baseCDN)
+	if baseCDN == "" {
+		return avatar
+	}
+	if !strings.HasSuffix(baseCDN, "/") {
+		baseCDN += "/"
+	}
+	return baseCDN + avatar
 }
 
 func sha1Hex(s string) string {
