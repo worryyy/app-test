@@ -22,10 +22,15 @@ const (
 )
 
 type Service struct {
-	repo   *Repository
-	redis  *redis.Client
-	cfg    *config.Config
-	logger *zap.Logger
+	repo              *Repository
+	redis             *redis.Client
+	cfg               *config.Config
+	logger            *zap.Logger
+	capabilityChecker CapabilityChecker
+}
+
+type CapabilityChecker interface {
+	CheckCapability(ctx context.Context, userID, rootUserID int64, capability string) error
 }
 
 func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *config.Config, logger *zap.Logger) *Service {
@@ -38,6 +43,10 @@ func NewService(db *gorm.DB, mongoDB *mongo.Database, rds *redis.Client, cfg *co
 		cfg:    cfg,
 		logger: logger,
 	}
+}
+
+func (s *Service) SetCapabilityChecker(checker CapabilityChecker) {
+	s.capabilityChecker = checker
 }
 
 func (s *Service) ListConversations(ctx context.Context, userID int64) ([]Conversation, error) {
@@ -247,6 +256,11 @@ func (s *Service) HasUnreadMessages(ctx context.Context, userID int64) (bool, er
 }
 
 func (s *Service) HandleWSMessage(ctx context.Context, senderID int64, payload []byte) (*Message, error) {
+	if s.capabilityChecker != nil {
+		if err := s.capabilityChecker.CheckCapability(ctx, senderID, 0, "content"); err != nil {
+			return nil, err
+		}
+	}
 	body := make(map[string]any)
 	if err := json.Unmarshal(payload, &body); err != nil {
 		return nil, ErrMessageParseFailed

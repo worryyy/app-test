@@ -10,4 +10,4 @@
 
 本地目录表叫 `agent_conversations`。它只保存目录元数据，例如 `session_id`、`root_user_id`、标题、最后一条用户摘要、最后一条 assistant 摘要和最近一次 request/trace。正文历史不落在 `Ecampus-go`，历史查询一律走 gRPC `GetSessionHistory` 回 agent。
 
-配置项集中在 `configs/ecampus/application*.yml` 的 `agent` 段。`internal/app/ecampus` 启动时只初始化 gRPC client，不再自动建表。`agent_conversations` 的表结构作为一次性数据库操作手动执行，不在代码库保留 migration 入口，不打进业务镜像，也不放进日常 deploy 流程。agent-core 未启动时，连接错误会在实际 RPC 调用时返回，再由 service 往上抛给接口层统一输出。
+配置项集中在 `configs/ecampus/application*.yml` 的 `agent` 段。`internal/app/ecampus` 启动时只初始化 gRPC client，不再自动建表。`agent_conversations` 由 `db/migrations/000001_create_agent_conversations.*.sql` 纳入统一迁移，并在业务服务启动前通过 `ecampus-migrate up` 执行。agent-core 未启动时，连接错误会在实际 RPC 调用时返回，再由 service 往上抛给接口层统一输出。

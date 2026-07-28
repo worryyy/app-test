@@ -30,9 +30,9 @@ type Consumers struct {
 	wxClient *wxutil.Client
 	filter   sensitive.Filter
 
-	notifyPusher func(ctx context.Context, targetUserID string, payload interface{}) error
-	wg           sync.WaitGroup
-	stopCh       chan struct{}
+	notificationWriter NotificationWriter
+	wg                 sync.WaitGroup
+	stopCh             chan struct{}
 }
 
 func NewConsumers(
@@ -78,8 +78,12 @@ func NewConsumers(
 	return consumers, nil
 }
 
-func (c *Consumers) SetNotifyPusher(fn func(ctx context.Context, targetUserID string, payload interface{}) error) {
-	c.notifyPusher = fn
+type NotificationWriter interface {
+	PersistLegacyNotification(ctx context.Context, msg NotifyMsg) error
+}
+
+func (c *Consumers) SetNotificationWriter(writer NotificationWriter) {
+	c.notificationWriter = writer
 }
 
 func (c *Consumers) Start() error {

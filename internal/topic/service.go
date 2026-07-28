@@ -17,11 +17,16 @@ import (
 )
 
 type Service struct {
-	repo            *Repository
-	redis           *redis.Client
-	logger          *zap.Logger
-	producer        EventProducer
-	sensitiveFilter sensitive.Filter
+	repo              *Repository
+	redis             *redis.Client
+	logger            *zap.Logger
+	producer          EventProducer
+	sensitiveFilter   sensitive.Filter
+	capabilityChecker CapabilityChecker
+}
+
+type CapabilityChecker interface {
+	CheckCapability(ctx context.Context, userID, rootUserID int64, capability string) error
 }
 
 func NewService(
@@ -50,12 +55,21 @@ func (s *Service) SetSensitiveFilter(filter sensitive.Filter) {
 	s.sensitiveFilter = filter
 }
 
+func (s *Service) SetCapabilityChecker(checker CapabilityChecker) {
+	s.capabilityChecker = checker
+}
+
 func (s *Service) Create(ctx context.Context, claims *jwtutil.Claims, req *CreateTopicReq) (*Topic, error) {
 	if claims == nil {
 		return nil, ErrInvalidAuthClaims
 	}
 	if req == nil {
 		return nil, bizerr.Param(errMsgInvalidParam)
+	}
+	if s.capabilityChecker != nil {
+		if err := s.capabilityChecker.CheckCapability(ctx, claims.UserID, claims.RootUserID, "content"); err != nil {
+			return nil, err
+		}
 	}
 	if err := s.ensureThemeExists(ctx, req.ThemeID); err != nil {
 		return nil, err
@@ -167,6 +181,11 @@ func (s *Service) GetByID(ctx context.Context, topicID string, queryUserID, acco
 func (s *Service) Update(ctx context.Context, topicID string, userID int64, req *UpdateTopicReq) error {
 	if req == nil || userID <= 0 {
 		return bizerr.Param(errMsgInvalidParam)
+	}
+	if s.capabilityChecker != nil {
+		if err := s.capabilityChecker.CheckCapability(ctx, userID, 0, "content"); err != nil {
+			return err
+		}
 	}
 
 	update := bson.M{}

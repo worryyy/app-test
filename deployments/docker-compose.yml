@@ -3,6 +3,21 @@ version: '3.8'
 services:
   # ======================== Go App Services ========================
 
+  ecampus-migrate:
+    image: ${DOCKERHUB_USER:-zehpyrx}/ecampus:latest
+    build:
+      context: ..
+      dockerfile: deployments/ecampus/Dockerfile
+    environment:
+      APP_PROFILE: ${APP_PROFILE:-prod}
+    entrypoint: ["./ecampus-migrate"]
+    command: ["up"]
+    restart: "no"
+    depends_on:
+      - mysql
+    networks:
+      - campus
+
   ecampus:
     container_name: "campus_ecampus"
     image: ${DOCKERHUB_USER:-zehpyrx}/ecampus:latest
@@ -15,10 +30,14 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - mysql
-      - redis
-      - mongo
-      - rabbitmq
+      ecampus-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+      mongo:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
     networks:
       - campus
 

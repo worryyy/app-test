@@ -24,10 +24,14 @@ var (
 )
 
 var authPermissionExcludes = map[string]struct{}{
-	"/api/user/authentication":     {},
-	"/api/user/login":              {},
-	"/api/user/refresh":            {},
-	"/api/user/pre_authentication": {},
+	"/api/user/authentication":                {},
+	"/api/user/login":                         {},
+	"/api/user/refresh":                       {},
+	"/api/user/pre_authentication":            {},
+	"/api/notification/:id/read":              {},
+	"/api/notification/read":                  {},
+	"/api/moderation/reports/:id":             {},
+	"/api/moderation/punishments/:id/appeals": {},
 }
 
 func CertifiedUserCheck(db *gorm.DB) gin.HandlerFunc {

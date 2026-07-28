@@ -1,0 +1,637 @@
+openapi: 3.0.3
+info:
+  title: Ecampus Campus Business API
+  version: 1.0.0
+  description: |
+    校园扩展业务用户端 OpenAPI。除文件下载和 WebSocket 外，接口使用统一响应封装。
+    新业务 ID 均为十进制字符串；金额单位为分，费率单位为基点；时间为带 +08:00 的 RFC 3339。
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+tags:
+  - name: Notification
+  - name: Moderation
+  - name: Academic
+  - name: Reservation
+  - name: Marketplace
+paths:
+  /notification/ws:
+    get:
+      tags: [Notification]
+      summary: 通知 WebSocket
+      description: 升级连接后首帧发送 {"type":"auth","token":"..."}，后续接收 notification 事件。
+      security: []
+      x-websocket: true
+      responses:
+        '101':
+          description: Switching Protocols
+  /api/notification:
+    get:
+      tags: [Notification]
+      summary: 通知列表
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - name: category
+          in: query
+          schema:
+            $ref: '#/components/schemas/NotificationCategory'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/notification/unread-counts:
+    get:
+      tags: [Notification]
+      summary: 各分类未读数
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/notification/{id}/read:
+    put:
+      tags: [Notification]
+      summary: 标记单条通知已读
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeOrObjectID'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/notification/read:
+    put:
+      tags: [Notification]
+      summary: 标记分类或全部通知已读
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category:
+                  $ref: '#/components/schemas/NotificationCategory'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/moderation/reports:
+    get:
+      tags: [Moderation]
+      summary: 我的举报
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+    post:
+      tags: [Moderation]
+      summary: 提交举报
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReportRequest'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/moderation/reports/{id}:
+    delete:
+      tags: [Moderation]
+      summary: 撤回待处理举报
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/moderation/punishments:
+    get:
+      tags: [Moderation]
+      summary: 我的处罚
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/moderation/punishments/{id}/appeals:
+    post:
+      tags: [Moderation]
+      summary: 提交处罚申诉
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 2000}
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/moderation/appeals:
+    get:
+      tags: [Moderation]
+      summary: 我的申诉
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/academic/courses:
+    get:
+      tags: [Academic]
+      summary: 搜索本校课程
+      parameters:
+        - {name: keyword, in: query, schema: {type: string}}
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+    post:
+      tags: [Academic]
+      summary: 创建课程
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourseRequest'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/academic/courses/{id}:
+    get:
+      tags: [Academic]
+      summary: 课程详情与评分统计
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/academic/courses/{id}/reviews:
+    get:
+      tags: [Academic]
+      summary: 课程匿名评价列表
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/academic/courses/{id}/review:
+    put:
+      tags: [Academic]
+      summary: 新增或更新我的评价
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequest'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+    delete:
+      tags: [Academic]
+      summary: 删除我的评价
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/academic/courses/{id}/materials:
+    get:
+      tags: [Academic]
+      summary: 课程资料列表
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+    post:
+      tags: [Academic]
+      summary: 上传课程资料
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, semester, title]
+              properties:
+                file: {type: string, format: binary}
+                semester: {type: string, maxLength: 32}
+                title: {type: string, maxLength: 128}
+                description: {type: string, maxLength: 2000}
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/academic/materials/mine:
+    get:
+      tags: [Academic]
+      summary: 我的课程资料
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/academic/materials/{id}/download:
+    get:
+      tags: [Academic]
+      summary: 下载课程资料
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      responses:
+        '302': {description: 重定向至 COS 下载地址}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/academic/materials/{id}:
+    delete:
+      tags: [Academic]
+      summary: 删除我的课程资料
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/reservation/venues:
+    get:
+      tags: [Reservation]
+      summary: 场馆列表
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/reservation/venues/{id}/resources:
+    get:
+      tags: [Reservation]
+      summary: 场馆资源列表
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/reservation/resources/{id}/slots:
+    get:
+      tags: [Reservation]
+      summary: 指定日期可用时段
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+        - name: date
+          in: query
+          required: true
+          schema: {type: string, format: date}
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/reservation/bookings:
+    get:
+      tags: [Reservation]
+      summary: 我的预约
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+    post:
+      tags: [Reservation]
+      summary: 创建预约
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slotId]
+              properties:
+                slotId: {$ref: '#/components/schemas/SnowflakeID'}
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/reservation/bookings/{id}:
+    delete:
+      tags: [Reservation]
+      summary: 取消预约
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/marketplace/categories:
+    get:
+      tags: [Marketplace]
+      summary: 商品类目
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/marketplace/items:
+    get:
+      tags: [Marketplace]
+      summary: 搜索在售商品
+      parameters:
+        - {name: keyword, in: query, schema: {type: string}}
+        - {name: categoryId, in: query, schema: {$ref: '#/components/schemas/SnowflakeID'}}
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+    post:
+      tags: [Marketplace]
+      summary: 创建商品
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemRequest'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/marketplace/items/mine:
+    get:
+      tags: [Marketplace]
+      summary: 我的商品
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/marketplace/items/{id}:
+    get:
+      tags: [Marketplace]
+      summary: 商品详情
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+    put:
+      tags: [Marketplace]
+      summary: 更新商品
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemRequest'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+    delete:
+      tags: [Marketplace]
+      summary: 撤下商品
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/marketplace/orders:
+    get:
+      tags: [Marketplace]
+      summary: 我的买卖订单
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+    post:
+      tags: [Marketplace]
+      summary: 下单并锁定商品 15 分钟
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemId]
+              properties:
+                itemId: {$ref: '#/components/schemas/SnowflakeID'}
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/marketplace/orders/{id}/pay:
+    post:
+      tags: [Marketplace]
+      summary: 发起支付
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/marketplace/payments/test/callback:
+    post:
+      tags: [Marketplace]
+      summary: 模拟测试支付成功回调
+      description: 仅 APP_PROFILE=dev/test 可用；生产环境返回业务失败且不会写支付记录。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestPaymentCallbackRequest'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/marketplace/orders/{id}/cancel:
+    put:
+      tags: [Marketplace]
+      summary: 买家取消待支付订单
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/marketplace/orders/{id}/delivered:
+    put:
+      tags: [Marketplace]
+      summary: 卖家确认已交付
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/marketplace/orders/{id}/received:
+    put:
+      tags: [Marketplace]
+      summary: 买家确认收货并触发结算
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/marketplace/orders/{id}/refunds:
+    post:
+      tags: [Marketplace]
+      summary: 申请全额退款
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+  /api/marketplace/orders/{id}/disputes:
+    post:
+      tags: [Marketplace]
+      summary: 发起纠纷并冻结自动完成和结算
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 255}
+      responses:
+        '200': {$ref: '#/components/responses/Success'}
+        '400': {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    PageQuery:
+      name: page
+      in: query
+      schema: {type: integer, minimum: 1, default: 1}
+    SizeQuery:
+      name: size
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 15}
+    SnowflakeID:
+      name: id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/SnowflakeID'}
+    SnowflakeOrObjectID:
+      name: id
+      in: path
+      required: true
+      schema: {type: string}
+  responses:
+    Success:
+      description: 业务成功
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/SuccessEnvelope'}
+    Error:
+      description: 参数或业务失败；语义状态见 body.httpstatus
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+  schemas:
+    SnowflakeID:
+      type: string
+      pattern: '^[1-9][0-9]*$'
+      example: '1888888888888888888'
+    NotificationCategory:
+      type: string
+      enum: [social, academic, marketplace, reservation, moderation, system]
+    SuccessEnvelope:
+      type: object
+      required: [success, httpstatus, data]
+      properties:
+        success: {type: boolean, example: true}
+        httpstatus: {type: integer, example: 200}
+        msg: {type: string, example: 成功}
+        data: {}
+    ErrorEnvelope:
+      type: object
+      required: [success, httpstatus, msg]
+      properties:
+        success: {type: boolean, example: false}
+        httpstatus: {type: integer, example: 400}
+        msg: {type: string}
+        data: {nullable: true}
+    CreateReportRequest:
+      type: object
+      required: [targetType, targetId, reason]
+      properties:
+        targetType:
+          type: string
+          enum: [user, topic, comment, chatMessage, courseReview, material, marketplaceItem]
+        targetId: {type: string}
+        reason: {type: string, maxLength: 64}
+        description: {type: string, maxLength: 2000}
+    CreateCourseRequest:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string, maxLength: 128}
+        teacher: {type: string, maxLength: 128}
+        description: {type: string, maxLength: 2000}
+    ReviewRequest:
+      type: object
+      required: [semester, overallRating, difficultyRating, workloadRating, gainRating]
+      properties:
+        semester: {type: string, maxLength: 32}
+        content: {type: string, maxLength: 4000}
+        overallRating: {type: integer, minimum: 1, maximum: 5}
+        difficultyRating: {type: integer, minimum: 1, maximum: 5}
+        workloadRating: {type: integer, minimum: 1, maximum: 5}
+        gainRating: {type: integer, minimum: 1, maximum: 5}
+    ItemRequest:
+      type: object
+      required: [categoryId, title, description, condition, priceCents, images, deliveryLocation]
+      properties:
+        categoryId: {$ref: '#/components/schemas/SnowflakeID'}
+        title: {type: string, maxLength: 128}
+        description: {type: string, maxLength: 5000}
+        condition: {type: string, maxLength: 32}
+        priceCents: {type: integer, format: int64, minimum: 1}
+        images:
+          type: array
+          minItems: 1
+          maxItems: 9
+          items: {type: string, pattern: '^[0-9a-fA-F]{32}$'}
+        deliveryLocation: {type: string, maxLength: 255}
+        status: {type: string, enum: [draft, published], default: draft}
+    PaymentRequest:
+      type: object
+      required: [requestId]
+      properties:
+        requestId: {type: string, maxLength: 64}
+    TestPaymentCallbackRequest:
+      type: object
+      required: [requestId, gatewayTransactionId, amountCents]
+      properties:
+        requestId: {type: string, maxLength: 64}
+        gatewayTransactionId: {type: string, maxLength: 128}
+        amountCents: {type: integer, format: int64, minimum: 1}
+    RefundRequest:
+      type: object
+      required: [requestId, reason]
+      properties:
+        requestId: {type: string, maxLength: 64}
+        reason: {type: string, maxLength: 255}

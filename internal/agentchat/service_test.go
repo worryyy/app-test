@@ -159,8 +159,8 @@ func openTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := EnsureSchema(db); err != nil {
-		t.Fatalf("EnsureSchema error: %v", err)
+	if err := db.AutoMigrate(&Conversation{}); err != nil {
+		t.Fatalf("migrate conversation test table: %v", err)
 	}
 	return db
 }

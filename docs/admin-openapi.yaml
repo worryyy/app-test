@@ -17,6 +17,10 @@ tags:
   - name: AdminSensitive
   - name: AdminTopic
   - name: AdminComment
+  - name: AdminModeration
+  - name: AdminAcademic
+  - name: AdminReservation
+  - name: AdminMarketplace
 security:
   - bearerAuth: []
 paths:
@@ -579,6 +583,339 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/moderation/reports:
+    get:
+      tags: [AdminModeration]
+      summary: 举报列表
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+        - {name: status, in: query, schema: {type: string, enum: [pending, reviewing, rejected, actioned, withdrawn]}}
+      responses:
+        '200': {$ref: '#/components/responses/GenericSuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/moderation/reports/{id}/claim:
+    put:
+      tags: [AdminModeration]
+      summary: 领取举报
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/moderation/reports/{id}/decision:
+    put:
+      tags: [AdminModeration]
+      summary: 审核举报
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, reason]
+              properties:
+                action: {type: string, enum: [reject, hide, warn, punish]}
+                reason: {type: string, maxLength: 255}
+                capability: {type: string, enum: [content, trade, reservation, account]}
+                durationMinutes: {type: integer, format: int64, minimum: 1, nullable: true}
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/moderation/punishments/{id}/revoke:
+    put:
+      tags: [AdminModeration]
+      summary: 撤销处罚
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 255}
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/moderation/appeals:
+    get:
+      tags: [AdminModeration]
+      summary: 申诉列表
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/GenericSuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/moderation/appeals/{id}/decision:
+    put:
+      tags: [AdminModeration]
+      summary: 审批申诉
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approved, resolution]
+              properties:
+                approved: {type: boolean}
+                resolution: {type: string, maxLength: 255}
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/academic/courses/{id}/merge:
+    put:
+      tags: [AdminAcademic]
+      summary: 合并重复课程
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetCourseId]
+              properties:
+                targetCourseId: {$ref: '#/components/schemas/SnowflakeID'}
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/academic/courses/{id}/hidden:
+    put:
+      tags: [AdminAcademic]
+      summary: 隐藏或恢复课程
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      requestBody: {$ref: '#/components/requestBodies/HiddenRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/academic/reviews/{id}/hidden:
+    put:
+      tags: [AdminAcademic]
+      summary: 隐藏或恢复评价
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      requestBody: {$ref: '#/components/requestBodies/HiddenRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/academic/materials/{id}/hidden:
+    put:
+      tags: [AdminAcademic]
+      summary: 隐藏或恢复资料
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      requestBody: {$ref: '#/components/requestBodies/HiddenRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/reservation/venues:
+    post:
+      tags: [AdminReservation]
+      summary: 创建场馆
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/VenueRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/GenericSuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/reservation/venues/{id}/resources:
+    post:
+      tags: [AdminReservation]
+      summary: 创建场地资源
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string, maxLength: 128}
+                capacity: {type: integer, minimum: 1, default: 1}
+      responses:
+        '200': {$ref: '#/components/responses/GenericSuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/reservation/resources/{id}/rules:
+    post:
+      tags: [AdminReservation]
+      summary: 创建每周开放规则
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [weekday, endMinute]
+              properties:
+                weekday: {type: integer, minimum: 1, maximum: 7}
+                startMinute: {type: integer, minimum: 0, maximum: 1439}
+                endMinute: {type: integer, minimum: 1, maximum: 1440}
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/reservation/closures:
+    post:
+      tags: [AdminReservation]
+      summary: 创建临时闭馆并取消受影响预约
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [startAt, endAt, reason]
+              properties:
+                venueId: {$ref: '#/components/schemas/SnowflakeID'}
+                resourceId: {$ref: '#/components/schemas/SnowflakeID'}
+                startAt: {type: string, format: date-time}
+                endAt: {type: string, format: date-time}
+                reason: {type: string, maxLength: 255}
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/reservation/checkin:
+    post:
+      tags: [AdminReservation]
+      summary: 核销预约码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: {type: string}
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/marketplace/categories:
+    get:
+      tags: [AdminMarketplace]
+      summary: 商品类目与费率
+      responses:
+        '200': {$ref: '#/components/responses/GenericSuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+    post:
+      tags: [AdminMarketplace]
+      summary: 创建商品类目
+      requestBody: {$ref: '#/components/requestBodies/CategoryRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/GenericSuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/marketplace/categories/{id}:
+    put:
+      tags: [AdminMarketplace]
+      summary: 更新类目费率
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      requestBody: {$ref: '#/components/requestBodies/CategoryRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/GenericSuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/marketplace/orders:
+    get:
+      tags: [AdminMarketplace]
+      summary: 全部订单
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/GenericSuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/marketplace/refunds:
+    get:
+      tags: [AdminMarketplace]
+      summary: 退款列表
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/GenericSuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/marketplace/refunds/{id}/decision:
+    put:
+      tags: [AdminMarketplace]
+      summary: 审批全额退款
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approved]
+              properties:
+                approved: {type: boolean}
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/marketplace/disputes:
+    get:
+      tags: [AdminMarketplace]
+      summary: 纠纷列表
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/GenericSuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/marketplace/disputes/{id}/decision:
+    put:
+      tags: [AdminMarketplace]
+      summary: 处理纠纷
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, resolution]
+              properties:
+                action: {type: string, enum: [resume, refund]}
+                resolution: {type: string, maxLength: 255}
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/marketplace/settlements:
+    get:
+      tags: [AdminMarketplace]
+      summary: 结算记录
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/SizeQuery'
+      responses:
+        '200': {$ref: '#/components/responses/GenericSuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
+  /admin/marketplace/settlements/{id}/retry:
+    post:
+      tags: [AdminMarketplace]
+      summary: 重试失败结算
+      parameters:
+        - $ref: '#/components/parameters/SnowflakeIDPath'
+      responses:
+        '200': {$ref: '#/components/responses/EmptySuccess'}
+        '400': {$ref: '#/components/responses/GenericError'}
 components:
   securitySchemes:
     bearerAuth:
@@ -602,7 +939,72 @@ components:
         type: integer
         default: 15
         minimum: 1
+    SnowflakeIDPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/SnowflakeID'
+  responses:
+    GenericSuccess:
+      description: 业务成功
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GenericSuccessResponse'
+    EmptySuccess:
+      description: 业务成功
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/EmptySuccessResponse'
+    GenericError:
+      description: 参数或业务失败
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  requestBodies:
+    HiddenRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [hidden]
+            properties:
+              hidden: {type: boolean}
+    CategoryRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name]
+            properties:
+              name: {type: string, maxLength: 64}
+              commissionRateBps: {type: integer, minimum: 0, maximum: 10000, default: 500}
   schemas:
+    SnowflakeID:
+      type: string
+      pattern: '^[1-9][0-9]*$'
+      example: '1888888888888888888'
+    GenericSuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetaSuccess'
+        - type: object
+          properties:
+            data: {}
+    VenueRequest:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string, maxLength: 128}
+        description: {type: string, maxLength: 2000}
+        advanceDays: {type: integer, minimum: 1, default: 7}
+        slotMinutes: {type: integer, minimum: 1, default: 60}
+        dailyLimit: {type: integer, minimum: 1, default: 2}
+        cancelBeforeMinutes: {type: integer, minimum: 1, default: 120}
     ResponseMetaSuccess:
       type: object
       required: [success, code, httpstatus, msg]

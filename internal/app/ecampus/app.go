@@ -2,14 +2,20 @@ package ecampus
 
 import (
 	"context"
+	"os"
 	"time"
 
+	"github.com/Milchstrassse/Ecampus-go/internal/academic"
 	"github.com/Milchstrassse/Ecampus-go/internal/app/bootstrap"
 	"github.com/Milchstrassse/Ecampus-go/internal/chat"
 	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
+	"github.com/Milchstrassse/Ecampus-go/internal/marketplace"
+	"github.com/Milchstrassse/Ecampus-go/internal/moderation"
 	"github.com/Milchstrassse/Ecampus-go/internal/mq"
+	"github.com/Milchstrassse/Ecampus-go/internal/notification"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/jwtutil"
+	"github.com/Milchstrassse/Ecampus-go/internal/reservation"
 	"github.com/Milchstrassse/Ecampus-go/internal/school"
 	"github.com/Milchstrassse/Ecampus-go/internal/sensitive"
 	"github.com/Milchstrassse/Ecampus-go/internal/theme"
@@ -52,6 +58,31 @@ func Run() error {
 	themeSvc := theme.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
 	fileSvc := file.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
 	chatSvc := chat.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
+	notificationSvc := notification.NewService(infra.Mongo, infra.Redis, infra.Logger)
+	notificationSvc.SetIdentityResolver(notificationUserAdapter{service: userSvc})
+	if err := notificationSvc.EnsureIndexes(context.Background()); err != nil {
+		return err
+	}
+	moderationSvc := moderation.NewService(infra.MySQL, infra.Redis, infra.Logger)
+	capabilityChecker := moderationCapabilityAdapter{moderation: moderationSvc, users: userSvc}
+	academicSvc := academic.NewService(infra.MySQL, infra.Logger)
+	academicSvc.SetProfileResolver(academicProfileAdapter{users: userSvc})
+	academicSvc.SetCapabilityChecker(capabilityChecker)
+	academicSvc.SetSensitiveFilter(sensitiveSvc)
+	academicSvc.SetFileStore(fileSvc)
+	reservationSvc := reservation.NewService(infra.MySQL, infra.Logger)
+	reservationSvc.SetCapabilityChecker(capabilityChecker)
+	reservationSvc.SetNotifier(reservationNotifierAdapter{service: notificationSvc})
+	marketplaceSvc := marketplace.NewService(infra.MySQL, marketplace.NewGateway(os.Getenv("APP_PROFILE")), infra.Logger)
+	marketplaceSvc.SetSellerVerifier(marketplaceSellerAdapter{users: userSvc})
+	marketplaceSvc.SetCapabilityChecker(capabilityChecker)
+	marketplaceSvc.SetSensitiveFilter(sensitiveSvc)
+	marketplaceSvc.SetNotifier(marketplaceNotifierAdapter{service: notificationSvc})
+	moderationSvc.SetTargetResolver(moderationTargetAdapter{users: userSvc, topics: topicSvc, comments: commentSvc, chat: chatSvc, academic: academicSvc, marketplace: marketplaceSvc})
+	moderationSvc.SetNotifier(moderationNotifierAdapter{service: notificationSvc})
+	topicSvc.SetCapabilityChecker(capabilityChecker)
+	commentSvc.SetCapabilityChecker(capabilityChecker)
+	chatSvc.SetCapabilityChecker(capabilityChecker)
 	schoolSvc := school.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger, producer)
 
 	userH := user.NewHandler(userSvc)
@@ -60,6 +91,14 @@ func Run() error {
 	themeH := theme.NewHandler(themeSvc)
 	fileH := file.NewHandler(fileSvc)
 	chatH := chat.NewHandler(chatSvc, userSvc, jwtHelper, infra.Redis)
+	notificationH := notification.NewHandler(notificationSvc, jwtHelper)
+	moderationH := moderation.NewHandler(moderationSvc)
+	academicH := academic.NewHandler(academicSvc)
+	reservationH := reservation.NewHandler(reservationSvc)
+	marketplaceH := marketplace.NewHandler(marketplaceSvc)
+	notificationH.SetLegacyPusher(func(targetUserID string, payload any) error {
+		return chatH.PushNotification(context.Background(), targetUserID, payload)
+	})
 	schoolH := school.NewHandler(schoolSvc)
 	agentH, closeAgent, err := newAgentHandler(infra, jwtHelper)
 	if err != nil {
@@ -68,22 +107,40 @@ func Run() error {
 	defer closeAgent()
 
 	engine := bootstrap.NewEngine()
-	registerRoutes(engine, infra.Logger, infra.MySQL, jwtHelper, infra.Redis, userHandlers{
-		User:    userH,
-		Topic:   topicH,
-		Comment: commentH,
-		Theme:   themeH,
-		File:    fileH,
-		Chat:    chatH,
-		School:  schoolH,
-		Agent:   agentH,
+	registerRoutes(engine, infra.Logger, infra.MySQL, jwtHelper, infra.Redis, moderationSvc, userHandlers{
+		User:         userH,
+		Topic:        topicH,
+		Comment:      commentH,
+		Theme:        themeH,
+		File:         fileH,
+		Chat:         chatH,
+		Notification: notificationH,
+		Moderation:   moderationH,
+		Academic:     academicH,
+		Reservation:  reservationH,
+		Marketplace:  marketplaceH,
+		School:       schoolH,
+		Agent:        agentH,
 	})
+	closeNotificationSubscriber, err := notificationSvc.StartSubscriber(context.Background(), notificationH.Broadcast)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := closeNotificationSubscriber(); closeErr != nil {
+			infra.Logger.Warn("close notification subscriber failed", zap.Error(closeErr))
+		}
+	}()
+	jobContext, stopJobs := context.WithCancel(context.Background())
+	defer stopJobs()
+	startReservationJobs(jobContext, reservationSvc, infra.Logger)
+	startMarketplaceJobs(jobContext, marketplaceSvc, infra.Logger)
 
 	consumers, err := mq.NewConsumers(infra.RabbitMQ, infra.Redis, infra.Mongo, infra.MySQL, infra.Config, infra.Logger, producer, sensitiveSvc)
 	if err != nil {
 		return err
 	}
-	consumers.SetNotifyPusher(chatH.PushNotification)
+	consumers.SetNotificationWriter(notificationWriterAdapter{service: notificationSvc})
 	if err := consumers.Start(); err != nil {
 		_ = consumers.Close()
 		return err

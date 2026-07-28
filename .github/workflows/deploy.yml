@@ -76,6 +76,11 @@ jobs:
             set -e
             docker pull $DOCKERHUB_USER/ecampus:latest
             docker pull $DOCKERHUB_USER/ecampus-crm:latest
+            docker run --rm \
+              --network campus \
+              -e APP_PROFILE=$APP_PROFILE \
+              --entrypoint ./ecampus-migrate \
+              $DOCKERHUB_USER/ecampus:latest up
             docker stop campus_ecampus campus_ecampus_crm 2>/dev/null || true
             docker rm campus_ecampus campus_ecampus_crm 2>/dev/null || true
             docker run -d --name campus_ecampus \
@@ -115,6 +120,11 @@ jobs:
             set -e
             docker pull $DOCKERHUB_USER/ecampus:latest
             docker pull $DOCKERHUB_USER/ecampus-crm:latest
+            docker run --rm \
+              --network campus \
+              -e APP_PROFILE=$APP_PROFILE \
+              --entrypoint ./ecampus-migrate \
+              $DOCKERHUB_USER/ecampus:latest up
             docker stop campus_ecampus campus_ecampus_crm 2>/dev/null || true
             docker rm campus_ecampus campus_ecampus_crm 2>/dev/null || true
             docker run -d --name campus_ecampus \

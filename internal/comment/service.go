@@ -19,11 +19,16 @@ import (
 const maxPageSize = 100
 
 type Service struct {
-	repo            *Repository
-	cfg             *config.Config
-	logger          *zap.Logger
-	producer        CommentProducer
-	sensitiveFilter sensitive.Filter
+	repo              *Repository
+	cfg               *config.Config
+	logger            *zap.Logger
+	producer          CommentProducer
+	sensitiveFilter   sensitive.Filter
+	capabilityChecker CapabilityChecker
+}
+
+type CapabilityChecker interface {
+	CheckCapability(ctx context.Context, userID, rootUserID int64, capability string) error
 }
 
 type CommentProducer interface {
@@ -54,7 +59,16 @@ func (s *Service) SetSensitiveFilter(filter sensitive.Filter) {
 	s.sensitiveFilter = filter
 }
 
+func (s *Service) SetCapabilityChecker(checker CapabilityChecker) {
+	s.capabilityChecker = checker
+}
+
 func (s *Service) AddComment(ctx context.Context, topicID string, currentUserID int64, content, parentCmtID string) (string, error) {
+	if s.capabilityChecker != nil {
+		if err := s.capabilityChecker.CheckCapability(ctx, currentUserID, 0, "content"); err != nil {
+			return "", err
+		}
+	}
 	topic, err := s.getTopic(ctx, topicID, false)
 	if err != nil {
 		return "", err

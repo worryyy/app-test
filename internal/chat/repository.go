@@ -10,7 +10,6 @@ import (
 
 const (
 	mongoCollMessage = "campus_messages"
-	mongoCollNotify  = "campus_notifications"
 )
 
 var (

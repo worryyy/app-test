@@ -8,16 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func EnsureSchema(db *gorm.DB) error {
-	if db == nil {
-		return fmt.Errorf("db is nil")
-	}
-	if err := db.AutoMigrate(&Conversation{}); err != nil {
-		return fmt.Errorf("auto migrate agent conversations: %w", err)
-	}
-	return nil
-}
-
 func (s *Service) listConversations(ctx context.Context, rootUserID int64, page, size int) ([]Conversation, int64, error) {
 	db, err := s.requireDB()
 	if err != nil {

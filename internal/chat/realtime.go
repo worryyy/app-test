@@ -47,6 +47,7 @@ func normalizeNotificationPayload(payload interface{}) (*Notification, error) {
 			IsRead:      mapBool(value, "isRead", "is_read"),
 		}
 		if id := mapString(value, "id", "_id"); id != "" {
+			notification.IDString = id
 			if oid, err := primitive.ObjectIDFromHex(id); err == nil {
 				notification.ID = oid
 			}
@@ -74,7 +75,7 @@ func newRealtimeNotification(notification *Notification) realtimeNotification {
 		return realtimeNotification{}
 	}
 	return realtimeNotification{
-		ID:          objectIDString(notification.ID),
+		ID:          notificationIDString(*notification),
 		ReceiverID:  notification.ReceiverID,
 		SenderID:    notification.SenderID,
 		Type:        notification.Type,
@@ -91,6 +92,13 @@ func objectIDString(id primitive.ObjectID) string {
 		return ""
 	}
 	return id.Hex()
+}
+
+func notificationIDString(notification Notification) string {
+	if notification.IDString != "" {
+		return notification.IDString
+	}
+	return objectIDString(notification.ID)
 }
 
 func mapString(data map[string]interface{}, keys ...string) string {

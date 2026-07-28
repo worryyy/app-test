@@ -2,12 +2,30 @@ package chat
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+func (r *Repository) FindMessageByID(ctx context.Context, messageID int64) (*Message, error) {
+	coll, err := r.mongoCollection(mongoCollMessage)
+	if err != nil {
+		return nil, err
+	}
+	var message Message
+	err = coll.FindOne(ctx, bson.M{"message_id": messageID}).Decode(&message)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find message: %w", err)
+	}
+	return &message, nil
+}
 
 func (r *Repository) FindMessagesAfter(
 	ctx context.Context,

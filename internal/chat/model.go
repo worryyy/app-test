@@ -116,6 +116,7 @@ func (m Message) MarshalJSON() ([]byte, error) {
 
 type Notification struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	IDString    string             `bson:"-" json:"-"`
 	ReceiverID  string             `bson:"receiver_id" json:"receiverId"`
 	SenderID    string             `bson:"sender_id" json:"senderId"`
 	Type        string             `bson:"type" json:"type"`
@@ -140,7 +141,7 @@ func (n Notification) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(notificationJSON{
-		ID:          objectIDString(n.ID),
+		ID:          notificationIDString(n),
 		ReceiverID:  n.ReceiverID,
 		SenderID:    n.SenderID,
 		Type:        n.Type,

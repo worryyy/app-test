@@ -50,6 +50,7 @@ type AddCommentMsg struct {
 }
 
 type NotifyMsg struct {
+	EventID      int64     `json:"eventId,omitempty"`
 	TargetUserID string    `json:"targetUserId"`
 	SenderUserID string    `json:"senderUserId"`
 	Type         string    `json:"type"`

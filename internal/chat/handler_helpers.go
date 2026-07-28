@@ -59,11 +59,3 @@ func parseOptionalPositiveInt64(raw string) (*int64, error) {
 	}
 	return &value, nil
 }
-
-func writeNotificationListResult(c *gin.Context, data *PageResult[Notification]) {
-	if data == nil || len(data.Data) == 0 {
-		responses.Success.RespData(c, []Notification{})
-		return
-	}
-	responses.Success.RespData(c, data)
-}

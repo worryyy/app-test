@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Milchstrassse/Ecampus-go/internal/comment"
+	"github.com/Milchstrassse/Ecampus-go/internal/platform/snowflake"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -194,6 +195,9 @@ func (p *Producer) SendAddComment(ctx context.Context, cmt comment.Comment) erro
 }
 
 func (p *Producer) SendNotifyUser(ctx context.Context, msg NotifyMsg) error {
+	if msg.EventID <= 0 {
+		msg.EventID = snowflake.Generate().Int64()
+	}
 	return p.sendByKey(ctx, KeyNotifyUser, msg)
 }
 

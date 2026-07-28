@@ -51,6 +51,18 @@ func TestRegisterRoutesExposesExpectedAdminEndpoints(t *testing.T) {
 		{method: "DELETE", path: "/admin/topic/:topic_id"},
 		{method: "GET", path: "/admin/topic/:topic_id/comment"},
 		{method: "DELETE", path: "/admin/topic/:topic_id/comment/:comment_id"},
+		{method: "GET", path: "/admin/moderation/reports"},
+		{method: "PUT", path: "/admin/moderation/reports/:id/claim"},
+		{method: "PUT", path: "/admin/academic/courses/:id/merge"},
+		{method: "PUT", path: "/admin/academic/materials/:id/hidden"},
+		{method: "POST", path: "/admin/reservation/venues"},
+		{method: "POST", path: "/admin/reservation/closures"},
+		{method: "POST", path: "/admin/reservation/checkin"},
+		{method: "POST", path: "/admin/marketplace/categories"},
+		{method: "GET", path: "/admin/marketplace/orders"},
+		{method: "PUT", path: "/admin/marketplace/refunds/:id/decision"},
+		{method: "PUT", path: "/admin/marketplace/disputes/:id/decision"},
+		{method: "GET", path: "/admin/marketplace/settlements"},
 	}
 
 	for _, want := range expected {
