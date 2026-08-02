@@ -31,7 +31,7 @@ func Run() error {
 
 	adminHelper := adminjwt.NewHelper(infra.Config.AdminJWT, infra.Redis)
 	userSvc := user.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
-	schoolSvc := school.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger, nil)
+	schoolSvc := school.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
 	sensitiveSvc := sensitive.NewService(infra.MySQL, infra.Logger)
 	defer sensitiveSvc.Close()
 	topicSvc := topic.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)

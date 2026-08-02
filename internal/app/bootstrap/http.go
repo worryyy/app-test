@@ -22,6 +22,7 @@ func NewEngine() *gin.Engine {
 	registerCustomValidators()
 	engine := gin.New()
 	engine.HandleMethodNotAllowed = true
+	engine.Use(middleware.DefaultHTTPMetrics.Middleware())
 	engine.Use(gin.Recovery())
 	engine.Use(middleware.CORS())
 	RegisterCommonRoutes(engine)
@@ -50,6 +51,7 @@ func RegisterCommonRoutes(engine *gin.Engine) {
 	engine.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "UP"})
 	})
+	engine.GET("/metrics", gin.WrapH(middleware.DefaultHTTPMetrics.Handler()))
 }
 
 func NewHTTPServer(port int, handler http.Handler) *http.Server {

@@ -102,6 +102,62 @@ func (c *Consumers) Start() error {
 		QueueDie:           c.handleDie,
 	}
 
+	return c.startHandlers(handlers)
+}
+
+func (c *Consumers) StartNotification() error {
+	if c.ch == nil {
+		return fmt.Errorf("rabbitmq consumer channel is nil")
+	}
+	return c.startHandlers(c.notificationHandlers())
+}
+
+func (c *Consumers) StartTopic() error {
+	if c.ch == nil {
+		return fmt.Errorf("rabbitmq consumer channel is nil")
+	}
+	return c.startHandlers(c.topicHandlers())
+}
+
+func (c *Consumers) topicHandlers() map[string]func(context.Context, json.RawMessage) error {
+	return map[string]func(context.Context, json.RawMessage) error{
+		QueueTopicCheck:  c.handleTopicCheck,
+		QueueTopicUpdate: c.handleTopicUpdate,
+		QueueTopicDelete: c.handleTopicDelete,
+	}
+}
+
+func (c *Consumers) StartComment() error {
+	if c.ch == nil {
+		return fmt.Errorf("rabbitmq consumer channel is nil")
+	}
+	return c.startHandlers(c.commentHandlers())
+}
+
+func (c *Consumers) commentHandlers() map[string]func(context.Context, json.RawMessage) error {
+	return map[string]func(context.Context, json.RawMessage) error{
+		QueueCommentAdd:    c.handleCommentAdd,
+		QueueCommentUpdate: c.handleCommentUpdate,
+		QueueCommentDelete: c.handleCommentDelete,
+	}
+}
+
+func (c *Consumers) StartDeadLetters() error {
+	if c.ch == nil {
+		return fmt.Errorf("rabbitmq consumer channel is nil")
+	}
+	return c.startHandlers(c.deadLetterHandlers())
+}
+
+func (c *Consumers) notificationHandlers() map[string]func(context.Context, json.RawMessage) error {
+	return map[string]func(context.Context, json.RawMessage) error{QueueNotifyUser: c.handleNotifyUser}
+}
+
+func (c *Consumers) deadLetterHandlers() map[string]func(context.Context, json.RawMessage) error {
+	return map[string]func(context.Context, json.RawMessage) error{QueueDie: c.handleDie}
+}
+
+func (c *Consumers) startHandlers(handlers map[string]func(ctx context.Context, data json.RawMessage) error) error {
 	for queue, handler := range handlers {
 		msgs, err := c.ch.Consume(queue, "", false, false, false, false, nil)
 		if err != nil {

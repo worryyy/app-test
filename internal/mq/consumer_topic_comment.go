@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
+
+const rootCommentSentinel = "0"
 
 type topicDoc struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty"`
@@ -203,7 +204,7 @@ func (c *Consumers) deleteRejectedComment(ctx context.Context, commentID primiti
 }
 
 func (c *Consumers) notifyCommentUsers(ctx context.Context, cmt commentDoc, filteredComment, topicAuthorID string, createdTime time.Time) {
-	if cmt.ParentCmtID == comment.DefaultRootCommentID {
+	if cmt.ParentCmtID == rootCommentSentinel {
 		if topicAuthorID != "" && topicAuthorID != cmt.User.UserID {
 			c.sendNotify(ctx, NotifyMsg{
 				TargetUserID: topicAuthorID,
@@ -222,7 +223,7 @@ func (c *Consumers) notifyCommentUsers(ctx context.Context, cmt commentDoc, filt
 	if cmt.Parent != nil {
 		parentUserID = cmt.Parent.UserID
 	}
-	if parentUserID == "" && cmt.ParentCmtID != "" && cmt.ParentCmtID != comment.DefaultRootCommentID {
+	if parentUserID == "" && cmt.ParentCmtID != "" && cmt.ParentCmtID != rootCommentSentinel {
 		parentOID, convErr := primitive.ObjectIDFromHex(cmt.ParentCmtID)
 		if convErr == nil {
 			var parent commentDoc

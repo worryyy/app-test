@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/snowflake"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/redis/go-redis/v9"
@@ -190,8 +189,8 @@ func (p *Producer) SendTopicCheck(ctx context.Context, msg TopicCheckMsg) error 
 	return p.sendByKey(ctx, KeyTopicCheck, msg)
 }
 
-func (p *Producer) SendAddComment(ctx context.Context, cmt comment.Comment) error {
-	return p.sendByKey(ctx, KeyAddComment, buildAddCommentMsg(cmt))
+func (p *Producer) SendAddComment(ctx context.Context, msg AddCommentMsg) error {
+	return p.sendByKey(ctx, KeyAddComment, msg)
 }
 
 func (p *Producer) SendNotifyUser(ctx context.Context, msg NotifyMsg) error {
@@ -219,37 +218,4 @@ func (p *Producer) SendDeleteTopic(ctx context.Context, msg TopicDeleteMsg) erro
 
 func (p *Producer) SendDeleteComment(ctx context.Context, topicID, commentID string) error {
 	return p.sendByKey(ctx, KeyDeleteComment, CommentDeleteMsg{TopicID: topicID, CommentID: commentID})
-}
-
-func buildAddCommentMsg(cmt comment.Comment) AddCommentMsg {
-	msg := AddCommentMsg{
-		Comment: AddCommentPayload{
-			ID:          cmt.ID,
-			TopicID:     cmt.TopicID,
-			Comment:     cmt.Comment,
-			CreatedTime: cmt.CreatedTime,
-			User:        buildAddCommentUser(cmt.User),
-			ParentCmtID: cmt.ParentCmtID,
-			RootCmtID:   cmt.RootCmtID,
-			IsAuthor:    cmt.IsAuthor,
-			LikeNum:     cmt.LikeNum,
-			CommentNum:  cmt.CommentNum,
-			HasCheck:    cmt.HasCheck,
-		},
-	}
-	if cmt.Parent != nil {
-		parent := buildAddCommentUser(*cmt.Parent)
-		msg.Comment.Parent = &parent
-	}
-	return msg
-}
-
-func buildAddCommentUser(user comment.CommentUser) AddCommentUser {
-	return AddCommentUser{
-		UserID:      user.UserID,
-		Avatar:      user.Avatar,
-		NickName:    user.NickName,
-		AccountType: user.AccountType,
-		Signature:   user.Signature,
-	}
 }

@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  impact:
+    name: impact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: true
+
+      - name: Compute changed files
+        run: |
+          git diff --name-status origin/main...HEAD > changed-files.txt || true
+          if [ ! -s changed-files.txt ]; then
+            echo "no changed files against origin/main"
+          fi
+
+      - name: Run impact analysis
+        run: go run ./cmd/ecampus-impact --changed-files changed-files.txt > impact.json
+
+      - name: Validate impact contract
+        run: |
+          jq -e '.changed_files | type == "array"' impact.json
+          jq -e '.test_matrix.include | type == "array"' impact.json
+          jq -e '.build_matrix.include | type == "array"' impact.json
+          jq -e 'has("has_tests") and has("has_builds") and has("requires_proto_check") and has("fallback_reason")' impact.json
+
+      - name: ciimpact unit tests
+        run: go test ./internal/ciimpact/...
+
+      - name: Check generated protobufs
+        run: |
+          if jq -e '.requires_proto_check == true' impact.json >/dev/null 2>&1; then
+            make proto-agent
+            git diff --exit-code -- proto/agent internal/agentchat/agentv1
+          fi
+
+  go-test-build:
+    name: go-test-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: true
+
+      - name: Compute changed files
+        run: |
+          git diff --name-status origin/main...HEAD > changed-files.txt || true
+
+      - name: Run impact analysis
+        run: go run ./cmd/ecampus-impact --changed-files changed-files.txt > impact.json
+
+      - name: Test affected services
+        run: |
+          set -eu
+          count=$(jq -r '.test_matrix.include | length' impact.json)
+          if [ "$count" -eq 0 ]; then
+            echo "no affected services; running ciimpact tests"
+            go test ./internal/ciimpact/...
+            exit 0
+          fi
+          jq -r '.test_matrix.include[] | .service' impact.json | while read -r service; do
+            ./scripts/ci/run-service-checks.sh --service "$service"
+          done
+
+      - name: Build affected services
+        run: |
+          set -eu
+          jq -r '.build_matrix.include[] | .service' impact.json | while read -r service; do
+            mkdir -p /tmp/ecampus-builds
+            ./scripts/ci/run-service-checks.sh --service "$service" --build --output "/tmp/ecampus-builds/$service"
+          done
+
+  golangci-lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: true
+
+      - uses: golangci/golangci-lint-action@v9.3.0
+        with:
+          version: v2.12.2
+          args: --timeout=10m

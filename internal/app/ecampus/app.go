@@ -7,6 +7,7 @@ import (
 
 	"github.com/Milchstrassse/Ecampus-go/internal/academic"
 	"github.com/Milchstrassse/Ecampus-go/internal/app/bootstrap"
+	"github.com/Milchstrassse/Ecampus-go/internal/app/commentproducer"
 	"github.com/Milchstrassse/Ecampus-go/internal/chat"
 	"github.com/Milchstrassse/Ecampus-go/internal/comment"
 	"github.com/Milchstrassse/Ecampus-go/internal/file"
@@ -50,7 +51,7 @@ func Run() error {
 	userSvc.SetProducer(newUserProducerAdapter(producer))
 	topicSvc := topic.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
 	topicSvc.SetProducer(newTopicProducerAdapter(producer))
-	commentSvc := comment.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger, producer)
+	commentSvc := comment.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger, commentproducer.New(producer))
 	sensitiveSvc := sensitive.NewService(infra.MySQL, infra.Logger)
 	defer sensitiveSvc.Close()
 	topicSvc.SetSensitiveFilter(sensitiveSvc)
@@ -83,7 +84,7 @@ func Run() error {
 	topicSvc.SetCapabilityChecker(capabilityChecker)
 	commentSvc.SetCapabilityChecker(capabilityChecker)
 	chatSvc.SetCapabilityChecker(capabilityChecker)
-	schoolSvc := school.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger, producer)
+	schoolSvc := school.NewService(infra.MySQL, infra.Mongo, infra.Redis, infra.Config, infra.Logger)
 
 	userH := user.NewHandler(userSvc)
 	topicH := topic.NewHandler(topicSvc)

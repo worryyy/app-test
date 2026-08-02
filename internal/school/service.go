@@ -11,7 +11,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
-	"github.com/Milchstrassse/Ecampus-go/internal/mq"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/bizerr"
 	"github.com/Milchstrassse/Ecampus-go/internal/platform/config"
 )
@@ -29,7 +28,6 @@ func NewService(
 	_ *redis.Client,
 	cfg *config.Config,
 	logger *zap.Logger,
-	_ *mq.Producer,
 ) *Service {
 	if logger == nil {
 		logger = zap.NewNop()

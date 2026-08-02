@@ -1,0 +1,17 @@
+{
+  "services": [
+    {"service":"academic","entrypoint":"./cmd/ecampus-academic","image":"ecampus-academic","config_dir":"configs/ecampus","port":8080},
+    {"service":"agentchat","entrypoint":"./cmd/ecampus-agentchat","image":"ecampus-agentchat","config_dir":"configs/ecampus","port":8080},
+    {"service":"chat","entrypoint":"./cmd/ecampus-chat","image":"ecampus-chat","config_dir":"configs/ecampus","port":8080},
+    {"service":"comment","entrypoint":"./cmd/ecampus-comment","image":"ecampus-comment","config_dir":"configs/ecampus","port":8080},
+    {"service":"file","entrypoint":"./cmd/ecampus-file","image":"ecampus-file","config_dir":"configs/ecampus","port":8080},
+    {"service":"marketplace","entrypoint":"./cmd/ecampus-marketplace","image":"ecampus-marketplace","config_dir":"configs/ecampus","port":8080},
+    {"service":"moderation","entrypoint":"./cmd/ecampus-moderation","image":"ecampus-moderation","config_dir":"configs/ecampus","port":8080},
+    {"service":"notification","entrypoint":"./cmd/ecampus-notification","image":"ecampus-notification","config_dir":"configs/ecampus","port":8080},
+    {"service":"reservation","entrypoint":"./cmd/ecampus-reservation","image":"ecampus-reservation","config_dir":"configs/ecampus","port":8080},
+    {"service":"school","entrypoint":"./cmd/ecampus-school","image":"ecampus-school","config_dir":"configs/ecampus","port":8080},
+    {"service":"theme","entrypoint":"./cmd/ecampus-theme","image":"ecampus-theme","config_dir":"configs/ecampus","port":8080},
+    {"service":"topic","entrypoint":"./cmd/ecampus-topic","image":"ecampus-topic","config_dir":"configs/ecampus","port":8080},
+    {"service":"user","entrypoint":"./cmd/ecampus-user","image":"ecampus-user","config_dir":"configs/ecampus","port":8080}
+  ]
+}
