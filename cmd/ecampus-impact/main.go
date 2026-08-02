@@ -81,7 +81,7 @@ func readChanges(ctx context.Context, repoRoot, changedFile, base, head string) 
 		if err != nil {
 			return nil, "read changed-files", err
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 		changes, err := ciimpact.ParseNameStatus(file)
 		return changes, "parse changed-files", err
 	}

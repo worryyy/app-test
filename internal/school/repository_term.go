@@ -146,7 +146,7 @@ func (r *Repository) ListTerms(ctx context.Context) ([]Term, error) {
 	if err != nil {
 		return nil, fmt.Errorf("find terms: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer func() { _ = cursor.Close(ctx) }()
 
 	var terms []Term
 	if err := cursor.All(ctx, &terms); err != nil {

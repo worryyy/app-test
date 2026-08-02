@@ -117,11 +117,7 @@ func (s *Service) GetCourseByWeeks(ctx context.Context, req UserCourseReq) (*JWC
 }
 
 func (s *Service) GetExam(ctx context.Context, req ExamReq) (*JWCommonResp, error) {
-	resp, err := s.jwClient.GetExam(ctx, JWGetExamReq{
-		SchoolID: req.SchoolID,
-		Password: req.Password,
-		XNXQID:   req.XNXQID,
-	})
+	resp, err := s.jwClient.GetExam(ctx, JWGetExamReq(req))
 	if err != nil {
 		return nil, bizerr.InternalWrap("query exam failed", err)
 	}
@@ -132,11 +128,7 @@ func (s *Service) GetExam(ctx context.Context, req ExamReq) (*JWCommonResp, erro
 }
 
 func (s *Service) GetExamScore(ctx context.Context, req ExamScoreReq) (*JWCommonResp, error) {
-	resp, err := s.jwClient.GetExamScore(ctx, JWGetExamScoreReq{
-		SchoolID: req.SchoolID,
-		Password: req.Password,
-		SS:       req.SS,
-	})
+	resp, err := s.jwClient.GetExamScore(ctx, JWGetExamScoreReq(req))
 	if err != nil {
 		return nil, bizerr.InternalWrap("query exam score failed", err)
 	}

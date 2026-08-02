@@ -60,7 +60,7 @@ func TestFilterText_SpaceBypass(t *testing.T) {
 
 func TestFilterText_ZeroWidthBypass(t *testing.T) {
 	s := newTestFilter([]string{"赌博"})
-	input := "赌​博是违法的"
+	input := "赌\u200b博是违法的"
 	got, err := s.FilterText(context.Background(), input)
 	if err != nil {
 		t.Fatal(err)
@@ -230,7 +230,7 @@ func TestNormalizeText(t *testing.T) {
 }
 
 func TestStripInvisible(t *testing.T) {
-	got := stripInvisible("hello​world‌")
+	got := stripInvisible("hello\u200bworld\u200c")
 	if got != "helloworld" {
 		t.Fatalf("expected invisible chars stripped, got %q", got)
 	}

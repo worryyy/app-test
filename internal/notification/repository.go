@@ -80,7 +80,7 @@ func (r *Repository) list(ctx context.Context, filter bson.M, page, size int) ([
 	if err != nil {
 		return nil, 0, fmt.Errorf("find notifications: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() { _ = cur.Close(ctx) }()
 	var docs []Document
 	if err := cur.All(ctx, &docs); err != nil {
 		return nil, 0, fmt.Errorf("decode notifications: %w", err)
@@ -100,7 +100,7 @@ func (r *Repository) UnreadCategories(ctx context.Context, rootUserID int64, ide
 	if err != nil {
 		return nil, fmt.Errorf("find unread notifications: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() { _ = cur.Close(ctx) }()
 	counts := make(map[string]int64, len(categories))
 	for cur.Next(ctx) {
 		var row struct {

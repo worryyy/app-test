@@ -86,10 +86,6 @@ func ensureJWRespSuccess(resp *JWCommonResp, fallback string) error {
 
 func parseTermObjectID(termID string) (primitive.ObjectID, error) {
 	termID = strings.TrimSpace(termID)
-	if !primitive.IsValidObjectID(termID) {
-		return primitive.NilObjectID, bizerr.Param(errMsgInvalidParam)
-	}
-
 	oid, err := primitive.ObjectIDFromHex(termID)
 	if err != nil {
 		return primitive.NilObjectID, bizerr.Param(errMsgInvalidParam)

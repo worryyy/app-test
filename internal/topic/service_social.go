@@ -2,7 +2,6 @@ package topic
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -145,9 +144,7 @@ func (s *Service) listTopicsFromArrayDocs(ctx context.Context, collName string, 
 	}
 
 	allIDs := make([]string, 0, len(docs.TopicIDs))
-	for _, topicID := range docs.TopicIDs {
-		allIDs = append(allIDs, topicID)
-	}
+	allIDs = append(allIDs, docs.TopicIDs...)
 
 	total := int64(len(allIDs))
 	if len(allIDs) == 0 {
@@ -247,8 +244,4 @@ func (s *Service) sendTopicNotify(ctx context.Context, targetUserID, senderUserI
 	if err != nil {
 		s.logger.Warn("send topic notify failed", zap.Error(err), zap.String("topicID", topicID), zap.String("type", notifyType))
 	}
-}
-
-func isTopicAlreadyLiked(err error) bool {
-	return errors.Is(err, ErrTopicAlreadyLiked)
 }

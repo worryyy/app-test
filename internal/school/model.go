@@ -32,14 +32,6 @@ type Course struct {
 	Val      []byte             `bson:"val" json:"val"`
 }
 
-type weekCourse struct {
-	CourseList []innerCourse `json:"courseList"`
-}
-
-type innerCourse struct {
-	Name string `json:"name"`
-}
-
 type campusUser struct {
 	ID                   int64      `gorm:"column:id"`
 	StuNum               string     `gorm:"column:stu_num"`

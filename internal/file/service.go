@@ -184,9 +184,6 @@ func (s *Service) SetPublic(ctx context.Context, ids []string, isPublic bool) (i
 	objectIDs := make([]primitive.ObjectID, 0, len(ids))
 	seen := make(map[primitive.ObjectID]struct{}, len(ids))
 	for _, id := range ids {
-		if !primitive.IsValidObjectID(id) {
-			continue
-		}
 		objectID, err := primitive.ObjectIDFromHex(id)
 		if err != nil {
 			continue

@@ -44,7 +44,7 @@ func run(args []string) error {
 	if err != nil {
 		return fmt.Errorf("open mysql: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if err := db.Ping(); err != nil {
 		return fmt.Errorf("ping mysql: %w", err)
 	}
@@ -57,7 +57,7 @@ func run(args []string) error {
 	if err != nil {
 		return fmt.Errorf("create migrator: %w", err)
 	}
-	defer m.Close()
+	defer func() { _, _ = m.Close() }()
 
 	switch flags.Arg(0) {
 	case "up":
