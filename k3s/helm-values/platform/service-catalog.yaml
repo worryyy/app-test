@@ -9,7 +9,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: &mainBranch {defaultBranch: main, allowedBranches: [main]}
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-academic.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-academic.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-academic, tagPolicy: git-sha, requireDigest: true}
         jenkins: &jenkins {mode: webhook, jobName: ecampus-pipeline}
         argocd: {application: ecampus-academic, namespace: argocd}
@@ -24,7 +24,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: *mainBranch
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-agentchat.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-agentchat.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-agentchat, tagPolicy: git-sha, requireDigest: true}
         jenkins: *jenkins
         argocd: {application: ecampus-agentchat, namespace: argocd}
@@ -39,7 +39,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: *mainBranch
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-chat.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-chat.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-chat, tagPolicy: git-sha, requireDigest: true}
         jenkins: *jenkins
         argocd: {application: ecampus-chat, namespace: argocd}
@@ -54,7 +54,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: *mainBranch
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-comment.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-comment.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-comment, tagPolicy: git-sha, requireDigest: true}
         jenkins: *jenkins
         argocd: {application: ecampus-comment, namespace: argocd}
@@ -69,7 +69,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: *mainBranch
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-file.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-file.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-file, tagPolicy: git-sha, requireDigest: true}
         jenkins: *jenkins
         argocd: {application: ecampus-file, namespace: argocd}
@@ -84,7 +84,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: *mainBranch
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-marketplace.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-marketplace.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-marketplace, tagPolicy: git-sha, requireDigest: true}
         jenkins: *jenkins
         argocd: {application: ecampus-marketplace, namespace: argocd}
@@ -99,7 +99,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: *mainBranch
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-moderation.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-moderation.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-moderation, tagPolicy: git-sha, requireDigest: true}
         jenkins: *jenkins
         argocd: {application: ecampus-moderation, namespace: argocd}
@@ -114,7 +114,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: *mainBranch
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-notification.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-notification.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-notification, tagPolicy: git-sha, requireDigest: true}
         jenkins: *jenkins
         argocd: {application: ecampus-notification, namespace: argocd}
@@ -129,7 +129,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: *mainBranch
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-reservation.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-reservation.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-reservation, tagPolicy: git-sha, requireDigest: true}
         jenkins: *jenkins
         argocd: {application: ecampus-reservation, namespace: argocd}
@@ -144,7 +144,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: *mainBranch
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-school.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-school.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-school, tagPolicy: git-sha, requireDigest: true}
         jenkins: *jenkins
         argocd: {application: ecampus-school, namespace: argocd}
@@ -159,7 +159,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: *mainBranch
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-theme.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-theme.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-theme, tagPolicy: git-sha, requireDigest: true}
         jenkins: *jenkins
         argocd: {application: ecampus-theme, namespace: argocd}
@@ -174,7 +174,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: *mainBranch
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-topic.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-topic.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-topic, tagPolicy: git-sha, requireDigest: true}
         jenkins: *jenkins
         argocd: {application: ecampus-topic, namespace: argocd}
@@ -189,7 +189,7 @@ services:
       - name: dev
         namespace: app
         branchPolicy: *mainBranch
-        git: {repo: https://github.com/worryyy/devops-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-user.yaml}
+        git: {repo: https://github.com/worryyy/app-test.git, chartPath: k3s/charts/go-service, valuesFile: k3s/helm-values/workloads/ecampus-user.yaml}
         image: {repository: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/ecampus-user, tagPolicy: git-sha, requireDigest: true}
         jenkins: *jenkins
         argocd: {application: ecampus-user, namespace: argocd}
