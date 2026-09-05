@@ -631,7 +631,7 @@ spec:
           memory: 2Gi
         limits:
           cpu: "3"
-          memory: 6Gi
+          memory: 8Gi
       env:
         - name: GOCACHE
           value: /cache/go-build
@@ -916,12 +916,21 @@ spec:
       }
       steps {
         script {
-          def branches = [:]
-          env.AFFECTED_SERVICES.split(',').findAll { it }.each { service ->
-            def current = service
-            branches[current] = { runServiceBranch(current) }
+          // One go container hosts every service check, so the matrix runs in
+          // batches: 13 parallel cgo compiles exceed the container memory
+          // limit and thrash the node CPU anyway. Same batch size in every
+          // benchmark run keeps the L0-L3 ladder comparable.
+          def services = env.AFFECTED_SERVICES.split(',').findAll { it }
+          def batchSize = 4
+          for (int i = 0; i < services.size(); i += batchSize) {
+            def batch = services[i..Math.min(i + batchSize - 1, services.size() - 1)]
+            def branches = [:]
+            batch.each { service ->
+              def current = service
+              branches[current] = { runServiceBranch(current) }
+            }
+            parallel branches
           }
-          parallel branches
         }
       }
     }
