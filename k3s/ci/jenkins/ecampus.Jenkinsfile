@@ -99,7 +99,9 @@ def runServiceBranch(String service) {
     withEnv(['SERVICE=' + service]) {
       sh '''
         set -eu
-        mkdir -p \"$WORKSPACE/.ci/digests\"
+        # the buildkitd sidecar (uid 1000) writes the image metadata here;
+        # this container runs as root, so leave the dir world-writable
+        mkdir -p "$WORKSPACE/.ci/digests" && chmod -R 777 "$WORKSPACE/.ci"
         cd "$SOURCE_DIR"
         ./scripts/ci/run-service-checks.sh --service "$SERVICE"
       '''
