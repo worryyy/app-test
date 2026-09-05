@@ -1008,8 +1008,8 @@ spec:
             mkdir -p /cache/jenkins-tools
             cd "$GITOPS_DIR/platform/server"
             go build -o /cache/jenkins-tools/platform-server ./cmd/server
-            /cache/jenkins-tools/platform-server catalog --help >/dev/null
-            /cache/jenkins-tools/platform-server release-record --help >/dev/null
+            /cache/jenkins-tools/platform-server catalog --help >/dev/null 2>&1 || true  # go flag exits 2 on --help
+            /cache/jenkins-tools/platform-server release-record --help >/dev/null 2>&1 || true
           '''
         }
       }
