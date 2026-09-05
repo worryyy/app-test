@@ -824,9 +824,9 @@ spec:
               # so the public source repo uses the same read token as GitOps.
               source_repo="${SOURCE_REPO:-https://github.com/worryyy/app-test.git}"
               clean_source=$(echo "$source_repo" | sed 's#https://##')
-              git clone --branch main "https://$GIT_USER:$GIT_TOKEN@$clean_source" "$SOURCE_DIR"
+              n=0; until [ "$n" -ge 3 ]; do git clone --branch main "https://$GIT_USER:$GIT_TOKEN@$clean_source" "$SOURCE_DIR" && break; n=$((n+1)); rm -rf "$SOURCE_DIR"; sleep 6; done
               clean_repo=$(echo "$GITOPS_REPO_URL" | sed 's#https://##')
-              git clone "https://$GIT_USER:$GIT_TOKEN@$clean_repo" "$GITOPS_DIR"
+              n=0; until [ "$n" -ge 3 ]; do git clone "https://$GIT_USER:$GIT_TOKEN@$clean_repo" "$GITOPS_DIR" && break; n=$((n+1)); rm -rf "$GITOPS_DIR"; sleep 6; done
               git -C "$GITOPS_DIR" remote set-url origin "$GITOPS_REPO_URL"
               test "$(git -C "$SOURCE_DIR" branch --show-current)" = main
               git -C "$SOURCE_DIR" rev-parse HEAD > current-head.txt
