@@ -124,9 +124,20 @@ def runServiceBranch(String service) {
           host=$(printf '%s' "$CACHE_IMAGE" | cut -d/ -f1)
           repo=$(printf '%s' "$CACHE_IMAGE" | cut -d/ -f2- | cut -d: -f1)
           tag=$(printf '%s' "$CACHE_IMAGE" | cut -d: -f2)
-          code=$(curl -s -o /dev/null -w '%{http_code}' -u "$ACR_USER:$ACR_PASS" -I "https://$host/v2/$repo/manifests/$tag" || true)
+          # ACR speaks the registry Bearer dance; basic auth on /v2 is a 401.
+          auth_header=$(curl -sI "https://$host/v2/" | tr -d '\r' | sed -n 's/^[Ww][Ww][Ww]-[Aa]uthenticate: *//p')
+          realm=$(printf '%s' "$auth_header" | sed -n 's/.*realm="\([^"]*\)".*/\1/p')
+          service=$(printf '%s' "$auth_header" | sed -n 's/.*service="\([^"]*\)".*/\1/p')
+          tok=$(curl -s -u "$ACR_USER:$ACR_PASS" "$realm?service=$service&scope=repository:$repo:pull" | sed -n 's/.*"access_token"[": ]*\([^"]*\)".*/\1/p')
+          if [ -n "$tok" ]; then
+            code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $tok" -I "https://$host/v2/$repo/manifests/$tag" || true)
+          else
+            code=000
+          fi
           echo "cache probe $CACHE_IMAGE -> $code"
-          [ "$code" = "200" ] && touch "$WORKSPACE/.ci/digests/$SERVICE.cache-exists"
+          if [ "$code" = "200" ]; then
+            touch "$WORKSPACE/.ci/digests/$SERVICE.cache-exists"
+          fi
         '''
       }
     }
