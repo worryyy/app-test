@@ -719,8 +719,8 @@ spec:
           cpu: "500m"
           memory: 1Gi
         limits:
-          cpu: "1500m"
-          memory: 3Gi
+          cpu: "2"
+          memory: 6Gi
     - name: git
       image: alpine/git:2.45.2
       command: [cat]
