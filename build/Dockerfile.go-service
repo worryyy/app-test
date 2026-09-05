@@ -32,7 +32,8 @@ RUN --mount=type=cache,id=ecampus-go-mod,target=/go/pkg/mod,sharing=shared \
     cp -R "${CONFIG_DIR}" /out/configs/
 
 FROM alpine:3.20
-RUN apk --no-cache add ca-certificates tzdata
+RUN sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#' /etc/apk/repositories \
+    && apk --no-cache add ca-certificates tzdata
 ENV TZ=Asia/Shanghai
 WORKDIR /app
 
