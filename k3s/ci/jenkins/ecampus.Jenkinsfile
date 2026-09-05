@@ -127,7 +127,7 @@ def runServiceBranch(String service) {
         metadata="$WORKSPACE/.ci/digests/$SERVICE.json"
         import_cache=""
         if [ -d "$CACHE_DIR" ] && [ -n "$(ls -A "$CACHE_DIR" 2>/dev/null)" ]; then
-          import_cache="--import-cache type=local,dir=$CACHE_DIR"
+          import_cache="--import-cache type=local,src=$CACHE_DIR"
         fi
         buildctl build \
           --frontend=dockerfile.v0 \
