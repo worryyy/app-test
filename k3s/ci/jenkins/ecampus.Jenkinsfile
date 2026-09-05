@@ -116,7 +116,7 @@ def runServiceBranch(String service) {
     withCredentials([usernamePassword(credentialsId: 'acr-https', usernameVariable: 'ACR_USER', passwordVariable: 'ACR_PASS')]) {
       withEnv([
         'SERVICE=' + service,
-        'CACHE_IMAGE=' + env.BUILDKIT_CACHE_REPO + '/' + service + ':' + (params.BUILDKIT_CACHE_TAG ?: 'main-amd64'),
+        'CACHE_IMAGE=' + env.BUILDKIT_CACHE_REPO + '/buildkit-cache-' + service + ':' + (params.BUILDKIT_CACHE_TAG ?: 'main-amd64'),
         'PROBE_SCRIPT=' + env.WORKSPACE + '/' + env.GITOPS_DIR + '/k3s/ci/scripts/probe-registry-cache.sh',
       ]) {
         sh '''
@@ -140,7 +140,7 @@ def runServiceBranch(String service) {
       'SERVICE_PORT=' + source.port,
       'DOCKERFILE=build/Dockerfile.go-service',
       'IMAGE=' + delivery.image,
-      'CACHE_IMAGE=' + env.BUILDKIT_CACHE_REPO + '/' + service + ':' + (params.BUILDKIT_CACHE_TAG ?: 'main-amd64'),
+      'CACHE_IMAGE=' + env.BUILDKIT_CACHE_REPO + '/buildkit-cache-' + service + ':' + (params.BUILDKIT_CACHE_TAG ?: 'main-amd64'),
     ]) {
       sh '''
         set -eu
@@ -818,7 +818,7 @@ spec:
     GITOPS_REPO_URL = 'https://github.com/worryyy/app-test.git'
     GITOPS_OWNER = 'worryyy'
     GITOPS_REPO = 'app-test'
-    BUILDKIT_CACHE_REPO = 'crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/buildkit-cache'
+    BUILDKIT_CACHE_REPO = 'crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops'
     ROLLOUTS_CLI = '/cache/jenkins-tools/argo-rollouts/v1.8.3/kubectl-argo-rollouts'
     KUBECTL_CLI = '/cache/jenkins-tools/kubectl/v1.31.3/kubectl'
     ANALYSIS_DRY_RUN = 'false'
