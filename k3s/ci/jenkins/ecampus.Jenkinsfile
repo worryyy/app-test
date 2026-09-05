@@ -648,7 +648,8 @@ spec:
     - name: tcr-secret
   containers:
     - name: go
-      image: golang:1.26-alpine
+      # baked with git/gcc/musl-dev/make/protobuf/jq and TUNA apk mirror
+      image: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/golang-ci:1.26
       command: [cat]
       tty: true
       resources:
@@ -738,7 +739,8 @@ spec:
           cpu: "200m"
           memory: 256Mi
     - name: rollouts
-      image: alpine:3.21
+      # baked with jq/wget/curl/git/yq
+      image: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/alpine-tools:3.21
       command: [cat]
       tty: true
       resources:
@@ -857,10 +859,6 @@ spec:
         container('go') {
           sh '''
             set -eu
-            # golang:alpine ships without git; the impact tool and the
-            # BEFORE/AFTER checks both need it.
-            sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#' /etc/apk/repositories 2>/dev/null || true
-            apk add --no-cache git gcc musl-dev >/dev/null
             cd "$SOURCE_DIR"
             if [ -n "${BEFORE_SHA:-}" ] && [ -n "${AFTER_SHA:-}" ] &&
                git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null &&
@@ -928,8 +926,6 @@ spec:
         container('go') {
           sh '''
             set -eu
-            sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#' /etc/apk/repositories 2>/dev/null || true
-            apk add --no-cache make protobuf
             go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
             go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
             cd "$SOURCE_DIR"
@@ -970,8 +966,7 @@ spec:
         container('rollouts') {
           sh '''
             set -eu
-            sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#' /etc/apk/repositories 2>/dev/null || true
-            apk add --no-cache ca-certificates jq wget curl git yq
+            # jq/wget/curl/git/yq come from the baked alpine-tools image
             if [ ! -x "$ROLLOUTS_CLI" ]; then
               case "$(uname -m)" in
                 x86_64) cli_layer=sha256:bf3ceff451710c15d85b84038cbabab49d132934a31e8edb5c436d7a3d972d04 ;;
@@ -1019,7 +1014,6 @@ spec:
           sh '''
             set -eu
             sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#' /etc/apk/repositories 2>/dev/null || true
-            apk add --no-cache jq
             mkdir -p /cache/jenkins-tools
             cd "$GITOPS_DIR/platform/server"
             go build -o /cache/jenkins-tools/platform-server ./cmd/server
