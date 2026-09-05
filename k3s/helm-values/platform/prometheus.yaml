@@ -1,8 +1,10 @@
 alertmanager:
   enabled: true
+  nodeSelector:
+    platform-role: worker
   persistence:
     enabled: true
-    size: 2Gi
+    size: 1Gi
   config:
     enabled: true
     global: {}
@@ -66,6 +68,8 @@ prometheus-pushgateway:
   enabled: false
 
 server:
+  nodeSelector:
+    platform-role: worker
   global:
     scrape_interval: 30s
     evaluation_interval: 30s

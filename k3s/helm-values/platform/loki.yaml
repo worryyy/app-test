@@ -6,9 +6,11 @@ deploymentMode: Monolithic
 
 singleBinary:
   replicas: 1
+  nodeSelector:
+    platform-role: light
   persistence:
     enabled: true
-    size: 20Gi
+    size: 6Gi
 
 loki:
   auth_enabled: false
@@ -50,5 +52,6 @@ networkPolicy:
   metrics:
     # Kubelet liveness/readiness probes originate from the cluster nodes.
     cidrs:
-      - 100.67.223.96/32
-      - 100.101.243.0/32
+      - 100.80.235.120/32
+      - 100.99.235.70/32
+      - 100.83.57.72/32

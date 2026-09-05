@@ -754,7 +754,7 @@ spec:
   }
 
   parameters {
-    string(name: 'SOURCE_REPO', defaultValue: 'https://github.com/worryyy/app-test.git', description: 'Ecampus source repository.')
+    string(name: 'SOURCE_REPO', defaultValue: 'https://github.com/Milchstrassse/Ecampus-go.git', description: 'Ecampus source repository.')
     string(name: 'TARGET_ENV', defaultValue: 'dev', description: 'Delivery catalog environment.')
     string(name: 'BEFORE_SHA', defaultValue: '', description: 'GitHub webhook before SHA; empty falls back to a conservative full build.')
     string(name: 'AFTER_SHA', defaultValue: '', description: 'GitHub webhook after SHA.')
@@ -765,10 +765,10 @@ spec:
   environment {
     SOURCE_DIR = 'source'
     GITOPS_DIR = 'gitops'
-    GITOPS_REPO_URL = 'https://github.com/worryyy/app-test.git'
+    GITOPS_REPO_URL = 'https://github.com/worryyy/devops-test.git'
     GITOPS_OWNER = 'worryyy'
-    GITOPS_REPO = 'app-test'
-    BUILDKIT_CACHE_REPO = 'crpi-gfwwpdquc14b7w22-vpc.cn-shanghai.personal.cr.aliyuncs.com/pulseops/buildkit-cache'
+    GITOPS_REPO = 'devops-test'
+    BUILDKIT_CACHE_REPO = 'crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com/pulseops/buildkit-cache'
     ROLLOUTS_CLI = '/cache/jenkins-tools/argo-rollouts/v1.8.3/kubectl-argo-rollouts'
     KUBECTL_CLI = '/cache/jenkins-tools/kubectl/v1.31.3/kubectl'
     ANALYSIS_DRY_RUN = 'false'
