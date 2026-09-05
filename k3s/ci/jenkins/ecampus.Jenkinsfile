@@ -790,7 +790,10 @@ spec:
             sh '''
               set -eu
               rm -rf "$SOURCE_DIR" "$GITOPS_DIR" .ci impact.json delivery-catalog.json
-              git clone --branch main "$SOURCE_REPO" "$SOURCE_DIR"
+              # GitHub auth-challenges anonymous git clones from AliCloud IPs,
+              # so the public source repo uses the same read token as GitOps.
+              clean_source=$(echo "$SOURCE_REPO" | sed 's#https://##')
+              git clone --branch main "https://$GIT_USER:$GIT_TOKEN@$clean_source" "$SOURCE_DIR"
               clean_repo=$(echo "$GITOPS_REPO_URL" | sed 's#https://##')
               git clone "https://$GIT_USER:$GIT_TOKEN@$clean_repo" "$GITOPS_DIR"
               git -C "$GITOPS_DIR" remote set-url origin "$GITOPS_REPO_URL"
