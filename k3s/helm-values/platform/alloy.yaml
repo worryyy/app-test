@@ -1,9 +1,12 @@
 # Single-replica Alloy Deployment: loki.source.kubernetes tails container logs
 # through the Kubernetes API, so one instance covers the whole cluster without
 # DaemonSet duplicate collection. HA would require Alloy Clustering.
+#
+# Scaled to 0 together with Loki: logging is off the benchmark critical path
+# and node3 memory is reserved for the CI build pod. Re-enable with Loki.
 controller:
   type: deployment
-  replicas: 1
+  replicas: 0
 
 alloy:
   enableReporting: false
