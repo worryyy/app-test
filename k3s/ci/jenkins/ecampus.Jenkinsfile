@@ -159,7 +159,7 @@ def runServiceBranch(String service) {
           --opt "build-arg:CONFIG_DIR=$CONFIG_DIR" \
           --opt "build-arg:SERVICE_PORT=$SERVICE_PORT" \
           $import_cache \
-          --export-cache "type=registry,ref=$CACHE_IMAGE,mode=max,image-manifest=true,oci-mediatypes=true" \
+          --export-cache "type=registry,ref=$CACHE_IMAGE,mode=max" \
           --output "type=image,name=$IMAGE:$IMAGE_TAG,push=true" \
           --metadata-file="$metadata"
         test -s "$metadata"
