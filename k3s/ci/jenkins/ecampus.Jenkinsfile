@@ -110,6 +110,28 @@ def runServiceBranch(String service) {
     return
   }
 
+  // A missing registry cache ref makes --import-cache fail hard, so probe the
+  // tag first and only import what exists (cold runs bootstrap the tag).
+  container('curl') {
+    withCredentials([usernamePassword(credentialsId: 'acr-https', usernameVariable: 'ACR_USER', passwordVariable: 'ACR_PASS')]) {
+      withEnv([
+        'SERVICE=' + service,
+        'CACHE_IMAGE=' + env.BUILDKIT_CACHE_REPO + '/' + service + ':' + (params.BUILDKIT_CACHE_TAG ?: 'main-amd64'),
+      ]) {
+        sh '''
+          set -eu
+          rm -f "$WORKSPACE/.ci/digests/$SERVICE.cache-exists"
+          host=$(printf '%s' "$CACHE_IMAGE" | cut -d/ -f1)
+          repo=$(printf '%s' "$CACHE_IMAGE" | cut -d/ -f2- | cut -d: -f1)
+          tag=$(printf '%s' "$CACHE_IMAGE" | cut -d: -f2)
+          code=$(curl -s -o /dev/null -w '%{http_code}' -u "$ACR_USER:$ACR_PASS" -I "https://$host/v2/$repo/manifests/$tag" || true)
+          echo "cache probe $CACHE_IMAGE -> $code"
+          [ "$code" = "200" ] && touch "$WORKSPACE/.ci/digests/$SERVICE.cache-exists"
+        '''
+      }
+    }
+  }
+
   container('buildkitd') {
     withEnv([
       'SERVICE=' + service,
@@ -123,6 +145,10 @@ def runServiceBranch(String service) {
       sh '''
         set -eu
         metadata="$WORKSPACE/.ci/digests/$SERVICE.json"
+        import_cache=""
+        if [ -f "$WORKSPACE/.ci/digests/$SERVICE.cache-exists" ]; then
+          import_cache="--import-cache type=registry,ref=$CACHE_IMAGE"
+        fi
         buildctl build \
           --frontend=dockerfile.v0 \
           --local context="$WORKSPACE/$SOURCE_DIR" \
@@ -132,7 +158,7 @@ def runServiceBranch(String service) {
           --opt "build-arg:SERVICE_PATH=$SERVICE_PATH" \
           --opt "build-arg:CONFIG_DIR=$CONFIG_DIR" \
           --opt "build-arg:SERVICE_PORT=$SERVICE_PORT" \
-          --import-cache "type=registry,ref=$CACHE_IMAGE" \
+          $import_cache \
           --export-cache "type=registry,ref=$CACHE_IMAGE,mode=max,image-manifest=true,oci-mediatypes=true" \
           --output "type=image,name=$IMAGE:$IMAGE_TAG,push=true" \
           --metadata-file="$metadata"
