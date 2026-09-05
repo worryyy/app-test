@@ -754,7 +754,7 @@ spec:
   }
 
   parameters {
-    string(name: 'SOURCE_REPO', defaultValue: 'https://github.com/Milchstrassse/Ecampus-go.git', description: 'Ecampus source repository.')
+    string(name: 'SOURCE_REPO', defaultValue: 'https://github.com/worryyy/app-test.git', description: 'Ecampus source repository.')
     string(name: 'TARGET_ENV', defaultValue: 'dev', description: 'Delivery catalog environment.')
     string(name: 'BEFORE_SHA', defaultValue: '', description: 'GitHub webhook before SHA; empty falls back to a conservative full build.')
     string(name: 'AFTER_SHA', defaultValue: '', description: 'GitHub webhook after SHA.')
