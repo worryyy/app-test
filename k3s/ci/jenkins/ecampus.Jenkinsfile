@@ -117,7 +117,7 @@ def runServiceBranch(String service) {
       withEnv([
         'SERVICE=' + service,
         'CACHE_IMAGE=' + env.BUILDKIT_CACHE_REPO + '/' + service + ':' + (params.BUILDKIT_CACHE_TAG ?: 'main-amd64'),
-        'PROBE_SCRIPT=' + env.GITOPS_DIR + '/k3s/ci/scripts/probe-registry-cache.sh',
+        'PROBE_SCRIPT=' + env.WORKSPACE + '/' + env.GITOPS_DIR + '/k3s/ci/scripts/probe-registry-cache.sh',
       ]) {
         sh '''
           set -eu
