@@ -31,3 +31,4 @@ func (h *Handler) GetCampusThemes(c *gin.Context) {
 	}
 	responses.Success.RespData(c, data)
 }
+// bench: single-service impact probe 1788631920
