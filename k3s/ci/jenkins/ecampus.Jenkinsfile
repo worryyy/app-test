@@ -92,6 +92,7 @@ def runServiceBranch(String service) {
     withEnv(['SERVICE=' + service]) {
       sh '''
         set -eu
+        apk add --no-cache git >/dev/null
         mkdir -p "$WORKSPACE/.ci/digests"
         cd "$SOURCE_DIR"
         ./scripts/ci/run-service-checks.sh --service "$SERVICE"
@@ -817,6 +818,9 @@ spec:
         container('go') {
           sh '''
             set -eu
+            # golang:alpine ships without git; the impact tool and the
+            # BEFORE/AFTER checks both need it.
+            apk add --no-cache git >/dev/null
             cd "$SOURCE_DIR"
             if [ -n "$BEFORE_SHA" ] && [ -n "$AFTER_SHA" ] &&
                git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null &&
