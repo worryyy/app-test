@@ -874,7 +874,6 @@ spec:
                 --catalog configs/service-catalog.yaml \
                 --services "$REQUESTED_SERVICES" \
                 --environment "$TARGET_ENV" \
-                --impact "$WORKSPACE/impact.json" \
                 > "$WORKSPACE/delivery-catalog.json"
             '''
           }
