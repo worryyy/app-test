@@ -99,9 +99,7 @@ def runServiceBranch(String service) {
     withEnv(['SERVICE=' + service]) {
       sh '''
         set -eu
-        sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#' /etc/apk/repositories 2>/dev/null || true
-            apk add --no-cache git >/dev/null
-        mkdir -p "$WORKSPACE/.ci/digests"
+        mkdir -p \"$WORKSPACE/.ci/digests\"
         cd "$SOURCE_DIR"
         ./scripts/ci/run-service-checks.sh --service "$SERVICE"
       '''
