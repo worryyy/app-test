@@ -761,6 +761,10 @@ spec:
       image: curlimages/curl:8.10.1
       command: [cat]
       tty: true
+      # the stock curl user (uid 100) cannot write the fsGroup-1000 workspace
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
       resources:
         requests:
           cpu: "50m"
