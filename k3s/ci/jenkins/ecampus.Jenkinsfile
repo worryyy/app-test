@@ -118,10 +118,6 @@ def runServiceBranch(String service) {
       'SERVICE_PORT=' + source.port,
       'DOCKERFILE=build/Dockerfile.go-service',
       'IMAGE=' + delivery.image,
-      # ACR personal edition rejects buildkit's cacheconfig manifest class,
-      # so registry layer cache is not possible there; the cache lives in a
-      # well-known dir on the buildkit-cache PVC instead (content-addressed,
-      # shared across services and builds).
       'CACHE_DIR=/home/user/.local/share/buildkit/local-cache',
     ]) {
       sh '''
