@@ -645,7 +645,9 @@ spec:
         - name: GOMODCACHE
           value: /cache/go-mod
         - name: GOPROXY
-          value: https://goproxy.cn,direct
+          value: https://mirrors.aliyun.com/goproxy/,https://goproxy.cn,direct
+        - name: GODEBUG
+          value: netdns=go
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:

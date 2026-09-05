@@ -6,9 +6,10 @@ WORKDIR /src
 
 ARG TARGETOS
 ARG TARGETARCH
-ARG GOPROXY=https://goproxy.cn,direct
+ARG GOPROXY=https://mirrors.aliyun.com/goproxy/,https://goproxy.cn,direct
 
 ENV GOPROXY=${GOPROXY}
+ENV GODEBUG=netdns=go
 ENV GOSUMDB=sum.golang.google.cn
 ENV GOMODCACHE=/go/pkg/mod
 ENV GOCACHE=/root/.cache/go-build
