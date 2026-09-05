@@ -769,6 +769,7 @@ spec:
     string(name: 'AFTER_SHA', defaultValue: '', description: 'GitHub webhook after SHA.')
     string(name: 'BUILDKIT_CACHE_TAG', defaultValue: 'main-amd64', description: 'BuildKit registry cache tag; point it at a never-used tag for cold-cache benchmark runs.')
     booleanParam(name: 'ROLLBACK_PAUSE_SYNC', defaultValue: true, description: 'Pause Argo CD selfHeal on the target Application during rollback; disable only to reproduce the rollback/self-heal race in drills.')
+    booleanParam(name: 'SKIP_RELEASE', defaultValue: false, description: 'Stop after verify/build/push and skip the GitOps PR, rollout-wait and blue-green stages (CI benchmark mode).')
   }
 
   environment {
@@ -992,7 +993,10 @@ spec:
 
     stage('Publish GitOps PRs') {
       when {
-        expression { return (env.BUILD_SERVICES ?: '').trim() }
+        allOf {
+          expression { return (env.BUILD_SERVICES ?: '').trim() }
+          expression { return params.SKIP_RELEASE != true }
+        }
       }
       steps {
         script {
@@ -1015,7 +1019,10 @@ spec:
 
     stage('Wait for rollout and health') {
       when {
-        expression { return (env.BUILD_SERVICES ?: '').trim() }
+        allOf {
+          expression { return (env.BUILD_SERVICES ?: '').trim() }
+          expression { return params.SKIP_RELEASE != true }
+        }
       }
       steps {
         script {
@@ -1045,7 +1052,10 @@ spec:
 
     stage('Approve blue-green promotion') {
       when {
-        expression { return (env.BLUEGREEN_SERVICES ?: '').trim() }
+        allOf {
+          expression { return (env.BLUEGREEN_SERVICES ?: '').trim() }
+          expression { return params.SKIP_RELEASE != true }
+        }
       }
       steps {
         script {
@@ -1064,7 +1074,10 @@ spec:
 
     stage('Promote blue-green and wait post-promotion') {
       when {
-        expression { return (env.BLUEGREEN_SERVICES ?: '').trim() }
+        allOf {
+          expression { return (env.BLUEGREEN_SERVICES ?: '').trim() }
+          expression { return params.SKIP_RELEASE != true }
+        }
       }
       steps {
         script {
