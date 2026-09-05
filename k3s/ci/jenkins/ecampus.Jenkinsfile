@@ -78,8 +78,8 @@ def recordRelease(String service, String status, String configRevision, String d
           --record \
           --status "$STATUS" \
           --git-revision "$GIT_REVISION" \
-          --image-digest "$DIGEST" \
-          --config-revision "$CONFIG_REVISION" \
+          --image-digest "${DIGEST:-}" \
+          --config-revision "${CONFIG_REVISION:-}" \
           --rollout-strategy "$STRATEGY"
       '''
     }
