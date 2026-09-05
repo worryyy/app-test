@@ -110,28 +110,6 @@ def runServiceBranch(String service) {
     return
   }
 
-  // A missing registry cache ref makes --import-cache fail hard, so probe the
-  // tag first and only import what exists (cold runs bootstrap the tag).
-  container('curl') {
-    withCredentials([usernamePassword(credentialsId: 'acr-https', usernameVariable: 'ACR_USER', passwordVariable: 'ACR_PASS')]) {
-      withEnv([
-        'SERVICE=' + service,
-        'CACHE_IMAGE=' + env.BUILDKIT_CACHE_REPO + '/buildkit-cache-' + service + ':' + (params.BUILDKIT_CACHE_TAG ?: 'main-amd64'),
-        'PROBE_SCRIPT=' + env.WORKSPACE + '/' + env.GITOPS_DIR + '/k3s/ci/scripts/probe-registry-cache.sh',
-      ]) {
-        sh '''
-          set -eu
-          rm -f "$WORKSPACE/.ci/digests/$SERVICE.cache-exists"
-          result=$(sh "$PROBE_SCRIPT")
-          echo "cache probe $CACHE_IMAGE -> $result"
-          if [ "$result" = "exists" ]; then
-            touch "$WORKSPACE/.ci/digests/$SERVICE.cache-exists"
-          fi
-        '''
-      }
-    }
-  }
-
   container('buildkitd') {
     withEnv([
       'SERVICE=' + service,
@@ -140,14 +118,18 @@ def runServiceBranch(String service) {
       'SERVICE_PORT=' + source.port,
       'DOCKERFILE=build/Dockerfile.go-service',
       'IMAGE=' + delivery.image,
-      'CACHE_IMAGE=' + env.BUILDKIT_CACHE_REPO + '/buildkit-cache-' + service + ':' + (params.BUILDKIT_CACHE_TAG ?: 'main-amd64'),
+      # ACR personal edition rejects buildkit's cacheconfig manifest class,
+      # so registry layer cache is not possible there; the cache lives in a
+      # well-known dir on the buildkit-cache PVC instead (content-addressed,
+      # shared across services and builds).
+      'CACHE_DIR=/home/user/.local/share/buildkit/local-cache',
     ]) {
       sh '''
         set -eu
         metadata="$WORKSPACE/.ci/digests/$SERVICE.json"
         import_cache=""
-        if [ -f "$WORKSPACE/.ci/digests/$SERVICE.cache-exists" ]; then
-          import_cache="--import-cache type=registry,ref=$CACHE_IMAGE"
+        if [ -d "$CACHE_DIR" ] && [ -n "$(ls -A "$CACHE_DIR" 2>/dev/null)" ]; then
+          import_cache="--import-cache type=local,dir=$CACHE_DIR"
         fi
         buildctl build \
           --frontend=dockerfile.v0 \
@@ -159,7 +141,7 @@ def runServiceBranch(String service) {
           --opt "build-arg:CONFIG_DIR=$CONFIG_DIR" \
           --opt "build-arg:SERVICE_PORT=$SERVICE_PORT" \
           $import_cache \
-          --export-cache "type=registry,ref=$CACHE_IMAGE,mode=max" \
+          --export-cache "type=local,dir=$CACHE_DIR,mode=max" \
           --output "type=image,name=$IMAGE:$IMAGE_TAG,push=true" \
           --metadata-file="$metadata"
         test -s "$metadata"
