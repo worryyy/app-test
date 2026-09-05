@@ -1,7 +1,14 @@
 import groovy.json.JsonSlurperClassic
 
 def readJson(String path) {
-  return new JsonSlurperClassic().parseText(readFile(path))
+  return parseJsonText(readFile(path))
+}
+
+// JsonSlurperClassic instances are not CPS-serializable; the pure parse stays
+// in a @NonCPS method so the pipeline never checkpoints the parser itself.
+@NonCPS
+def parseJsonText(String text) {
+  return new JsonSlurperClassic().parseText(text)
 }
 
 def csvContains(String csv, String service) {
