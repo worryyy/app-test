@@ -766,6 +766,7 @@ spec:
   }
 
   environment {
+    TARGET_ENV = "${params.TARGET_ENV ?: 'dev'}"
     SOURCE_DIR = 'source'
     GITOPS_DIR = 'gitops'
     GITOPS_REPO_URL = 'https://github.com/worryyy/app-test.git'
@@ -795,7 +796,8 @@ spec:
               rm -rf "$SOURCE_DIR" "$GITOPS_DIR" .ci impact.json delivery-catalog.json
               # GitHub auth-challenges anonymous git clones from AliCloud IPs,
               # so the public source repo uses the same read token as GitOps.
-              clean_source=$(echo "$SOURCE_REPO" | sed 's#https://##')
+              source_repo="${SOURCE_REPO:-https://github.com/worryyy/app-test.git}"
+              clean_source=$(echo "$source_repo" | sed 's#https://##')
               git clone --branch main "https://$GIT_USER:$GIT_TOKEN@$clean_source" "$SOURCE_DIR"
               clean_repo=$(echo "$GITOPS_REPO_URL" | sed 's#https://##')
               git clone "https://$GIT_USER:$GIT_TOKEN@$clean_repo" "$GITOPS_DIR"
@@ -822,7 +824,7 @@ spec:
             # BEFORE/AFTER checks both need it.
             apk add --no-cache git >/dev/null
             cd "$SOURCE_DIR"
-            if [ -n "$BEFORE_SHA" ] && [ -n "$AFTER_SHA" ] &&
+            if [ -n "${BEFORE_SHA:-}" ] && [ -n "${AFTER_SHA:-}" ] &&
                git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null &&
                git cat-file -e "$AFTER_SHA^{commit}" 2>/dev/null &&
                git merge-base --is-ancestor "$BEFORE_SHA" "$AFTER_SHA"; then
