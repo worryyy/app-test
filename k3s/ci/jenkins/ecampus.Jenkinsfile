@@ -829,7 +829,7 @@ spec:
             # golang:alpine ships without git; the impact tool and the
             # BEFORE/AFTER checks both need it.
             sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#' /etc/apk/repositories 2>/dev/null || true
-            apk add --no-cache git >/dev/null
+            apk add --no-cache git gcc musl-dev >/dev/null
             cd "$SOURCE_DIR"
             if [ -n "${BEFORE_SHA:-}" ] && [ -n "${AFTER_SHA:-}" ] &&
                git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null &&
