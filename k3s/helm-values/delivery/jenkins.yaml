@@ -1,0 +1,21 @@
+controller:
+  serviceType: ClusterIP
+
+  nodeSelector:
+    platform-role: control
+
+  image:
+    registry: crpi-gfwwpdquc14b7w22-vpc.cn-shanghai.personal.cr.aliyuncs.com
+    repository: pulseops/jenkins
+    tag: "2.555.2-lts-jdk21"
+    pullPolicy: IfNotPresent
+
+  imagePullSecretName: tcr-secret
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1024Mi

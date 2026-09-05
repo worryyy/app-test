@@ -1,0 +1,47 @@
+global:
+  domain: ""
+
+configs:
+  params:
+    server.insecure: false
+  secret:
+    githubSecret: ""
+
+server:
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    controller: generic
+    ingressClassName: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    hostname: ""
+    path: /
+    pathType: Prefix
+    tls: false
+
+controller:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 768Mi
+
+repoServer:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 768Mi
+
+applicationSet:
+  enabled: true
+
+notifications:
+  enabled: false
