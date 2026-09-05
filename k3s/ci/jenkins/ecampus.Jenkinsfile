@@ -685,12 +685,14 @@ spec:
       command: [cat]
       tty: true
       resources:
+        # The monorepo history contains large cache blobs; a full clone needs
+        # several hundred MB of heap in git itself.
         requests:
-          cpu: "50m"
-          memory: 64Mi
+          cpu: "100m"
+          memory: 128Mi
         limits:
-          cpu: "200m"
-          memory: 256Mi
+          cpu: "500m"
+          memory: 1Gi
     - name: yq
       image: mikefarah/yq:4.44.3
       command: [cat]
