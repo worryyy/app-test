@@ -92,7 +92,8 @@ def runServiceBranch(String service) {
     withEnv(['SERVICE=' + service]) {
       sh '''
         set -eu
-        apk add --no-cache git >/dev/null
+        sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#' /etc/apk/repositories 2>/dev/null || true
+            apk add --no-cache git >/dev/null
         mkdir -p "$WORKSPACE/.ci/digests"
         cd "$SOURCE_DIR"
         ./scripts/ci/run-service-checks.sh --service "$SERVICE"
@@ -822,6 +823,7 @@ spec:
             set -eu
             # golang:alpine ships without git; the impact tool and the
             # BEFORE/AFTER checks both need it.
+            sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#' /etc/apk/repositories 2>/dev/null || true
             apk add --no-cache git >/dev/null
             cd "$SOURCE_DIR"
             if [ -n "${BEFORE_SHA:-}" ] && [ -n "${AFTER_SHA:-}" ] &&
@@ -891,6 +893,7 @@ spec:
         container('go') {
           sh '''
             set -eu
+            sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#' /etc/apk/repositories 2>/dev/null || true
             apk add --no-cache make protobuf
             go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
             go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
@@ -923,6 +926,7 @@ spec:
         container('rollouts') {
           sh '''
             set -eu
+            sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#' /etc/apk/repositories 2>/dev/null || true
             apk add --no-cache ca-certificates jq wget curl git yq
             if [ ! -x "$ROLLOUTS_CLI" ]; then
               case "$(uname -m)" in
@@ -970,6 +974,7 @@ spec:
         container('go') {
           sh '''
             set -eu
+            sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#' /etc/apk/repositories 2>/dev/null || true
             apk add --no-cache jq
             mkdir -p /cache/jenkins-tools
             cd "$GITOPS_DIR/platform/server"
