@@ -686,11 +686,18 @@ spec:
           command: [buildctl, debug, workers]
         initialDelaySeconds: 5
         periodSeconds: 10
+        timeoutSeconds: 10
+        failureThreshold: 6
+      # Under 4-way parallel builds buildctl can easily exceed the default 1s
+      # exec timeout; a tight probe kills a healthy busy buildkitd and takes
+      # the whole build down with it.
       livenessProbe:
         exec:
           command: [buildctl, debug, workers]
-        initialDelaySeconds: 10
+        initialDelaySeconds: 30
         periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 6
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
