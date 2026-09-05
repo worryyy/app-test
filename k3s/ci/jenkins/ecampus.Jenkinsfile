@@ -934,7 +934,11 @@ spec:
           // limit and thrash the node CPU anyway. Same batch size in every
           // benchmark run keeps the L0-L3 ladder comparable.
           def services = env.AFFECTED_SERVICES.split(',').findAll { it }
-          def batchSize = 4
+          // Sequential per-service builds: the local cache exporter is not
+          // concurrency-safe for simultaneous writers on one directory, and
+          // serial builds keep peak memory flat. Same shape in every
+          // benchmark run keeps the L0-L3 ladder comparable.
+          def batchSize = 1
           for (int i = 0; i < services.size(); i += batchSize) {
             def batch = services[i..Math.min(i + batchSize - 1, services.size() - 1)]
             def branches = [:]
