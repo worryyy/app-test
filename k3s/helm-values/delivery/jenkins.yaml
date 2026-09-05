@@ -43,7 +43,7 @@ controller:
                       id: git-https
                       description: "GitHub token for the GitOps repository"
                       username: worryyy
-                      password: ${git-credentials-token}
+                      password: ${file:/run/secrets/additional/git-credentials-token}
 
   # Keep the default in-cluster kubernetes cloud (service-account based);
   # the Jenkinsfile declares its agent pod template inline.
