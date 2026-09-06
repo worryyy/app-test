@@ -177,7 +177,7 @@ def gitopsApi(String method, String apiPath, String body, String outFile) {
   if (method == 'POST') {
     script = """
       set -eu
-      mkdir -p "$(dirname "$WORKSPACE/$outFile")"
+      mkdir -p "\$(dirname "\"\$WORKSPACE/${outFile}\"")"
       curl -fsS -X POST \\
         -H "Authorization: Bearer \$GIT_TOKEN" \\
         -H "Accept: application/vnd.github+json" \\
@@ -188,7 +188,7 @@ def gitopsApi(String method, String apiPath, String body, String outFile) {
   } else {
     script = """
       set -eu
-      mkdir -p "$(dirname "$WORKSPACE/$outFile")"
+      mkdir -p "\$(dirname "\"\$WORKSPACE/${outFile}\"")"
       curl -fsS \\
         -H "Authorization: Bearer \$GIT_TOKEN" \\
         -H "Accept: application/vnd.github+json" \\
