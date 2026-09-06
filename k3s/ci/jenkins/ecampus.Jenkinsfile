@@ -178,7 +178,7 @@ def gitopsApi(String method, String apiPath, String body, String outFile) {
     script = """
       set -eu
       mkdir -p "\$(dirname "\"\$WORKSPACE/${outFile}\"")"
-      curl -fsS -X POST \\
+      curl -fsS --retry 4 --retry-delay 5 --retry-all-errors -X POST \\
         -H "Authorization: Bearer \$GIT_TOKEN" \\
         -H "Accept: application/vnd.github+json" \\
         -H "Content-Type: application/json" \\
@@ -189,7 +189,7 @@ def gitopsApi(String method, String apiPath, String body, String outFile) {
     script = """
       set -eu
       mkdir -p "\$(dirname "\"\$WORKSPACE/${outFile}\"")"
-      curl -fsS \\
+      curl -fsS --retry 4 --retry-delay 5 --retry-all-errors \\
         -H "Authorization: Bearer \$GIT_TOKEN" \\
         -H "Accept: application/vnd.github+json" \\
         "https://api.github.com/repos/$apiPath" > "\$WORKSPACE/$outFile"
@@ -225,7 +225,7 @@ def enableAutoMerge(String nodeId) {
     withCredentials([usernamePassword(credentialsId: 'git-https', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
       sh """
         set -eu
-        curl -fsS -X POST \\
+        curl -fsS --retry 4 --retry-delay 5 --retry-all-errors -X POST \\
           -H "Authorization: Bearer \$GIT_TOKEN" \\
           -H "Content-Type: application/json" \\
           --data-binary '{"query": "$query"}' \\
