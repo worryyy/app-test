@@ -362,7 +362,11 @@ def pushBranch(String checkoutDir, String branch) {
         sh '''
           set -eu
           clean_repo=$(echo "$REPO_URL" | sed 's#https://##')
-          git -C "$CHECKOUT" push "https://$GIT_USER:$GIT_TOKEN@$clean_repo" HEAD:"$BRANCH"
+          n=0
+          until [ "$n" -ge 5 ]; do
+            git -C "$CHECKOUT" push "https://$GIT_USER:$GIT_TOKEN@$clean_repo" HEAD:"$BRANCH" && break
+            n=$((n+1)); sleep 20
+          done
         '''
       }
     }
