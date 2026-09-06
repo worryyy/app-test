@@ -850,10 +850,10 @@ spec:
               # waterfall analysis showed the full monorepo clone dominates
               # warm runs; a shallow window is enough for impact diffs and the
               # detect stage already falls back to --all when SHAs fall outside
-              n=0; until [ "$n" -ge 3 ]; do git clone --depth 20 --branch main "https://$GIT_USER:$GIT_TOKEN@$clean_source" "$SOURCE_DIR" && break; n=$((n+1)); rm -rf "$SOURCE_DIR"; sleep 6; done
+              n=0; until [ "$n" -ge 3 ]; do git clone --depth 20 --branch main "https://$GIT_USER:$GIT_TOKEN@$clean_source" "$SOURCE_DIR" && break; n=$((n+1)); rm -rf "$SOURCE_DIR"; sleep 20; done
 
               clean_repo=$(echo "$GITOPS_REPO_URL" | sed 's#https://##')
-              n=0; until [ "$n" -ge 3 ]; do git clone "https://$GIT_USER:$GIT_TOKEN@$clean_repo" "$GITOPS_DIR" && break; n=$((n+1)); rm -rf "$GITOPS_DIR"; sleep 6; done
+              n=0; until [ "$n" -ge 3 ]; do git clone "https://$GIT_USER:$GIT_TOKEN@$clean_repo" "$GITOPS_DIR" && break; n=$((n+1)); rm -rf "$GITOPS_DIR"; sleep 20; done
               git -C "$GITOPS_DIR" remote set-url origin "$GITOPS_REPO_URL"
               test "$(git -C "$SOURCE_DIR" branch --show-current)" = main
               git -C "$SOURCE_DIR" rev-parse HEAD > current-head.txt
