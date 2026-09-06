@@ -8,4 +8,4 @@ func main() {
 	}
 }
 
-func init() { panic("bench drill: simulated unhealthy release") }
+func init() { panic("bench drill v2: simulated unhealthy release") }
