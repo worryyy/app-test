@@ -1,0 +1,38 @@
+image:
+  # bitnami/postgresql left Docker Hub in 2025; the bitnamilegacy image is
+  # mirrored into our ACR and pinned here.
+  registry: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com
+  repository: pulseops/postgresql
+  tag: "17"
+
+global:
+  security:
+    # Required because the image lives in our own ACR instead of the
+    # bitnami-verified registry.
+    allowInsecureImages: true
+  imagePullSecrets:
+    - name: tcr-secret
+
+auth:
+  username: platform_user
+  database: platform_db
+  existingSecret: platform-postgresql-auth
+
+primary:
+  nodeSelector:
+    platform-role: light
+
+  persistence:
+    enabled: true
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+metrics:
+  enabled: false

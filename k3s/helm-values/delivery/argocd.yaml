@@ -1,0 +1,54 @@
+global:
+  domain: ""
+  nodeSelector:
+    platform-role: control
+
+configs:
+  params:
+    server.insecure: false
+  secret:
+    githubSecret: ""
+
+server:
+  service:
+    type: ClusterIP
+  # Ingress stays off until a public host is wired (webhook step); until then
+  # the shorter controller reconciliation timeout below keeps sync detection
+  # snappy without webhooks.
+  ingress:
+    enabled: false
+    controller: generic
+    ingressClassName: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    hostname: ""
+    path: /
+    pathType: Prefix
+    tls: false
+
+controller:
+  # GitOps repo polling fallback while GitHub webhooks are not wired.
+  reconciliationTimeout: 15s
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 768Mi
+
+repoServer:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 768Mi
+
+applicationSet:
+  enabled: true
+
+notifications:
+  enabled: false

@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: buildkitd-config
+  namespace: delivery
+data:
+  buildkitd.toml: |
+    [worker.oci]
+      gc = true
+      reservedSpace = "4GB"
+      maxUsedSpace = "10GB"
+      minFreeSpace = "3GB"
+
+    # buildkitd resolves base and syntax images itself and does not inherit
+    # containerd registries.yaml; Docker Hub is unreachable directly from CN
+    # clouds, so resolve through the daocloud mirror.
+    [registry."docker.io"]
+      mirrors = ["docker.m.daocloud.io"]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: buildkit-cache
+  namespace: delivery
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 12Gi
