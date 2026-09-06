@@ -1,24 +1,42 @@
 fullnameOverride: ecampus-theme
-
 image:
   repository: pulseops/ecampus-theme
-  tag: dev
-  digest: ""
-
+  tag: git-44b34b2a
+  digest: "sha256:ca5d49767290bb71c15e4585b18ec4ba0cb87c5a117e5b36cade56eaea2b7ede"
 platform:
   serviceName: theme
-
 release:
-  deployId: ""
-  gitSha: ""
-  gitopsRevision: ""
+  deployId: "ecampus-pipeline-60-theme-1"
+  gitSha: "44b34b2aef220359ab250e8d629b53d4a30b773b"
+  gitopsRevision: "44b34b2aef220359ab250e8d629b53d4a30b773b"
   environment: dev
-  buildNumber: ""
+  buildNumber: "60"
   rolloutProfile: fast-rolling
-
+  releaseBatch: ecampus-pipeline-60
 rollout:
   enabled: false
   profile: fast-rolling
   ingress:
     paths:
       - /api/theme
+  strategy: rolling
+  autoPromotion: false
+  previewReplicaCount: 0
+  scaleDownDelaySeconds: 900
+  analysis:
+    dryRun: false
+    interval: 1m
+    count: 10
+    consecutiveSuccessLimit: 2
+    failureLimit: 2
+    inconclusiveLimit: 10
+    consecutiveErrorLimit: 2
+    minSamples: 1000
+    stableMinSamples: 1000
+    maxErrorRate: 0.02
+    maxErrorRateIncrease: 0.01
+    maxP95Ratio: 1.5
+    maxP95Seconds: 0.5
+    minOperationSuccessRate: 0.99
+    requestRouteRegex: ^/api/theme.*$
+    operationRouteRegex: ""
