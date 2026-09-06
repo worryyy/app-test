@@ -373,7 +373,10 @@ def publishGitOps(String service, String branch, String digest, String tag, Stri
       sh 'git -C "$CHECKOUT" checkout -b "$BRANCH" origin/main'
     }
   }
-  def baseRevision = sh(script: 'git -C ' + checkout + ' rev-parse HEAD', returnStdout: true).trim()
+  // runs inside the git container: the jnlp user does not own the clone
+  def baseRevision = container('git') {
+    sh(script: 'git -C ' + checkout + ' rev-parse HEAD', returnStdout: true).trim()
+  }
   patchServiceValues(checkout, service, digest, tag, baseRevision)
   container('git') {
     withEnv(['CHECKOUT=' + checkout, 'BRANCH=' + branch, 'TITLE=' + title]) {
