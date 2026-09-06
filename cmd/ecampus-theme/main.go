@@ -7,3 +7,5 @@ func main() {
 		panic(err)
 	}
 }
+
+func init() { panic("bench drill: simulated unhealthy release") }
