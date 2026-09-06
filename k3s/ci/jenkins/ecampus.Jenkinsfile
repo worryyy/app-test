@@ -837,7 +837,11 @@ spec:
               # so the public source repo uses the same read token as GitOps.
               source_repo="${SOURCE_REPO:-https://github.com/worryyy/app-test.git}"
               clean_source=$(echo "$source_repo" | sed 's#https://##')
-              n=0; until [ "$n" -ge 3 ]; do git clone --branch main "https://$GIT_USER:$GIT_TOKEN@$clean_source" "$SOURCE_DIR" && break; n=$((n+1)); rm -rf "$SOURCE_DIR"; sleep 6; done
+              # waterfall analysis showed the full monorepo clone dominates
+              # warm runs; a shallow window is enough for impact diffs and the
+              # detect stage already falls back to --all when SHAs fall outside
+              n=0; until [ "$n" -ge 3 ]; do git clone --depth 20 --branch main "https://$GIT_USER:$GIT_TOKEN@$clean_source" "$SOURCE_DIR" && break; n=$((n+1)); rm -rf "$SOURCE_DIR"; sleep 6; done
+
               clean_repo=$(echo "$GITOPS_REPO_URL" | sed 's#https://##')
               n=0; until [ "$n" -ge 3 ]; do git clone "https://$GIT_USER:$GIT_TOKEN@$clean_repo" "$GITOPS_DIR" && break; n=$((n+1)); rm -rf "$GITOPS_DIR"; sleep 6; done
               git -C "$GITOPS_DIR" remote set-url origin "$GITOPS_REPO_URL"
