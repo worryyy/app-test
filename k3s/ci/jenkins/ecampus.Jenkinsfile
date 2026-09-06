@@ -195,7 +195,7 @@ def gitopsApi(String method, String apiPath, String body, String outFile) {
         "https://api.github.com/repos/$apiPath" > "\$WORKSPACE/$outFile"
     """
   }
-  container('git') {
+  container('curl') {
     withCredentials([usernamePassword(credentialsId: 'git-https', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
       sh script
     }
@@ -221,7 +221,7 @@ def createGitOpsPR(String service, String branch, String title) {
 
 def enableAutoMerge(String nodeId) {
   def query = 'mutation { enablePullRequestAutoMerge(input:{pullRequestId:\\"' + nodeId + '\\", mergeMethod: MERGE}) { clientMutationId } }'
-  container('git') {
+  container('curl') {
     withCredentials([usernamePassword(credentialsId: 'git-https', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
       sh """
         set -eu
