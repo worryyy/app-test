@@ -102,6 +102,11 @@ def runServiceBranch(String service) {
         # the buildkitd sidecar (uid 1000) writes the image metadata here;
         # this container runs as root, so leave the dir world-writable
         mkdir -p "$WORKSPACE/.ci/digests" && chmod -R 777 "$WORKSPACE/.ci"
+        if [ "${EXTREME_COLD:-false}" = "true" ]; then
+          # baseline: no shared module/compile cache between services
+          rm -rf /tmp/egc /tmp/egm
+          export GOCACHE=/tmp/egc GOMODCACHE=/tmp/egm
+        fi
         cd "$SOURCE_DIR"
         ./scripts/ci/run-service-checks.sh --service "$SERVICE"
       '''
@@ -128,6 +133,11 @@ def runServiceBranch(String service) {
         import_cache=""
         if [ -d "$CACHE_DIR" ] && [ -n "$(ls -A "$CACHE_DIR" 2>/dev/null)" ]; then
           import_cache="--import-cache type=local,src=$CACHE_DIR"
+        fi
+        if [ "${EXTREME_COLD:-false}" = "true" ]; then
+          # baseline: drop every reusable layer before the build
+          buildctl prune --force >/dev/null 2>&1 || true
+          import_cache=""
         fi
         buildctl build \
           --frontend=dockerfile.v0 \
@@ -791,6 +801,7 @@ spec:
     string(name: 'BUILDKIT_CACHE_TAG', defaultValue: 'main-amd64', description: 'BuildKit registry cache tag; point it at a never-used tag for cold-cache benchmark runs.')
     booleanParam(name: 'ROLLBACK_PAUSE_SYNC', defaultValue: true, description: 'Pause Argo CD selfHeal on the target Application during rollback; disable only to reproduce the rollback/self-heal race in drills.')
     booleanParam(name: 'SKIP_RELEASE', defaultValue: false, description: 'Stop after verify/build/push and skip the GitOps PR, rollout-wait and blue-green stages (CI benchmark mode).')
+    booleanParam(name: 'EXTREME_COLD', defaultValue: false, description: 'Pre-optimization baseline mode: per-service ephemeral Go caches (no sharing across services) and a buildctl prune before every build (no layer reuse).')
   }
 
   environment {
