@@ -1,18 +1,18 @@
 fullnameOverride: ecampus-theme
 image:
   repository: pulseops/ecampus-theme
-  tag: git-62d6a8a8
+  tag: git-abd3e6c7
   digest: "sha256:ce84d695ce883fdbe3e43e293cc07ce04aef8a332454d768fd1d94ea55854626"
 platform:
   serviceName: theme
 release:
-  deployId: "ecampus-pipeline-69-theme-1"
-  gitSha: "62d6a8a8d77d1cebb2b96e36ccdce3e0787d09ed"
-  gitopsRevision: "62d6a8a8d77d1cebb2b96e36ccdce3e0787d09ed"
+  deployId: "ecampus-pipeline-70-theme-1"
+  gitSha: "abd3e6c7576c20f7201b5385eae376b266e0b4d7"
+  gitopsRevision: "abd3e6c7576c20f7201b5385eae376b266e0b4d7"
   environment: dev
-  buildNumber: "69"
+  buildNumber: "70"
   rolloutProfile: fast-rolling
-  releaseBatch: ecampus-pipeline-69
+  releaseBatch: ecampus-pipeline-70
 rollout:
   enabled: false
   profile: fast-rolling
