@@ -733,6 +733,9 @@ spec:
       image: mikefarah/yq:4.44.3
       command: [cat]
       tty: true
+      # patches files cloned by the root git container
+      securityContext:
+        runAsUser: 0
       resources:
         requests:
           cpu: "50m"
