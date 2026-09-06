@@ -240,7 +240,9 @@ def waitForPRMerged(int number, int timeoutSeconds) {
   while (waited < timeoutSeconds) {
     def response = gitopsApi('GET', env.GITOPS_OWNER + '/' + env.GITOPS_REPO + '/pulls/' + number, '', ".ci/pr-${number}.json")
     def pr = new JsonSlurperClassic().parseText(response)
-    if (pr.state == 'merged') {
+    // GitHub reports merged PRs as state=closed with merged=true; state is
+    // never the literal "merged" and the old check spun to the 900s timeout.
+    if (pr.state == 'closed' && pr.merged) {
       echo 'GitOps PR ' + number + ' merged'
       return
     }
