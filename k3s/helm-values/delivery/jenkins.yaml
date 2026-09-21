@@ -33,6 +33,14 @@ controller:
       keyName: username
     - name: acr-credentials
       keyName: password
+    - name: platform-webhook
+      keyName: secret
+
+  # P2 platform integration: the pipeline's Notify platform stage posts the
+  # stage summary here after every build (success or failure).
+  additionalEnv:
+    - name: PLATFORM_WEBHOOK_URL
+      value: "http://platform-server-api.platform.svc/api/webhooks/jenkins"
 
   JCasC:
     defaultConfig: true
