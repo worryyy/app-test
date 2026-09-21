@@ -1,13 +1,6 @@
 # P1 平台骨架：单副本 MinIO（制品/报告/快照对象存储）。
+# 镜像用 chart 默认（docker.io/minio/minio，经 1ms.run mirror 拉取）。
 mode: standalone
-
-image:
-  repository: docker.1ms.run/minio/minio
-  tag: "RELEASE.2026-09-01T00-00-00Z"
-
-mcImage:
-  repository: docker.1ms.run/minio/mc
-  tag: latest
 
 # root 凭据走 Secret，不落 values。
 existingSecret: platform-minio-auth
