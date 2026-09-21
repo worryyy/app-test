@@ -7,9 +7,11 @@ spec:
   project: platform-addons
 
   sources:
-    - repoURL: https://charts.bitnami.com/bitnami
-      chart: redis
-      targetRevision: 22.2.6
+    # bitnami chart 仓库 index 达 27MB，repo-server 拉取超时——chart 直接
+    # vendor 进 app-test（与 go-service 同模式），不再引用远端仓库。
+    - repoURL: https://github.com/worryyy/app-test.git
+      targetRevision: main
+      path: k3s/charts/vendor/redis
       helm:
         releaseName: platform-redis
         valueFiles:
