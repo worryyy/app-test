@@ -1,4 +1,10 @@
 # P1 平台骨架：单实例 Redis（会话/缓存/轻量队列），无持久化。
+# chart 已 vendor 进 app-test（k3s/charts/vendor/redis）。
+global:
+  security:
+    # chart 默认镜像在 docker.io/bitnami/*（经 1ms.run mirror 拉取）
+    allowInsecureImages: true
+
 architecture: standalone
 
 master:
@@ -13,11 +19,6 @@ master:
     limits:
       cpu: 250m
       memory: 256Mi
-
-# bitnami 镜像走 docker.io（1ms.run mirror）；如需钉死可改 ACR 镜像。
-image:
-  repository: docker.1ms.run/bitnami/redis
-  tag: "8.4"
 
 auth:
   enabled: false
