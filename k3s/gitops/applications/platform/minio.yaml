@@ -1,26 +1,26 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argo-rollouts
+  name: minio
   namespace: argocd
 spec:
   project: platform-addons
 
   sources:
-    - repoURL: https://argoproj.github.io/argo-helm
-      chart: argo-rollouts
-      targetRevision: 2.41.0
+    - repoURL: https://charts.min.io
+      chart: minio
+      targetRevision: 5.9.4
       helm:
-        releaseName: argo-rollouts
+        releaseName: platform-minio
         valueFiles:
-          - $values/k3s/helm-values/platform/argo-rollouts.yaml
+          - $values/k3s/helm-values/platform/minio.yaml
     - repoURL: https://github.com/worryyy/app-test.git
       targetRevision: main
       ref: values
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: argo-rollouts
+    namespace: platform
 
   syncPolicy:
     automated:

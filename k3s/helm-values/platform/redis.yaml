@@ -1,0 +1,29 @@
+# P1 平台骨架：单实例 Redis（会话/缓存/轻量队列），无持久化。
+architecture: standalone
+
+master:
+  persistence:
+    enabled: false
+  nodeSelector:
+    platform-role: light
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# bitnami 镜像走 docker.io（1ms.run mirror）；如需钉死可改 ACR 镜像。
+image:
+  repository: docker.1ms.run/bitnami/redis
+  tag: "8.4"
+
+auth:
+  enabled: false
+
+replica:
+  replicaCount: 0
+
+metrics:
+  enabled: false

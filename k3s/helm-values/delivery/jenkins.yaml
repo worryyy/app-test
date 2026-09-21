@@ -29,6 +29,10 @@ controller:
   additionalExistingSecrets:
     - name: git-credentials
       keyName: token
+    - name: acr-credentials
+      keyName: username
+    - name: acr-credentials
+      keyName: password
 
   JCasC:
     defaultConfig: true
@@ -44,6 +48,12 @@ controller:
                       description: "GitHub token for the GitOps repository"
                       username: worryyy
                       password: ${file:/run/secrets/additional/git-credentials-token}
+                  - usernamePassword:
+                      scope: GLOBAL
+                      id: acr-https
+                      description: "Aliyun ACR credentials for cache existence checks"
+                      username: ${file:/run/secrets/additional/acr-credentials-username}
+                      password: ${file:/run/secrets/additional/acr-credentials-password}
 
   # Keep the default in-cluster kubernetes cloud (service-account based);
   # the Jenkinsfile declares its agent pod template inline.
