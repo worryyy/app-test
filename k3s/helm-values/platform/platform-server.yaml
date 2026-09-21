@@ -20,6 +20,7 @@ api:
   envFromSecrets:
     - platform-server-auth
     - platform-server-cicd
+    - platform-server-observability
   nodeSelector:
     platform-role: light
   resources:
