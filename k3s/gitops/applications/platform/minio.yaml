@@ -9,7 +9,7 @@ spec:
   sources:
     - repoURL: https://charts.min.io
       chart: minio
-      targetRevision: 5.9.4
+      targetRevision: 5.4.0
       helm:
         releaseName: platform-minio
         valueFiles:

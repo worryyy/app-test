@@ -1,23 +1,19 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: redis
+  name: platform-server
   namespace: argocd
 spec:
   project: platform-addons
 
   sources:
-    - repoURL: https://charts.bitnami.com/bitnami
-      chart: redis
-      targetRevision: 22.2.6
-      helm:
-        releaseName: platform-redis
-        valueFiles:
-          - $values/k3s/helm-values/platform/redis.yaml
     - repoURL: https://github.com/worryyy/app-test.git
       targetRevision: main
-      ref: values
-
+      path: k3s/charts/platform-server
+      helm:
+        releaseName: platform-server
+        valueFiles:
+          - ../../helm-values/platform/platform-server.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: platform
