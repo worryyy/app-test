@@ -79,3 +79,8 @@ resources:
     memory: 256Mi
   limits:
     memory: 512Mi
+
+# PVC 数据目录归 grafana(472)；local-path 上 root chown 间歇被拒，
+# 且 grafana 自身可写，无需重置属主。
+initChownData:
+  enabled: false
