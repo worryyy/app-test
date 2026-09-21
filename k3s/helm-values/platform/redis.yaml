@@ -4,6 +4,8 @@ global:
   security:
     # chart 默认镜像在 docker.io/bitnami/*（经 1ms.run mirror 拉取）
     allowInsecureImages: true
+  imagePullSecrets:
+    - tcr-secret
 
 architecture: standalone
 
