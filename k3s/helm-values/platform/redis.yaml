@@ -14,7 +14,7 @@ image:
   # 不通）——Mac pull -> push ACR 一次性中转，chart 指向 ACR。
   registry: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com
   repository: pulseops/redis
-  tag: "8.2.1"
+  tag: "8.2.1-amd64"
 
 master:
   persistence:
