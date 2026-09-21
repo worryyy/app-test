@@ -867,51 +867,55 @@ spec:
       }
     }
 
-    // Platform integration (P2): push per-service stage summaries to the
-    // platform webhook so /pipelines detail advances without polling
-    // Jenkins. Runs on success and failure; a missing webhook URL is a
-    // no-op so CI benchmarks stay usable without the platform.
-    stage('Notify platform') {
-      steps {
-        script {
-          if (!(env.PLATFORM_WEBHOOK_URL ?: '').trim()) {
-            echo 'PLATFORM_WEBHOOK_URL not set; skip platform notify'
-            return
-          }
-          def runStatus = currentBuild.currentResult == 'SUCCESS' ? 'success' : 'failed'
-          def services = (env.BUILD_SERVICES ?: '').split(',').findAll { it }
-          if (!services) {
-            // No affected services (e.g. docs-only change): nothing recorded.
-            echo 'no affected services; skip platform notify'
-            return
-          }
-          def secret = ''
-          if (fileExists('/run/secrets/additional/platform-webhook-secret')) {
-            secret = readFile('/run/secrets/additional/platform-webhook-secret').trim()
-          }
-          services.each { service ->
-            def payload = [
-              build: currentBuild.number,
-              service: service,
-              status: runStatus,
-              gitRevision: (env.GIT_SHA ?: ''),
-              digest: imageDigest(service),
-              stages: [
-                [name: 'pipeline', status: runStatus, durationMs: currentBuild.durationInMillis()],
-              ],
-            ]
-            def json = writeJSON(returnText: true, json: payload)
-            sh """
-              set +e
-              curl -sf -m 15 -X POST '${env.PLATFORM_WEBHOOK_URL}' \\
-                -H 'Content-Type: application/json' \\
-                -H 'X-Platform-Webhook: ${secret}' \\
-                --data-binary '${json.replace("'", "'\\''")}' >/dev/null
-              rc=\$?
-              set -e
-              if [ \$rc -ne 0 ]; then echo 'platform notify failed for ${service} (rc='\$rc')'; fi
-            """
-          }
+    // Platform integration (P2) lives in post.always (below): a plain stage
+    // would be skipped after an earlier stage failure and the platform would
+    // never learn the build ended.
+  }
+
+  post {
+    // Runs on success and failure alike; a missing webhook URL is a no-op so
+    // CI benchmarks stay usable without the platform.
+    always {
+      script {
+        if (!(env.PLATFORM_WEBHOOK_URL ?: '').trim()) {
+          echo 'PLATFORM_WEBHOOK_URL not set; skip platform notify'
+          return
+        }
+        def runStatus = currentBuild.currentResult == 'SUCCESS' ? 'success' : 'failed'
+        def services = (env.BUILD_SERVICES ?: '').split(',').findAll { it }
+        if (!services) {
+          // No affected services (e.g. docs-only change or a build that died
+          // before detection): nothing recorded; the platform backfills from
+          // the Jenkins API on the next detail view.
+          echo 'no affected services; skip platform notify'
+          return
+        }
+        def secret = ''
+        if (fileExists('/run/secrets/additional/platform-webhook-secret')) {
+          secret = readFile('/run/secrets/additional/platform-webhook-secret').trim()
+        }
+        services.each { service ->
+          def payload = [
+            build: currentBuild.number,
+            service: service,
+            status: runStatus,
+            gitRevision: (env.COMMIT_SHA ?: ''),
+            digest: imageDigest(service),
+            stages: [
+              [name: 'pipeline', status: runStatus, durationMs: currentBuild.durationInMillis()],
+            ],
+          ]
+          def json = writeJSON(returnText: true, json: payload)
+          sh """
+            set +e
+            curl -sf -m 15 -X POST '${env.PLATFORM_WEBHOOK_URL}' \\
+              -H 'Content-Type: application/json' \\
+              -H 'X-Platform-Webhook: ${secret}' \\
+              --data-binary '${json.replace("'", "'\\''")}' >/dev/null
+            rc=\$?
+            set -e
+            if [ \$rc -ne 0 ]; then echo 'platform notify failed for ${service} (rc='\$rc')'; fi
+          """
         }
       }
     }

@@ -53,6 +53,9 @@ grep -q -- '--metadata-file=' "$pipeline"
 grep -q "imageMetadata\['containerimage.digest'\]" "$pipeline"
 grep -q 'release-record' "$pipeline"
 grep -q 'enablePullRequestAutoMerge' "$pipeline"
+grep -q 'post {' "$pipeline"
+grep -q 'always {' "$pipeline"
+grep -q 'PLATFORM_WEBHOOK_URL' "$pipeline"
 grep -q 'EXPECTED_DIGEST' "$pipeline"
 grep -q 'DATABASE_URL' "$pipeline"
 grep -q 'PROMETHEUS_URL' "$pipeline"
@@ -128,10 +131,10 @@ test -f "${repo_root}/platform/server/.golangci.yml"
 test -f "${repo_root}/k3s/ci/policies/policy.rego"
 test -f "${repo_root}/k3s/ci/policies/policy_test.rego"
 test ! -e "${repo_root}/k3s/ci/schemas"
-test -f "${repo_root}/platform/server/migrations/001_release_records.sql"
-grep -q 'service_releases' "${repo_root}/platform/server/migrations/001_release_records.sql"
-grep -q 'release_status' "${repo_root}/platform/server/migrations/001_release_records.sql"
-if grep -q 'rollout_strategy' "${repo_root}/platform/server/migrations/001_release_records.sql"; then
+test -f "${repo_root}/platform/server/migrations/0001_release_records.up.sql"
+grep -q 'service_releases' "${repo_root}/platform/server/migrations/0001_release_records.up.sql"
+grep -q 'release_status' "${repo_root}/platform/server/migrations/0001_release_records.up.sql"
+if grep -q 'rollout_strategy' "${repo_root}/platform/server/migrations/0001_release_records.up.sql"; then
   echo "release store still tracks rollout strategies" >&2
   exit 1
 fi
