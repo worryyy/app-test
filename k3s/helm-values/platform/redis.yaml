@@ -7,6 +7,10 @@ global:
 
 architecture: standalone
 
+image:
+  repository: bitnamilegacy/redis
+  tag: 8.2.1-debian-12-r0
+
 master:
   persistence:
     enabled: false
