@@ -46,6 +46,14 @@ datasources:
         jsonData:
           timeInterval: 30s
 
+# init 容器（download-dashboards）也走 ACR：docker.io 直拉在集群内
+# 间歇超时。
+downloadDashboardsImage:
+  registry: crpi-gfwwpdquc14b7w22.cn-shanghai.personal.cr.aliyuncs.com
+  repository: pulseops/curl
+  tag: "8.9.1"
+  pullPolicy: IfNotPresent
+
 # 大盘定义在 grafana-dashboards.yaml（由 sync-dashboards.sh 生成，源文件
 # monitoring/dashboards/*.json）。
 
