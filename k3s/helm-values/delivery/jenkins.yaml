@@ -37,14 +37,22 @@ controller:
       keyName: secret
 
   # P2 platform integration: the pipeline's Notify platform stage posts the
-  # stage summary here after every build (success or failure).
-  additionalEnv:
-    - name: PLATFORM_WEBHOOK_URL
-      value: "http://platform-server-api.platform.svc/api/webhooks/jenkins"
-
+  # stage summary here after every build (success or failure). Chart 5.9.x
+  # does not render controller.additionalEnv, so the URL is a Jenkins global
+  # env (JCasC globalNodeProperties); the secret rides the mounted secret.
   JCasC:
     defaultConfig: true
     configScripts:
+      delivery-platform: |
+        jenkins:
+          globalNodeProperties:
+            # envVars is the EnvironmentVariablesNodeProperty symbol; the
+            # inner map carries the actual list. A wrong symbol here fails
+            # ConfigurationAsCode.init and crash-loops the controller.
+            - envVars:
+                env:
+                  - key: PLATFORM_WEBHOOK_URL
+                    value: "http://platform-server-api.platform.svc/api/webhooks/jenkins"
       delivery-credentials: |
         credentials:
           system:
