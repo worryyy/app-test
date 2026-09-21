@@ -41,7 +41,7 @@ datasources:
         uid: prometheus
         type: prometheus
         access: proxy
-        url: http://prometheus-monitoring.svc:9090
+        url: http://prometheus-server.monitoring.svc
         isDefault: true
         jsonData:
           timeInterval: 30s
